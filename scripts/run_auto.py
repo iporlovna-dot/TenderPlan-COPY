@@ -27,7 +27,7 @@ from filter import score_purchase, in_region, deadline_in_window  # noqa: E402
 from parser import parse  # noqa: E402
 from extractor import extract_requirements  # noqa: E402
 from matcher import match  # noqa: E402
-from ktru import ktru_relation  # noqa: E402
+from ktru import ktru_relation, best_position  # noqa: E402
 from keymatch import align_keys, align_values, apply_mapping  # noqa: E402
 
 VERDICT_RU = {
@@ -48,13 +48,39 @@ def load_products(path):
     return products
 
 
-def load_product_codes(path):
-    """Коды КТРУ всей номенклатуры (для сверки товар↔позиция закупки в воронке)."""
+def load_product_codes_by_id(path):
+    """Коды КТРУ по каждому товару: {product_id: [codes]}.
+
+    Общий набор (для КТРУ-фильтра воронки) собирается из значений; коды конкретного
+    товара нужны, чтобы определить ЕГО позицию в многолоте (пометка «позиция N из M»).
+    """
     files = [path] if path.endswith(".json") else glob.glob(os.path.join(path, "*.json"))
-    codes = set()
+    by_id = {}
     for fp in files:
-        codes.update(json.load(open(fp, encoding="utf-8")).get("ktru", []))
-    return codes
+        d = json.load(open(fp, encoding="utf-8"))
+        by_id[d["id"]] = d.get("ktru", [])
+    return by_id
+
+
+def lot_placement(product_id, codes_by_id, positions):
+    """Где товар в сборном лоте: «позиция N из M» + что ещё в лоте (§11.4).
+
+    None для одиночных лотов (M≤1) и когда позиция товара не определяется по КТРУ —
+    чтобы не засорять вердикт по чистым закупкам. Данные о позициях уже пришли из
+    источника (Тендерплан `fullinfo`), LLM не нужен.
+    """
+    if len(positions) <= 1:
+        return None
+    idx = best_position(codes_by_id.get(product_id, []), [p.code for p in positions])
+    if idx is None:
+        return None
+    return {
+        "position": idx + 1,
+        "total": len(positions),
+        "name": positions[idx].name,
+        "quantity": positions[idx].quantity,
+        "others": [p.name for j, p in enumerate(positions) if j != idx],
+    }
 
 
 def to_requirements(raw):
@@ -81,7 +107,8 @@ def main():
 
     profile = json.load(open(args.profile, encoding="utf-8"))
     products = [] if args.collect_only else load_products(args.products)
-    prod_codes = set() if args.collect_only else load_product_codes(args.products)
+    codes_by_id = {} if args.collect_only else load_product_codes_by_id(args.products)
+    prod_codes = set().union(*codes_by_id.values()) if codes_by_id else set()
     os.makedirs(args.out, exist_ok=True)
     mode = "СБОР ТЗ (без Anthropic)" if args.collect_only else "полный (с вердиктами)"
     print("Профиль: %s | товаров: %d | режим: %s" %
@@ -111,10 +138,13 @@ def main():
             skipped_region += 1
             continue
         # Шаг 2г: сверка КТРУ товар↔позиции закупки (ktru.py) — отсечь чужие группы до LLM.
-        # Позиции берём из fullinfo (дешёвый запрос). Нет кодов/структуры → не отсекаем.
+        # Позиции берём из fullinfo (один дешёвый запрос): их коды — для КТРУ-фильтра,
+        # а сами позиции — для пометки «позиция N из M» многолотов ниже. Нет кодов → не отсекаем.
         rel = "group"
+        positions = []
         if prod_codes:
-            pos_codes = source.position_ktru(purchase.id)
+            positions = source.positions(purchase.id)
+            pos_codes = [p.code for p in positions if p.code]
             rel = ktru_relation(prod_codes, pos_codes) if pos_codes else "group"
             if rel == "none":
                 skipped_ktru += 1
@@ -155,13 +185,17 @@ def main():
             aligned = align_values(apply_mapping(raw_reqs, mapping), product)
             reqs = to_requirements(aligned)
             res = match(product, reqs, purchase.id, profile.get("synonyms"))
-            print("    %-28s %3d%%  %s" % (product.id, res.score, VERDICT_RU[res.verdict]))
+            # Сборный лот: где именно в нём товар и что ещё в лоте (§11.4).
+            lot = lot_placement(product.id, codes_by_id, positions)
+            lot_str = ("  [позиция %d из %d]" % (lot["position"], lot["total"])) if lot else ""
+            print("    %-28s %3d%%  %s%s" % (product.id, res.score, VERDICT_RU[res.verdict], lot_str))
             out = os.path.join(args.out, "%s__%s.json" % (purchase.id, product.id))
             with open(out, "w", encoding="utf-8") as f:
                 json.dump({
                     "purchase_id": purchase.id, "subject": purchase.subject,
                     "product_id": product.id, "score": res.score,
                     "verdict": res.verdict.value, "explanation": res.explanation,
+                    "lot": lot,
                     "checks": [{"req": c.req.key, "status": c.status.value,
                                 "note": c.note, "action": c.action} for c in res.checks],
                 }, f, ensure_ascii=False, indent=2)

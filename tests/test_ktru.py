@@ -4,7 +4,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from ktru import EXACT, GROUP, NONE, ktru_relation, relevant, split_ktru
+from ktru import EXACT, GROUP, NONE, best_position, ktru_relation, relevant, split_ktru
 
 # коды товаров-клинков KaWe и коды позиций из реальных закупок (см. scratchpad/fullinfo)
 CLINOK = "32.50.13.190-00007686"          # клинок одноразовый (товар)
@@ -48,6 +48,18 @@ def main():
     # relevant(): отсасыватель+диагностика без клинков → отсекаем
     results.append(check("relevant чужой лот = False", relevant([CLINOK, HANDLE], [SUCTION, DIAG]), False))
     results.append(check("relevant свой лот = True", relevant([CLINOK], [PARENT_ONLY]), True))
+
+    # best_position: индекс позиции товара в лоте (для пометки «позиция N из M», §11.4)
+    results.append(check("best_position exact сильнее group",
+                         best_position([CLINOK], [PARENT_ONLY, CLINOK, DIAG]), 1))
+    results.append(check("best_position первая при равенстве group",
+                         best_position([CLINOK], [DIAG, PARENT_ONLY, SUCTION]), 1))
+    results.append(check("best_position свой в чужом лоте (реальный 6a609cf7)",
+                         best_position([SUCTION], [SUCTION, DIAG]), 0))
+    results.append(check("best_position чужой товар = None",
+                         best_position([CLINOK], [SUCTION, DIAG]), None))
+    results.append(check("best_position пустые коды = None",
+                         best_position([], [SUCTION, DIAG]), None))
 
     passed = sum(results)
     print("\n%d/%d passed" % (passed, len(results)))

@@ -30,7 +30,7 @@ from typing import Iterator, List, Optional
 
 import httpx
 
-from schema import Purchase
+from schema import Position, Purchase
 
 BASE_URL = "https://tenderplan.ru"
 # Собранный бандл certifi + Russian Trusted CA (см. scripts/setup_ca_bundle.py).
@@ -166,6 +166,16 @@ class TenderplanSource:
                              params={"id": tender_id}).json()
         return _extract_position_codes(data)
 
+    def positions(self, tender_id: str) -> List[Position]:
+        """Позиции (лоты) закупки из fullinfo: Name/Code/Quantity/Price на позицию.
+
+        Один дешёвый запрос (без LLM) закрывает и КТРУ-сверку в воронке (коды позиций),
+        и пометку «позиция N из M» для многолотов (§11.4). Пусто, если структуры нет.
+        """
+        data = self._request("GET", "/api/tenders/v2/fullinfo",
+                             params={"id": tender_id}).json()
+        return _extract_positions(data)
+
     def download_attachments(self, purchase: Purchase, dest_dir: str) -> List[str]:
         """Скачать вложения тендера в dest_dir по прямым href. Возвращает пути к файлам."""
         os.makedirs(dest_dir, exist_ok=True)
@@ -220,9 +230,9 @@ def _to_purchase(t: dict) -> Purchase:
     )
 
 
-def _extract_position_codes(fullinfo: dict) -> List[str]:
-    """Коды КТРУ позиций из fullinfo. ObjectInfo лежит вложенной JSON-строкой —
-    ищем её рекурсивно и парсим таблицу Objects (колонка Code = КТРУ на позицию)."""
+def _find_object_table(fullinfo: dict) -> dict:
+    """Таблица позиций из fullinfo. ObjectInfo лежит вложенной JSON-строкой — ищем её
+    рекурсивно и достаём таблицу Objects (`tb`: строка = позиция, ячейки {fn, fv})."""
     found = None
 
     def walk(o):
@@ -243,17 +253,36 @@ def _extract_position_codes(fullinfo: dict) -> List[str]:
 
     walk(fullinfo)
     if not found:
-        return []
+        return {}
     try:
         tb = found["0"]["fv"]["0"]["fv"].get("tb", {})
     except (KeyError, TypeError, AttributeError):
-        return []
-    codes: List[str] = []
-    for row in tb.values() if isinstance(tb, dict) else []:
-        for cell in row.values() if isinstance(row, dict) else []:
-            if isinstance(cell, dict) and cell.get("fn") == "Code" and cell.get("fv"):
-                codes.append(str(cell["fv"]))
-    return codes
+        return {}
+    return tb if isinstance(tb, dict) else {}
+
+
+def _extract_positions(fullinfo: dict) -> List[Position]:
+    """Позиции закупки из таблицы Objects: Name/Code/Quantity/Price на строку."""
+    positions: List[Position] = []
+    for row in _find_object_table(fullinfo).values():
+        cells = {c.get("fn"): c.get("fv") for c in row.values()
+                 if isinstance(c, dict)} if isinstance(row, dict) else {}
+        name = cells.get("Name")
+        code = cells.get("Code")
+        if not (name or code):
+            continue
+        positions.append(Position(
+            name=str(name or ""),
+            code=str(code) if code not in (None, "") else "",
+            quantity=str(cells.get("Quantity") or ""),
+            price=_as_float(cells.get("Price")),
+        ))
+    return positions
+
+
+def _extract_position_codes(fullinfo: dict) -> List[str]:
+    """Коды КТРУ позиций (колонка Code) — для сверки товар↔позиция в воронке."""
+    return [p.code for p in _extract_positions(fullinfo) if p.code]
 
 
 def _as_str_list(v) -> List[str]:

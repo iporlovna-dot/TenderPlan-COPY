@@ -66,3 +66,23 @@ def ktru_relation(product_codes: Iterable[str], purchase_codes: Iterable[str]) -
 def relevant(product_codes: Iterable[str], purchase_codes: Iterable[str]) -> bool:
     """Релевантна ли закупка товару по КТРУ (exact или group). none → отсекаем."""
     return ktru_relation(product_codes, purchase_codes) != NONE
+
+
+def best_position(product_codes: Iterable[str], position_codes: List[str]):
+    """Индекс позиции лота, лучше всего совпавшей с товаром по КТРУ (§11.4).
+
+    Матчинг многолота идёт по КОНКРЕТНОЙ позиции — эта функция её и находит: возвращает
+    индекс позиции с сильнейшим отношением (exact > group), при равенстве — первую.
+    None, если ни одна позиция не релевантна (none) или кодов нет.
+    """
+    pcs = list(product_codes)
+    best_idx, best_rank = None, 0
+    for i, code in enumerate(position_codes):
+        if not code:
+            continue
+        rank = _RANK[ktru_relation(pcs, [code])]
+        if rank > best_rank:
+            best_idx, best_rank = i, rank
+            if best_rank == _RANK[EXACT]:
+                break
+    return best_idx
