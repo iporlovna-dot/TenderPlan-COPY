@@ -28,7 +28,7 @@ from parser import parse  # noqa: E402
 from extractor import extract_requirements  # noqa: E402
 from matcher import match  # noqa: E402
 from ktru import ktru_relation  # noqa: E402
-from keymatch import align_keys, apply_mapping  # noqa: E402
+from keymatch import align_keys, align_values, apply_mapping  # noqa: E402
 
 VERDICT_RU = {
     Verdict.ELIGIBLE: "ПОДХОДИТ",
@@ -150,9 +150,10 @@ def main():
         raw_reqs = extract_requirements(tz_text, profile=profile)
         req_fields = {r["key"]: r.get("value") for r in raw_reqs}
         for product in products:
-            # Семантический маппинг полей ТЗ→карточка по имени И значению (Haiku, keymatch.py).
+            # Семантический слой (Haiku, keymatch.py): маппинг имён ключей, затем сверка значений.
             mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
-            reqs = to_requirements(apply_mapping(raw_reqs, mapping))
+            aligned = align_values(apply_mapping(raw_reqs, mapping), product)
+            reqs = to_requirements(aligned)
             res = match(product, reqs, purchase.id, profile.get("synonyms"))
             print("    %-28s %3d%%  %s" % (product.id, res.score, VERDICT_RU[res.verdict]))
             out = os.path.join(args.out, "%s__%s.json" % (purchase.id, product.id))

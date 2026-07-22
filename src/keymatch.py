@@ -90,6 +90,77 @@ def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
     }
 
 
+_VAL_SYSTEM = (
+    "Ты сверяешь ЗНАЧЕНИЯ характеристик: удовлетворяет ли значение из карточки товара "
+    "требованию ТЗ по смыслу (не по строке). Примеры «да»: «Интубация пациентов»↔«интубация "
+    "трахеи»; «металл»↔«нержавеющая сталь» (сталь это металл); «соответствие»/«наличие»↔«да»; "
+    "«новый, не бывший в эксплуатации»↔«новый, неиспользованный». Примеры «нет»: «прямой "
+    "Миллер»↔«изогнутый» (форма противоположна); «фиброоптический»↔«лампочный/стандартный» "
+    "(разный тип освещения); «полиамид»↔«нержавеющая сталь». Числа/диапазоны НЕ оценивай — "
+    "их проверяет код. Для каждого поля верни satisfies: true/false."
+)
+_VAL_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "checks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string"},
+                    "satisfies": {"type": "boolean"},
+                },
+                "required": ["key", "satisfies"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["checks"],
+    "additionalProperties": False,
+}
+
+
+def align_values(reqs: List[dict], product, client: Optional[anthropic.Anthropic] = None) -> List[dict]:
+    """Семантическая сверка ЗНАЧЕНИЙ: где значение карточки удовлетворяет требованию по смыслу,
+    подменяем значение требования на карточное — тогда строковый matcher засчитает pass.
+
+    Оцениваем только строковые eq-требования, у которых ключ есть в карточке (числа/диапазоны
+    остаются коду). Не тронутые требования возвращаются как есть. Копия, без мутации.
+    """
+    pairs = []  # (idx, key, req_val, card_val)
+    for i, r in enumerate(reqs):
+        attr = product.get(r.get("key"))
+        if attr is None:
+            continue
+        rv, cv = r.get("value"), attr.value
+        if not isinstance(rv, str) or not isinstance(cv, str):
+            continue  # числа/списки — коду
+        if rv.strip().lower() == cv.strip().lower():
+            continue  # уже совпадают строково
+        pairs.append((i, r["key"], rv, cv))
+
+    if not pairs:
+        return reqs
+
+    client = client or anthropic.Anthropic()
+    payload = [{"key": k, "требование_тз": rv, "значение_карточки": cv} for _, k, rv, cv in pairs]
+    resp = client.messages.create(
+        model=pick_model("field_equivalence"),
+        max_tokens=2000,
+        system=_VAL_SYSTEM,
+        messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
+        output_config={"format": {"type": "json_schema", "schema": _VAL_SCHEMA}},
+    )
+    data = json.loads(next((b.text for b in resp.content if b.type == "text"), "{}"))
+    ok_keys = {c["key"] for c in data.get("checks", []) if c.get("satisfies")}
+
+    out = [dict(r) for r in reqs]
+    for i, key, _rv, cv in pairs:
+        if key in ok_keys:
+            out[i]["value"] = cv  # нормализуем к карточному → matcher засчитает pass
+    return out
+
+
 def apply_mapping(reqs: List[dict], mapping: Dict[str, str]) -> List[dict]:
     """Переименовать ключи требований по маппингу (не тронутые — как есть). Копия, без мутации."""
     if not mapping:

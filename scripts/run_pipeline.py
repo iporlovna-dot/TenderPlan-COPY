@@ -23,7 +23,7 @@ from schema import Attribute, Hardness, Operator, Product, ReqType, Requirement,
 from parser import parse  # noqa: E402
 from extractor import extract_requirements  # noqa: E402
 from matcher import match  # noqa: E402
-from keymatch import align_keys, apply_mapping  # noqa: E402
+from keymatch import align_keys, align_values, apply_mapping  # noqa: E402
 
 ICON = {Status.PASS: "✅", Status.VIOLATION: "❌", Status.GAP: "⚠️ "}
 VERDICT_RU = {
@@ -81,7 +81,8 @@ def main():
                          {a.key: a.value for a in product.attributes})
     if mapping:
         print("  маппинг ключей: %s" % ", ".join("%s→%s" % kv for kv in mapping.items()))
-    reqs = to_requirements(apply_mapping(raw_reqs, mapping))
+    aligned = align_values(apply_mapping(raw_reqs, mapping), product)  # семантика значений
+    reqs = to_requirements(aligned)
     purchase_id = os.path.splitext(os.path.basename(args.tz))[0]
     res = match(product, reqs, purchase_id, profile.get("synonyms") if profile else None)
 
