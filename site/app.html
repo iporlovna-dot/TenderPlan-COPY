@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Лента закупок — Лекало</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <aside class="app-sidebar">
+    <a class="brand" href="index.html">
+      <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="width:28px;height:28px;color:var(--rust)">
+        <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+        <circle cx="66" cy="27" r="7" fill="var(--paper-alt)"/>
+      </svg>
+      <span class="brand__word" style="font-size:1.1rem">Лекало</span>
+    </a>
+
+    <div class="sidebar-block">
+      <div class="product-switch">
+        <div class="product-switch__label">Товар</div>
+        <select id="product-select"></select>
+      </div>
+      <div style="margin-top:8px;"><a href="#" id="add-product-link" style="font-size:0.83rem;color:var(--rust);text-decoration:none;font-weight:600;">+ добавить товар</a></div>
+    </div>
+
+    <div class="sidebar-block">
+      <h5>Регион поставки</h5>
+      <div class="filter-group">
+        <select id="f-region">
+          <option value="all">Вся РФ</option>
+          <option value="г. Москва">г. Москва</option>
+          <option value="г. Санкт-Петербург">г. Санкт-Петербург</option>
+          <option value="Алтайский край">Алтайский край</option>
+          <option value="Краснодарский край">Краснодарский край</option>
+          <option value="Приморский край">Приморский край</option>
+          <option value="Ростовская область">Ростовская область</option>
+          <option value="Свердловская область">Свердловская область</option>
+          <option value="Новосибирская область">Новосибирская область</option>
+          <option value="Воронежская область">Воронежская область</option>
+          <option value="Удмуртская Республика">Удмуртская Республика</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sidebar-block">
+      <h5>Срок подачи</h5>
+      <div class="filter-group">
+        <label for="f-window">Не позже, чем за (дней)</label>
+        <input type="number" id="f-window" min="1" max="60" value="30">
+      </div>
+    </div>
+
+    <div class="sidebar-block">
+      <h5>НМЦК, ₽</h5>
+      <div class="filter-range">
+        <input type="number" id="f-price-min" placeholder="от" value="0">
+        <span style="color:var(--ink-faint)">—</span>
+        <input type="number" id="f-price-max" placeholder="до" value="5000000">
+      </div>
+    </div>
+
+    <div class="sidebar-block">
+      <h5>Площадки</h5>
+      <div class="checklist">
+        <label><input type="checkbox" class="f-source" value="ЕИС" checked> ЕИС (zakupki.gov.ru)</label>
+        <label><input type="checkbox" class="f-source" value="РТС-тендер" checked> РТС-тендер</label>
+        <label><input type="checkbox" class="f-source" value="РТС-маркет" checked> РТС-маркет</label>
+        <label><input type="checkbox" class="f-source" value="Сбербанк-АСТ" checked> Сбербанк-АСТ</label>
+        <label><input type="checkbox" class="f-source" value="Росэлторг" checked> Росэлторг</label>
+      </div>
+    </div>
+
+    <div class="sidebar-block">
+      <h5>Сборные лоты</h5>
+      <div class="radio-pair">
+        <label><input type="radio" name="lot-mode" value="solo"><span>Только чистые</span></label>
+        <label><input type="radio" name="lot-mode" value="any" checked><span>Включая сборные</span></label>
+      </div>
+    </div>
+
+    <div class="sidebar-foot">
+      <div class="plan-card">
+        <b id="plan-name">Тариф «Бизнес»</b>
+        <span style="color:var(--ink-faint)">Активна до 22.08.2026</span><br>
+        <a href="index.html#pricing">Изменить тариф →</a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <div class="app-topbar">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="text" id="search-input" placeholder="Поиск по названию, номеру, заказчику…">
+      </div>
+      <select class="sort-select" id="sort-select">
+        <option value="score">Сортировка: по % совпадения</option>
+        <option value="deadline">Сортировка: по сроку подачи</option>
+        <option value="price">Сортировка: по НМЦК</option>
+      </select>
+      <div class="user-menu">
+        <div style="text-align:right;">
+          <div class="user-name" id="user-company">—</div>
+          <div class="user-company">компания</div>
+        </div>
+        <div class="user-avatar" id="user-avatar">ЛК</div>
+        <button class="btn btn-quiet btn-sm" id="logout-btn">Выйти</button>
+      </div>
+    </div>
+
+    <div class="feed-wrap">
+      <div class="feed-header" id="feed-header">
+        <h2>Лента закупок</h2>
+        <span class="feed-count" id="feed-count"></span>
+      </div>
+
+      <div id="feed-content"></div>
+
+      <div class="empty-state" id="empty-state" style="display:none;">
+        <h3>Пока нет карточки товара</h3>
+        <p>Добавьте первый товар с характеристиками — и мы начнём подбирать закупки, которые ему подходят.</p>
+        <button class="btn btn-primary" id="empty-add-btn" onclick="document.getElementById('add-product-link').click()">Добавить товар</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ---------- онбординг: добавить товар ---------- -->
+<div class="modal-backdrop" id="onboarding-modal">
+  <div class="modal-box">
+    <h2>Новая карточка товара</h2>
+    <p style="color:var(--ink-faint);font-size:0.9rem;">Чем точнее характеристики — тем точнее совпадение с ТЗ закупок.</p>
+    <form id="onboarding-form">
+      <div class="field">
+        <label for="np-name">Название товара</label>
+        <input type="text" id="np-name" placeholder="Например: Перчатки нитриловые смотровые" required>
+      </div>
+      <div class="field">
+        <label for="np-ktru">Код КТРУ / ОКПД2</label>
+        <input type="text" id="np-ktru" placeholder="32.50.50.190-00001458">
+      </div>
+      <div class="field">
+        <label>Характеристики</label>
+        <div id="attrs-wrap"></div>
+        <button type="button" class="add-attr-btn" id="add-attr-btn">+ добавить характеристику</button>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button type="button" class="btn btn-ghost btn-block" id="onboarding-skip">Позже</button>
+        <button type="submit" class="btn btn-primary btn-block">Сохранить товар</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/appview.js"></script>
+</body>
+</html>

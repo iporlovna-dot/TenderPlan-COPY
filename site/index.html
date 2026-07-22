@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Лекало — тендеры, которые подходят по факту</title>
+<meta name="description" content="Лекало сверяет техническое задание каждой закупки с характеристиками вашего товара и присылает только те тендеры, где вы реально проходите — с процентом совпадения и разбором.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html">
+      <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="color:var(--rust)">
+        <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+        <circle cx="66" cy="27" r="7" fill="var(--paper)"/>
+      </svg>
+      <span class="brand__word">Лекало</span>
+    </a>
+    <nav class="main-nav">
+      <a href="#how">Как это работает</a>
+      <a href="#sources">Источники</a>
+      <a href="#pricing">Тарифы</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-quiet" href="login.html" data-header-login>Войти</a>
+      <span data-header-cta><a class="btn btn-primary" href="register.html">Начать бесплатно</a></span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="container" style="display:grid; grid-template-columns:1.05fr 0.95fr; gap:56px; align-items:center;">
+      <div>
+        <span class="eyebrow">44-ФЗ · 223-ФЗ · ЕИС и ЭТП</span>
+        <h1>Тендеры, которые подходят вашему товару — <em>не по коду ОКПД2</em>, а по факту</h1>
+        <p class="hero-lede">Лекало читает техническое задание каждой закупки построчно и прикладывает
+        к нему характеристики вашего товара — как портной прикладывает лекало к ткани. Совпало —
+        вы увидите тендер с процентом и разбором. Не совпало — не потратите на него время.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="register.html">Зарегистрировать компанию</a>
+          <a class="btn btn-ghost" href="app.html?demo=1" id="demo-btn">Смотреть демо без регистрации</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><b>44 / 223-ФЗ</b><span>оба вида закупок</span></div>
+          <div class="hero-stat"><b>5+ площадок</b><span>ЕИС, РТС-тендер, Сбербанк-АСТ…</span></div>
+          <div class="hero-stat"><b>% + разбор</b><span>по каждому требованию ТЗ</span></div>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="mock-card">
+          <div class="mock-card__top">
+            <div class="mock-card__score">89<span>%</span></div>
+            <span class="badge badge-ok">Проходите</span>
+          </div>
+          <h4>Поставка клинков ларингоскопических для анестезиологии-реанимации</h4>
+          <div class="meta">№0351200000726000985 · ГБУЗ «Областная клиническая больница» · осталось 11 дней</div>
+          <div class="check-row"><span>Совместимость крепления</span><span class="check-status ok">✓ ISO 7376 ⇔ Flexline</span></div>
+          <div class="check-row"><span>Форма клинка</span><span class="check-status ok">✓ прямая</span></div>
+          <div class="check-row"><span>Тип освещения</span><span class="check-status ok">✓ волоконная оптика</span></div>
+          <div class="check-row"><span>Автоклавируемость</span><span class="check-status ok">✓ многоразовый</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-alt" id="compare">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Отличие</span>
+        <h2>Все ищут по классификатору. Мы читаем ТЗ.</h2>
+        <p>Заказчики пишут реальные требования — толщину, размеры, тип крепления, срок службы — руками,
+        в тексте технического задания по ст. 33 44-ФЗ. Классификатор ОКПД2/КТРУ этого не видит.</p>
+      </div>
+      <div class="compare">
+        <div class="compare-col is-old">
+          <h3>Классификаторный поиск <span class="pill-tag">как везде</span></h3>
+          <ul>
+            <li>Ищет по коду ОКПД2/КТРУ и ключевым словам в названии закупки</li>
+            <li>«Перчатки» находит и смотровые, и боксёрские</li>
+            <li>Не видит, что заказчику нужна толщина ≥ 0,11 мм — только после того, как вы откроете файл сами</li>
+            <li>Итог: десятки закупок в день читать вручную, чтобы найти 2–3 подходящих</li>
+          </ul>
+        </div>
+        <div class="compare-col is-new">
+          <h3>Лекало <span class="pill-tag">по факту</span></h3>
+          <ul>
+            <li>Открывает вложение ТЗ каждой закупки и вытаскивает характеристики в структуру</li>
+            <li>Сверяет каждый пункт с карточкой товара — числа, диапазоны, «одно из», обязательные документы</li>
+            <li>Присылает процент совпадения и что именно проходит, а что нет</li>
+            <li>Итог: в ленте только то, что действительно стоит вашего времени</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Как это работает</span>
+        <h2>От карточки товара до готового вердикта</h2>
+        <p>Один раз описываете товар — дальше система работает на автомате по всем площадкам сразу.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="step__num">01</span><h4>Карточка товара</h4><p>Заводите товар с характеристиками, а не только названием и кодом ОКПД2.</p></div>
+        <div class="step"><span class="step__num">02</span><h4>Ежедневный обход</h4><p>Каждый день просматриваем новые закупки по 44-ФЗ и 223-ФЗ на всех подключённых площадках.</p></div>
+        <div class="step"><span class="step__num">03</span><h4>Сверка ТЗ</h4><p>Открываем техническое задание и построчно сверяем характеристики — включая сканы и таблицы.</p></div>
+        <div class="step"><span class="step__num">04</span><h4>Вердикт с разбором</h4><p>Присылаем закупки, где вы реально проходите — с процентом и объяснением по каждому пункту.</p></div>
+        <div class="step"><span class="step__num">05</span><h4>Закрытие пробелов</h4><p>Показываем, каких данных не хватает в карточке, чтобы не терять тендеры из-за мелочей.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-alt" id="sources">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Источники</span>
+        <h2>Одна лента вместо пяти вкладок</h2>
+        <p>Не нужно вручную проверять каждую площадку — Лекало агрегирует закупки в одном месте.</p>
+      </div>
+      <div class="sources-row">
+        <span class="source-chip"><span class="dot"></span>ЕИС (zakupki.gov.ru)</span>
+        <span class="source-chip"><span class="dot"></span>РТС-тендер</span>
+        <span class="source-chip"><span class="dot"></span>РТС-маркет</span>
+        <span class="source-chip"><span class="dot"></span>Сбербанк-АСТ</span>
+        <span class="source-chip"><span class="dot"></span>Росэлторг</span>
+        <span class="source-chip"><span class="dot"></span>ЭТП ГПБ</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Тарифы</span>
+        <h2>Подписка окупается одним выигранным тендером</h2>
+        <p>Цена зависит от числа товарных категорий и подключённых площадок.</p>
+      </div>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <span class="price-card__plan">Старт</span>
+          <div class="price-card__price">15 000 ₽<span>/мес</span></div>
+          <div class="price-card__note">Одна товарная категория</div>
+          <ul>
+            <li>До 3 карточек товара</li>
+            <li>Все площадки в ленте</li>
+            <li>Вердикт с разбором по каждой закупке</li>
+            <li>Уведомления на e-mail</li>
+          </ul>
+          <a class="btn btn-ghost btn-block" href="register.html">Выбрать «Старт»</a>
+        </div>
+        <div class="price-card is-featured">
+          <span class="price-card__plan">Бизнес</span>
+          <div class="price-card__price">35 000 ₽<span>/мес</span></div>
+          <div class="price-card__note">Несколько категорий, приоритет в очереди</div>
+          <ul>
+            <li>До 10 карточек товара</li>
+            <li>Все площадки + сборные лоты</li>
+            <li>Уведомления в Telegram и на e-mail</li>
+            <li>Карточка контракта: сроки, обеспечение, аванс</li>
+            <li>Приоритетная обработка новых закупок</li>
+          </ul>
+          <a class="btn btn-primary btn-block" href="register.html">Выбрать «Бизнес»</a>
+        </div>
+        <div class="price-card">
+          <span class="price-card__plan">Корпоративный</span>
+          <div class="price-card__price">по запросу</div>
+          <div class="price-card__note">Безлимит по товарам и категориям</div>
+          <ul>
+            <li>Безлимитные карточки товара</li>
+            <li>Персональный менеджер</li>
+            <li>Доступ по API</li>
+            <li>Несколько пользователей компании</li>
+          </ul>
+          <a class="btn btn-ghost btn-block" href="register.html">Обсудить условия</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final-cta">
+    <div class="container">
+      <h2>Заведите первый товар — и завтра увидите, что вам действительно подходит</h2>
+      <p>Регистрация компании занимает две минуты. Первую карточку товара можно добавить сразу после.</p>
+      <a class="btn btn-primary" href="register.html">Зарегистрировать компанию →</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="index.html">
+          <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="width:26px;height:26px;color:var(--rust)">
+            <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+            <circle cx="66" cy="27" r="7" fill="var(--paper)"/>
+          </svg>
+          <span class="brand__word" style="font-size:1.1rem">Лекало</span>
+        </a>
+        <p>Подбор закупок по 44-ФЗ и 223-ФЗ под фактические характеристики товара, а не по классификаторам.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h5>Продукт</h5>
+          <a href="#how">Как это работает</a>
+          <a href="#sources">Источники</a>
+          <a href="#pricing">Тарифы</a>
+        </div>
+        <div class="footer-col">
+          <h5>Аккаунт</h5>
+          <a href="register.html">Регистрация</a>
+          <a href="login.html">Вход</a>
+          <a href="app.html?demo=1">Демо-режим</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Лекало. Демо-версия интерфейса.</span>
+      <span>Данные закупок в демо — иллюстративные примеры, не реальные торги.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  lkInitHeaderState();
+  document.getElementById("demo-btn").addEventListener("click", function (e) {
+    if (!LK.isLoggedIn()) { LK.seedDemo(); }
+  });
+</script>
+</body>
+</html>

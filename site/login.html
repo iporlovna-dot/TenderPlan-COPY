@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вход — Лекало</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-side">
+    <a class="brand" href="index.html">
+      <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="color:var(--rust)">
+        <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+        <circle cx="66" cy="27" r="7" fill="var(--ink)"/>
+      </svg>
+      <span class="brand__word">Лекало</span>
+    </a>
+    <div class="auth-side__quote">
+      <h3>«ISO 7376» в карточке и «Flexline» в техзадании — одно и то же крепление.</h3>
+      <p>Лекало понимает такие соответствия и не теряет тендеры из-за разницы в терминах
+      между вашей карточкой и формулировками заказчика.</p>
+    </div>
+    <svg class="auth-side__curve" viewBox="0 0 100 100" fill="none">
+      <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="var(--paper)"/>
+    </svg>
+  </div>
+
+  <div class="auth-main">
+    <div class="auth-box">
+      <h1>С возвращением</h1>
+      <p class="lede">Войдите, чтобы увидеть ленту закупок по вашим товарам.</p>
+
+      <div class="form-error" id="form-error"></div>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="login-email">E-mail</label>
+          <input type="email" id="login-email" placeholder="you@company.ru" required>
+        </div>
+        <div class="field">
+          <label for="login-password">Пароль</label>
+          <input type="password" id="login-password" placeholder="Пароль" required>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Войти →</button>
+      </form>
+
+      <div class="auth-switch">Ещё нет аккаунта? <a href="register.html">Зарегистрировать компанию</a></div>
+      <div class="auth-switch"><a href="app.html?demo=1" id="demo-link">Или посмотреть демо без регистрации</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  document.getElementById("login-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const errBox = document.getElementById("form-error");
+    const email = document.getElementById("login-email").value.trim();
+    const company = LK.getCompany();
+
+    if (!company) {
+      errBox.textContent = "Аккаунт не найден в этом браузере. Демо хранит данные локально — зарегистрируйтесь или откройте демо-режим.";
+      errBox.classList.add("is-visible");
+      return;
+    }
+    // демо: разумно не проверять пароль по-настоящему, но не должны раскрывать,
+    // существует ли конкретный e-mail — сверяем нестрого, ошибка одна и та же.
+    errBox.classList.remove("is-visible");
+    window.location.href = "app.html";
+  });
+
+  document.getElementById("demo-link").addEventListener("click", function () {
+    if (!LK.isLoggedIn()) LK.seedDemo();
+  });
+</script>
+</body>
+</html>

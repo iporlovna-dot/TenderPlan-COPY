@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <path d="M23 82
+           C16 66 18 44 34 30
+           C46 19.5 62 15 76 19
+           C82.5 21 83.5 29 77.5 32.5
+           C67 38.5 53 42 45 53
+           C38 62.5 38 73 45 83
+           C48.5 88 43 92.5 36.5 91
+           C31 89.7 26 87 23 82 Z"
+        fill="currentColor"/>
+  <circle cx="66" cy="27" r="7" fill="var(--paper)"/>
+</svg>

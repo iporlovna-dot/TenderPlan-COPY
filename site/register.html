@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Регистрация компании — Лекало</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-side">
+    <a class="brand" href="index.html">
+      <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="color:var(--rust)">
+        <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+        <circle cx="66" cy="27" r="7" fill="var(--ink)"/>
+      </svg>
+      <span class="brand__word">Лекало</span>
+    </a>
+    <div class="auth-side__quote">
+      <h3>«Толщина ≥ 0,11 мм» — это требование, а не код классификатора.</h3>
+      <p>Мы читаем текст технического задания и сверяем его с карточкой вашего товара,
+      пункт за пунктом. Регистрация компании — первый шаг к ленте закупок, которые
+      вам действительно подходят.</p>
+    </div>
+    <svg class="auth-side__curve" viewBox="0 0 100 100" fill="none">
+      <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="var(--paper)"/>
+    </svg>
+  </div>
+
+  <div class="auth-main">
+    <div class="auth-box">
+      <h1>Зарегистрируйте компанию</h1>
+      <p class="lede">Это займёт две минуты. Товар и настройки поиска добавите сразу после.</p>
+
+      <div class="form-error" id="form-error"></div>
+
+      <form id="register-form" novalidate>
+        <div class="field">
+          <label for="company-name">Название компании</label>
+          <input type="text" id="company-name" placeholder="ООО «Медснаб»" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="company-inn">ИНН</label>
+            <input type="text" id="company-inn" placeholder="7701234567" required pattern="\d{10,12}">
+          </div>
+          <div class="field">
+            <label for="company-role">Ваша роль</label>
+            <select id="company-role">
+              <option value="owner">Владелец</option>
+              <option value="member">Сотрудник</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="company-email">E-mail</label>
+          <input type="email" id="company-email" placeholder="you@company.ru" required>
+        </div>
+        <div class="field">
+          <label for="company-password">Пароль</label>
+          <input type="password" id="company-password" placeholder="Минимум 8 символов" required minlength="8">
+          <div class="field-hint">Демо-сборка: пароль проверяется только по длине, реального хранения нет.</div>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Создать компанию →</button>
+      </form>
+
+      <div class="auth-switch">Уже есть аккаунт? <a href="login.html">Войти</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  document.getElementById("register-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const errBox = document.getElementById("form-error");
+    const name = document.getElementById("company-name").value.trim();
+    const inn = document.getElementById("company-inn").value.trim();
+    const email = document.getElementById("company-email").value.trim();
+    const password = document.getElementById("company-password").value;
+
+    if (!/^\d{10,12}$/.test(inn)) {
+      errBox.textContent = "ИНН должен быть числом из 10–12 цифр.";
+      errBox.classList.add("is-visible");
+      return;
+    }
+    if (password.length < 8) {
+      errBox.textContent = "Пароль должен быть не короче 8 символов.";
+      errBox.classList.add("is-visible");
+      return;
+    }
+    errBox.classList.remove("is-visible");
+
+    LK.setCompany({
+      name, inn, email,
+      role: document.getElementById("company-role").value,
+      plan: "business",
+      created_at: new Date().toISOString().slice(0, 10)
+    });
+    LK.setProducts([]);
+    window.location.href = "app.html?onboarding=1";
+  });
+</script>
+</body>
+</html>
