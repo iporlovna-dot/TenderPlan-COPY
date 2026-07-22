@@ -176,10 +176,25 @@ def main():
             print("    текст ТЗ сохранён: %s (%d симв.)" % (tz_path, len(tz_text)))
             continue
 
-        # Шаг 6: извлечь требования (Claude). Шаг 7-8: сопоставить с каждым товаром.
-        raw_reqs = extract_requirements(tz_text, profile=profile)
-        req_fields = {r["key"]: r.get("value") for r in raw_reqs}
+        # Шаг 6: извлечь требования (Claude), СКОУП по позиции товара в многолоте (§3.4a).
+        # Иначе товар из одной позиции скорился бы против требований ВСЕГО лота (чужие
+        # позиции → «пробелы» → заниженный %). Кэш «индекс позиции → требования»: на лот
+        # обычно 1-2 позиции с товарами, извлечение не дублируется по каждому товару.
+        pos_codes = [p.code for p in positions]
+        reqs_by_position = {}
+
+        def reqs_for(product_id):
+            idx = best_position(codes_by_id.get(product_id, []), pos_codes) if len(positions) > 1 else None
+            if idx not in reqs_by_position:
+                pos = {"name": positions[idx].name,
+                       "others": [p.name for j, p in enumerate(positions) if j != idx]} if idx is not None else None
+                reqs_by_position[idx] = extract_requirements(tz_text, profile=profile, position=pos)
+            return reqs_by_position[idx]
+
+        # Шаг 7-8: сопоставить с каждым товаром (требования — уже по его позиции).
         for product in products:
+            raw_reqs = reqs_for(product.id)
+            req_fields = {r["key"]: r.get("value") for r in raw_reqs}
             # Семантический слой (Haiku, keymatch.py): маппинг имён ключей, затем сверка значений.
             mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
             aligned = align_values(apply_mapping(raw_reqs, mapping), product)
