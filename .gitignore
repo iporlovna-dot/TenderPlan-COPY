@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+*.egg-info/
+scratchpad/
+# CA-бандл регенерируется scripts/setup_ca_bundle.py
+certs/
+# Скачанные ТЗ поставщиков/заказчиков — могут содержать ПДн (см. CLAUDE.md)
+data/samples/
+data/requirements/

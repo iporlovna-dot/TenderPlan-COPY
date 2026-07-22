@@ -1,0 +1,169 @@
+"""Извлечение требований из текста ТЗ (шаг 6 конвейера, plan.md §3) — сердце №1.
+
+LLM (Claude) со строгой JSON-схемой: грязный текст ТЗ → requirements[] в формате
+schema.Requirement (см. plan.md §5.2). В само ядро матчинга LLM не заходит — сюда
+приходит текст, отсюда уходит структура, дальше matcher.py работает уже без LLM.
+
+Модель по умолчанию — Sonnet 5 (рабочая лошадка на грязных таблицах, plan.md §4).
+Ключ берётся из окружения (ANTHROPIC_API_KEY или профиль `ant auth login`).
+
+Использование:
+    from parser import parse
+    from extractor import extract_requirements
+    reqs = extract_requirements(parse("data/samples/gloves_tender_01.docx"))
+"""
+from __future__ import annotations
+
+import json
+from typing import List, Optional
+
+import anthropic
+
+from models import pick_model  # маршрутизация моделей по сложности (plan.md §4)
+
+# Строгая схема вывода: массив требований ровно в форме schema.Requirement.
+# value полиморфен (число / строка / bool / список) — операторам матчинга это ок.
+_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "requirements": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string"},
+                    "operator": {
+                        "type": "string",
+                        "enum": ["eq", "gte", "lte", "range", "one_of", "set", "present"],
+                    },
+                    "value": {
+                        "anyOf": [
+                            {"type": "string"},
+                            {"type": "number"},
+                            {"type": "boolean"},
+                            {"type": "array", "items": {"type": "string"}},
+                            {"type": "array", "items": {"type": "number"}},
+                        ]
+                    },
+                    "unit": {"type": "string"},
+                    "hardness": {"type": "string", "enum": ["hard", "soft"]},
+                    "type": {"type": "string", "enum": ["technical", "documentary"]},
+                    "raw": {"type": "string"},
+                },
+                "required": ["key", "operator", "value", "unit", "hardness", "type", "raw"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["requirements"],
+    "additionalProperties": False,
+}
+
+_SYSTEM = """\
+Ты извлекаешь требования из технического задания госзакупки (44-ФЗ / 223-ФЗ) в строгий JSON.
+
+Верни массив requirements[], по одному объекту на КАЖДОЕ проверяемое требование к товару.
+Поля объекта:
+- key: короткий машинный ключ характеристики на русском, snake_case
+  (материал, толщина_пальцы_мм, срок_годности_остаточный_мес, размеры, рег_удостоверение).
+  Одинаковые по смыслу характеристики называй одинаково между закупками.
+- operator — как сравнивать значение товара с требованием:
+  * eq       — точное значение (материал = «нитрильный латекс», опудренность = «нет»)
+  * gte      — не менее / ≥ / от (толщина ≥ 0,11)
+  * lte      — не более / ≤ / до (AQL ≤ 1,5)
+  * range    — диапазон [min, max]
+  * one_of   — значение товара должно попасть в допустимый набор ТЗ
+  * set      — товар должен покрыть ВЕСЬ набор (размеры S, M, L)
+  * present  — характеристика/документ просто должен наличествовать (value=true)
+- value: число для gte/lte; [min,max] для range; список для one_of/set;
+  строка для eq; true для present. Десятичную запятую переводи в число (0,11 -> 0.11).
+- unit: единица измерения ("мм", "мес", "") — пусто, если нет.
+- hardness — ЖЁСТКОСТЬ требования. Это критично для дисквалификации:
+  * hard — если в ТЗ рядом стоит «Значение характеристики не может изменяться
+    участником закупки», либо это обязательный документ/условие допуска.
+  * soft — если «Участник закупки указывает в заявке конкретное значение
+    характеристики» или требование мягкое.
+  Колонка «Инструкция по заполнению» в таблице ТЗ прямо задаёт hardness — читай её.
+- type: technical (характеристика товара) | documentary (рег. удостоверение,
+  срок годности, новизна товара, сертификат).
+- raw: короткая дословная формулировка требования из ТЗ (как в документе).
+
+Правила:
+- Не выдумывай требований, которых нет в тексте. Не дублируй.
+- Значения количества/поставки (сколько пар, цена) — это НЕ требования к товару, пропускай.
+- Если характеристика содержит несколько независимых требований («без опудривания,
+  не обладают антибактериальными свойствами»), разбей на отдельные объекты.\
+"""
+
+
+def extract_requirements(
+    tz_text: str,
+    profile: Optional[dict] = None,
+    model: Optional[str] = None,
+    hard: bool = False,
+    client: Optional[anthropic.Anthropic] = None,
+) -> List[dict]:
+    """Текст ТЗ → список требований (dict'ы формата schema.Requirement).
+
+    profile — опциональный профиль категории (data/profiles/*.json): его словарь
+    характеристик/синонимов подсказывает модели канонические ключи. См. plan.md §7A.
+    model — переопределить модель; по умолчанию маршрутизатор даёт Sonnet 5 (extract),
+    hard=True эскалирует спорное/сложное ТЗ на Opus. Результат готов к записи в
+    data/requirements/*.json и подаче в matcher.match.
+    """
+    model = model or pick_model("extract", hard=hard)
+    client = client or anthropic.Anthropic()
+
+    user = "Текст ТЗ:\n\n" + tz_text
+    if profile:
+        hint = {
+            "категория": profile.get("category"),
+            "характеристики_и_синонимы": profile.get("synonyms"),
+            "критические_дисквалификаторы": profile.get("critical_attributes"),
+            "обязательные_документы": profile.get("required_documents"),
+        }
+        user += (
+            "\n\nПрофиль категории (для канонических ключей и жёсткости) — "
+            "используй как подсказку, но извлекай только то, что реально в тексте:\n"
+            + json.dumps(hint, ensure_ascii=False)
+        )
+
+    resp = client.messages.create(
+        model=model,
+        max_tokens=16000,
+        system=_SYSTEM,
+        messages=[{"role": "user", "content": user}],
+        output_config={
+            "format": {"type": "json_schema", "schema": _SCHEMA},
+            "effort": "medium",
+        },
+    )
+
+    if resp.stop_reason == "refusal":
+        raise RuntimeError("Модель отклонила запрос (stop_reason=refusal)")
+    if resp.stop_reason == "max_tokens":
+        raise RuntimeError(
+            "Ответ обрезан по max_tokens — ТЗ слишком большое/многопозиционное. "
+            "Увеличь max_tokens или сократи вход до «описания объекта закупки»."
+        )
+
+    text = next((b.text for b in resp.content if b.type == "text"), "")
+    if not text:
+        raise RuntimeError("Пустой ответ модели при извлечении требований")
+
+    data = json.loads(text)  # output_config гарантирует валидный JSON по схеме
+    return data["requirements"]
+
+
+if __name__ == "__main__":
+    import sys
+
+    from parser import parse
+
+    profile = None
+    if len(sys.argv) > 2:
+        with open(sys.argv[2], encoding="utf-8") as f:
+            profile = json.load(f)
+
+    reqs = extract_requirements(parse(sys.argv[1]), profile=profile)
+    print(json.dumps({"requirements": reqs}, ensure_ascii=False, indent=2))

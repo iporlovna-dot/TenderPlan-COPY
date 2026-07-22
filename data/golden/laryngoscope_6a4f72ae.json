@@ -1,0 +1,27 @@
+{
+  "purchase_id": "6a4f72ae_клинок_ларингоскопа_одноразовый",
+  "source": "zakupki.gov.ru №0351200000726000985, КТРУ 32.50.13.190-00007686. Клинок для ларингоскопа одноразового использования, Макинтош, размеры 3 и 4, фиброоптическая рукоятка Flexline. Характеристики — из СКАНА в 'Описание МИ' (извлечено vision).",
+  "_note": "Вторая категория (не перчатки) — проверка category-agnostic движка. Требования из скана ТЗ: без OCR/vision вся эта спека терялась бы.",
+  "requirements": [
+    {"key": "тип_клинка", "operator": "eq", "value": "макинтош",
+     "hardness": "hard", "type": "technical", "raw": "Тип клинка: Макинтош (изогнутый) с матовой поверхностью"},
+    {"key": "форма", "operator": "eq", "value": "изогнутый",
+     "hardness": "hard", "type": "technical", "raw": "Макинтош (изогнутый)"},
+    {"key": "тип_рукоятки", "operator": "eq", "value": "фиброоптическая",
+     "hardness": "hard", "type": "technical", "raw": "для фиброоптических рукояток ларингоскопов"},
+    {"key": "материал", "operator": "eq", "value": "пластик",
+     "hardness": "hard", "type": "technical", "raw": "Материал: Пластик"},
+    {"key": "размеры", "operator": "set", "value": ["3", "4"],
+     "hardness": "hard", "type": "technical", "raw": "Размер: 3 (поз.1) и 4 (поз.2)"},
+    {"key": "совместимость_рукоятка", "operator": "eq", "value": "flexline",
+     "hardness": "hard", "type": "technical", "raw": "Совместим с рукоятью фиброоптической Flexline у Заказчика: Да"},
+    {"key": "одноразовость", "operator": "eq", "value": "одноразовый",
+     "hardness": "hard", "type": "technical", "raw": "одноразового использования"},
+    {"key": "упаковка", "operator": "eq", "value": "индивидуальная стерильная",
+     "hardness": "soft", "type": "technical", "raw": "В индивидуальной стерильной упаковке"},
+    {"key": "срок_годности_остаточный_мес", "operator": "gte", "value": 9,
+     "hardness": "hard", "type": "documentary", "raw": "остаточный срок годности не менее 9 месяцев"},
+    {"key": "рег_удостоверение", "operator": "present", "value": true,
+     "hardness": "hard", "type": "documentary", "raw": "медизделие: регистрационное удостоверение"}
+  ]
+}

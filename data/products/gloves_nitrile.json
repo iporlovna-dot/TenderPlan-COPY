@@ -1,0 +1,18 @@
+{
+  "id": "gloves-nitrile-blue",
+  "name": "Перчатки смотровые нитриловые, неопудренные, нестерильные",
+  "attributes": [
+    {"key": "материал", "value": "нитрил", "status": "declared"},
+    {"key": "назначение", "value": "смотровые", "status": "declared"},
+    {"key": "опудренность", "value": "нет", "status": "declared"},
+    {"key": "антибактериальные", "value": "нет", "status": "declared"},
+    {"key": "стерильность", "value": "нет", "status": "declared"},
+    {"key": "отделка_текстура", "value": "текстура на пальцах", "status": "declared"},
+    {"key": "толщина_пальцы_мм", "value": 0.11, "status": "confirmable", "doc": "протокол испытаний"},
+    {"key": "цвет", "value": ["голубой", "синий"], "status": "declared"},
+    {"key": "размеры", "value": ["XS", "S", "M", "L"], "status": "declared"},
+    {"key": "срок_годности_остаточный_мес", "value": 60, "status": "declared"},
+    {"key": "рег_удостоверение", "value": "РУ имеется", "status": "confirmable", "doc": "регистрационное удостоверение"},
+    {"key": "новый_товар", "value": "да", "status": "declared"}
+  ]
+}
