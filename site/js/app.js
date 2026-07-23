@@ -1,14 +1,21 @@
-/* ЛЕКАЛО — демо-логика. Никакого бэкенда: состояние живёт в localStorage
-   этого браузера. Моковые закупки ниже иллюстрируют формат вердикта,
-   описанный в plan.md (MatchResult): score, verdict, checks, explanation. */
+/* ЛЕКАЛО — демо-логика площадки поиска торгов.
+   Никакого бэкенда: состояние живёт в localStorage этого браузера.
+
+   Модель перевёрнута: точка входа — ПОИСК по ключевым словам, лента = закупки
+   (44-ФЗ / 223-ФЗ) со всех площадок. Умная сверка по ТЗ (score/verdict/checks) —
+   НАДСТРОЙКА поверх закупки, включается тумблером «сверить с товаром».
+
+   Реальные данные придут из прямой интеграции с ЕИС (см. plan.md). Здесь — моки,
+   воспроизводящие формат: карточка закупки + опциональный MatchResult по товару. */
 
 const LK = (() => {
 
-  const KEY_COMPANY = "lekalo_company";
+  const KEY_COMPANY  = "lekalo_company";
   const KEY_PRODUCTS = "lekalo_products";
-  const KEY_CURRENT = "lekalo_current_product";
+  const KEY_SEARCHES = "lekalo_searches";
+  const KEY_CURRENT_SEARCH = "lekalo_current_search";
 
-  // ---------- storage ----------
+  // ---------- компания / сессия ----------
 
   function getCompany() {
     try { return JSON.parse(localStorage.getItem(KEY_COMPANY)); } catch { return null; }
@@ -17,9 +24,12 @@ const LK = (() => {
   function clearSession() {
     localStorage.removeItem(KEY_COMPANY);
     localStorage.removeItem(KEY_PRODUCTS);
-    localStorage.removeItem(KEY_CURRENT);
+    localStorage.removeItem(KEY_SEARCHES);
+    localStorage.removeItem(KEY_CURRENT_SEARCH);
   }
   function isLoggedIn() { return !!getCompany(); }
+
+  // ---------- товары (для надстройки «сверка по ТЗ») ----------
 
   function getProducts() {
     try { return JSON.parse(localStorage.getItem(KEY_PRODUCTS)) || []; } catch { return []; }
@@ -30,18 +40,39 @@ const LK = (() => {
     p.id = "prod_" + Math.random().toString(36).slice(2, 9);
     list.push(p);
     setProducts(list);
-    setCurrentProduct(p.id);
     return p;
   }
-  function getCurrentProduct() {
-    const list = getProducts();
-    if (!list.length) return null;
-    const id = localStorage.getItem(KEY_CURRENT);
-    return list.find(p => p.id === id) || list[0];
-  }
-  function setCurrentProduct(id) { localStorage.setItem(KEY_CURRENT, id); }
 
-  // ---------- demo seed (кнопка "смотреть демо без регистрации") ----------
+  // ---------- сохранённые поиски (шаблоны, как «Мои поиски» у ТП) ----------
+
+  function getSearches() {
+    try { return JSON.parse(localStorage.getItem(KEY_SEARCHES)) || []; } catch { return []; }
+  }
+  function setSearches(list) { localStorage.setItem(KEY_SEARCHES, JSON.stringify(list)); }
+  function addSearch(s) {
+    const list = getSearches();
+    s.id = "srch_" + Math.random().toString(36).slice(2, 9);
+    list.push(s);
+    setSearches(list);
+    return s;
+  }
+  function updateSearch(id, patch) {
+    const list = getSearches();
+    const i = list.findIndex(s => s.id === id);
+    if (i >= 0) { list[i] = { ...list[i], ...patch }; setSearches(list); return list[i]; }
+    return null;
+  }
+  function deleteSearch(id) {
+    setSearches(getSearches().filter(s => s.id !== id));
+    if (localStorage.getItem(KEY_CURRENT_SEARCH) === id) localStorage.removeItem(KEY_CURRENT_SEARCH);
+  }
+  function getCurrentSearchId() { return localStorage.getItem(KEY_CURRENT_SEARCH) || null; }
+  function setCurrentSearchId(id) {
+    if (id) localStorage.setItem(KEY_CURRENT_SEARCH, id);
+    else localStorage.removeItem(KEY_CURRENT_SEARCH);
+  }
+
+  // ---------- demo seed ----------
 
   function seedDemo() {
     setCompany({
@@ -65,9 +96,7 @@ const LK = (() => {
           { key: "толщина_пальцы_мм", value: "0.11", status: "confirmable" }
         ],
         documents: ["Регистрационное удостоверение"],
-        delivery_regions: ["вся РФ"],
-        search: { windowDays: 21, priceMin: 0, priceMax: 5000000, lotMode: "any",
-          sources: ["ЕИС", "РТС-тендер", "Сбербанк-АСТ"] }
+        delivery_regions: ["вся РФ"]
       },
       {
         id: "prod_blade",
@@ -82,164 +111,336 @@ const LK = (() => {
           { key: "материал", value: "нержавеющая сталь" }
         ],
         documents: ["Регистрационное удостоверение", "Сертификат соответствия"],
-        delivery_regions: ["вся РФ"],
-        search: { windowDays: 25, priceMin: 0, priceMax: 3000000, lotMode: "any",
-          sources: ["ЕИС", "РТС-тендер", "Росэлторг"] }
+        delivery_regions: ["вся РФ"]
       }
     ]);
-    setCurrentProduct("prod_gloves");
+    setSearches([
+      {
+        id: "srch_gloves",
+        name: "Перчатки нитриловые",
+        query: "перчатки нитриловые",
+        minus: "боксёрские латексные",
+        filters: { law: "all", region: "all", stage: "active", priceMin: 0, priceMax: 5000000,
+          windowDays: 30, sources: ["ЕИС", "РТС-тендер", "Сбербанк-АСТ", "Росэлторг", "РТС-маркет"] },
+        newCount: 3
+      },
+      {
+        id: "srch_laryngo",
+        name: "Ларингоскопы и клинки",
+        query: "ларингоскоп клинок",
+        minus: "",
+        filters: { law: "all", region: "all", stage: "all", priceMin: 0, priceMax: 3000000,
+          windowDays: 45, sources: ["ЕИС", "РТС-тендер", "Росэлторг", "Сбербанк-АСТ", "РТС-маркет"] },
+        newCount: 1
+      }
+    ]);
+    setCurrentSearchId("srch_gloves");
   }
 
-  // ---------- mock tender feed ----------
-  // score/verdict/checks воспроизводят реальные прогоны движка, описанные в plan.md §2
+  // ---------- моковые закупки (реестр площадки) ----------
+  // Стандартная карточка закупки + опциональный matches{productId → MatchResult}.
+  // matches заполнен только там, где имеет смысл сверять с демо-товарами.
 
-  function allTenders() {
+  function allPurchases() {
     return [
       {
-        id: "t1", productId: "prod_gloves",
-        title: "Поставка перчаток смотровых нитриловых для нужд ГБУЗ",
-        number: "0372200034526000112", customer: "ГБУЗ «Городская клиническая больница №7»",
-        source: "ЕИС", region: "г. Москва", price: 1840000, deadlineDays: 6,
-        ktru: "32.50.50.190-00001458", verdict: "eligible", score: 100,
-        checks: [
-          { req: "материал = нитрил", status: "pass" },
-          { req: "стерильность = нет", status: "pass" },
-          { req: "опудренность = нет", status: "pass" },
-          { req: "размеры: S, M, L", status: "pass" },
-          { req: "толщина в области пальцев ≥ 0,11 мм", status: "pass" }
-        ],
-        explanation: "Проходите по всем характеристикам ТЗ. Пробелов нет — можно подавать заявку без уточнений."
+        id: "p1", number: "0372200034526000112",
+        title: "Поставка перчаток смотровых нитриловых неопудренных для нужд стационара",
+        customer: "ГБУЗ «Городская клиническая больница №7»",
+        law: "44-ФЗ", source: "ЕИС", region: "г. Москва",
+        okpd: "32.50.50.190", price: 1840000,
+        stage: "active", deadlineDays: 6, publishedDaysAgo: 2,
+        guaranteeApp: 18400, guaranteeContract: 92000, prepayment: 0,
+        lots: [{ name: "Перчатки нитриловые смотровые", qty: "45 000 пар", price: 1840000 }],
+        matches: {
+          prod_gloves: {
+            score: 100, verdict: "eligible",
+            checks: [
+              { req: "материал = нитрил", status: "pass" },
+              { req: "стерильность = нет", status: "pass" },
+              { req: "опудренность = нет", status: "pass" },
+              { req: "размеры: S, M, L", status: "pass" },
+              { req: "толщина в области пальцев ≥ 0,11 мм", status: "pass" }
+            ],
+            explanation: "Проходите по всем характеристикам ТЗ. Пробелов нет — можно подавать заявку без уточнений."
+          }
+        }
       },
       {
-        id: "t2", productId: "prod_gloves",
+        id: "p2", number: "0158200004526000871",
         title: "Поставка перчаток медицинских смотровых нитриловых неопудренных",
-        number: "0158200004526000871", customer: "КГБУЗ «Краевая клиническая больница»",
-        source: "РТС-тендер", region: "Алтайский край", price: 640000, deadlineDays: 14,
-        ktru: "32.50.50.190-00001458", verdict: "eligible_with_gaps", score: 92,
-        checks: [
-          { req: "материал = нитрил", status: "pass" },
-          { req: "опудренность = нет", status: "pass" },
-          { req: "размеры: XS, S, M, L, XL", status: "gap", note: "в карточке нет XL — подтвердите наличие" },
-          { req: "толщина в области пальцев ≥ 0,10 мм", status: "pass" }
-        ],
-        explanation: "Всё техническое сходится. Один пробел: заказчик просит размер XL, в карточке товара его нет — подтвердите наличие перед подачей."
+        customer: "КГБУЗ «Краевая клиническая больница»",
+        law: "44-ФЗ", source: "РТС-тендер", region: "Алтайский край",
+        okpd: "32.50.50.190", price: 640000,
+        stage: "active", deadlineDays: 14, publishedDaysAgo: 4,
+        guaranteeApp: 6400, guaranteeContract: 32000, prepayment: 30,
+        lots: [{ name: "Перчатки нитриловые (XS–XL)", qty: "16 000 пар", price: 640000 }],
+        matches: {
+          prod_gloves: {
+            score: 92, verdict: "eligible_with_gaps",
+            checks: [
+              { req: "материал = нитрил", status: "pass" },
+              { req: "опудренность = нет", status: "pass" },
+              { req: "размеры: XS, S, M, L, XL", status: "gap", note: "в карточке нет XL — подтвердите наличие" },
+              { req: "толщина в области пальцев ≥ 0,10 мм", status: "pass" }
+            ],
+            explanation: "Всё техническое сходится. Один пробел: заказчик просит размер XL, в карточке товара его нет — подтвердите наличие перед подачей."
+          }
+        }
       },
       {
-        id: "t3", productId: "prod_gloves",
+        id: "p3", number: "0373200019526000045",
         title: "Поставка перчаток латексных смотровых опудренных",
-        number: "0373200019526000045", customer: "ГБУЗ «Станция скорой медицинской помощи»",
-        source: "Сбербанк-АСТ", region: "г. Санкт-Петербург", price: 410000, deadlineDays: 9,
-        ktru: "32.50.50.190-00001458", verdict: "disqualified", score: 38,
-        checks: [
-          { req: "материал = латекс", status: "fail", note: "в карточке нитрил — жёсткое несоответствие" },
-          { req: "опудренность = да", status: "fail", note: "в карточке товар неопудренный" },
-          { req: "размеры: S, M, L", status: "pass" }
-        ],
-        explanation: "Дисквалификация: заказчику нужны латексные опудренные перчатки, а не нитриловые. Материал — обязательный параметр, замены не допускаются по ТЗ."
+        customer: "ГБУЗ «Станция скорой медицинской помощи»",
+        law: "44-ФЗ", source: "Сбербанк-АСТ", region: "г. Санкт-Петербург",
+        okpd: "32.50.50.190", price: 410000,
+        stage: "active", deadlineDays: 9, publishedDaysAgo: 1,
+        guaranteeApp: 4100, guaranteeContract: 20500, prepayment: 0,
+        lots: [{ name: "Перчатки латексные опудренные", qty: "12 000 пар", price: 410000 }],
+        matches: {
+          prod_gloves: {
+            score: 38, verdict: "disqualified",
+            checks: [
+              { req: "материал = латекс", status: "fail", note: "в карточке нитрил — жёсткое несоответствие" },
+              { req: "опудренность = да", status: "fail", note: "в карточке товар неопудренный" },
+              { req: "размеры: S, M, L", status: "pass" }
+            ],
+            explanation: "Дисквалификация: заказчику нужны латексные опудренные перчатки, а не нитриловые. Материал — обязательный параметр, замены не допускаются по ТЗ."
+          }
+        }
       },
       {
-        id: "t4", productId: "prod_gloves",
-        title: "Поставка перчаток нитриловых смотровых (позиция №2 из 3 в лоте расходников)",
-        number: "0844200001126000230", customer: "БУЗ УР «Республиканская клиническая больница»",
-        source: "ЕИС", region: "Удмуртская Республика", price: 2260000, deadlineDays: 21,
-        ktru: "32.50.50.190-00001458", verdict: "eligible", score: 97,
-        lot: { position: 2, total: 3, others: ["Маски медицинские трёхслойные", "Шапочки одноразовые"] },
-        checks: [
-          { req: "материал = нитрил", status: "pass" },
-          { req: "стерильность = нет", status: "pass" },
-          { req: "толщина в области пальцев ≥ 0,11 мм", status: "pass" }
+        id: "p4", number: "0844200001126000230",
+        title: "Поставка расходных материалов: перчатки нитриловые, маски, шапочки (сборный лот)",
+        customer: "БУЗ УР «Республиканская клиническая больница»",
+        law: "44-ФЗ", source: "ЕИС", region: "Удмуртская Республика",
+        okpd: "32.50.50.190", price: 2260000,
+        stage: "active", deadlineDays: 21, publishedDaysAgo: 3,
+        guaranteeApp: 22600, guaranteeContract: 113000, prepayment: 0,
+        lots: [
+          { name: "Перчатки нитриловые смотровые", qty: "50 000 пар", price: 1400000 },
+          { name: "Маски медицинские трёхслойные", qty: "120 000 шт", price: 560000 },
+          { name: "Шапочки одноразовые", qty: "80 000 шт", price: 300000 }
         ],
-        explanation: "Сборный лот из 3 позиций — ваш товар закрывает позицию №2. Подаётесь на весь лот, но проходите именно по нужной вам позиции."
+        lotNote: { position: 1, total: 3 },
+        matches: {
+          prod_gloves: {
+            score: 97, verdict: "eligible",
+            checks: [
+              { req: "материал = нитрил", status: "pass" },
+              { req: "стерильность = нет", status: "pass" },
+              { req: "толщина в области пальцев ≥ 0,11 мм", status: "pass" }
+            ],
+            explanation: "Сборный лот из 3 позиций — ваш товар закрывает позицию №1. Подаётесь на весь лот, но проходите именно по нужной вам позиции."
+          }
+        }
       },
       {
-        id: "t5", productId: "prod_gloves",
-        title: "Поставка перчаток нитриловых текстурированных на пальцах",
-        number: "0326200015826000019", customer: "ГАУЗ «Краевая клиническая больница №1»",
-        source: "РТС-тендер", region: "Краснодарский край", price: 980000, deadlineDays: 27,
-        ktru: "32.50.50.190-00001458", verdict: "eligible_with_gaps", score: 84,
-        checks: [
-          { req: "материал = нитрил", status: "pass" },
-          { req: "текстура на пальцах = да", status: "gap", note: "в карточке не указано — уточните у производителя" },
-          { req: "длина манжеты ≥ 240 мм", status: "pass" }
-        ],
-        explanation: "Похоже, подходите. Не хватает данных по текстуре пальцев в карточке — это частое требование, стоит внести один раз и закрыть пробел для будущих закупок."
+        id: "p5", number: "0872300007826000067",
+        title: "Поставка перчаток нитриловых химически стойких для лаборатории контроля качества",
+        customer: "ФБУЗ «Центр гигиены и эпидемиологии»",
+        law: "223-ФЗ", source: "РТС-маркет", region: "Новосибирская область",
+        okpd: "32.50.50.190", price: 275000,
+        stage: "active", deadlineDays: 4, publishedDaysAgo: 1,
+        guaranteeApp: 0, guaranteeContract: 13750, prepayment: 0,
+        lots: [{ name: "Перчатки нитриловые химстойкие", qty: "6 000 пар", price: 275000 }],
+        matches: {
+          prod_gloves: {
+            score: 100, verdict: "eligible",
+            checks: [
+              { req: "материал = нитрил", status: "pass" },
+              { req: "химстойкость к спиртам", status: "pass" },
+              { req: "размеры: S, M, L", status: "pass" }
+            ],
+            explanation: "Полное совпадение по всем пунктам ТЗ. Срок подачи короткий — успевайте за 4 дня."
+          }
+        }
       },
       {
-        id: "t6", productId: "prod_blade",
-        title: "Поставка клинков ларингоскопических для анестезиологии-реанимации",
-        number: "0351200000726000985", customer: "ГБУЗ «Областная клиническая больница»",
-        source: "ЕИС", region: "Свердловская область", price: 560000, deadlineDays: 11,
-        ktru: "32.50.13.190-00007686", verdict: "eligible", score: 89,
-        checks: [
-          { req: "совместимость = ISO 7376", status: "pass", note: "ТЗ: «Flexline» — семантически то же крепление" },
-          { req: "форма = прямая", status: "pass" },
-          { req: "тип освещения = волоконная оптика", status: "pass" },
-          { req: "многоразовый, автоклавируемый", status: "pass" }
-        ],
-        explanation: "Проходите: ТЗ использует термин «Flexline», в карточке — ISO 7376, это одно и то же крепление. Форма и оптика совпадают полностью."
+        id: "p6", number: "0351200000726000985",
+        title: "Поставка клинков ларингоскопических для отделения анестезиологии-реанимации",
+        customer: "ГБУЗ «Областная клиническая больница»",
+        law: "44-ФЗ", source: "ЕИС", region: "Свердловская область",
+        okpd: "32.50.13.190", price: 560000,
+        stage: "active", deadlineDays: 11, publishedDaysAgo: 5,
+        guaranteeApp: 5600, guaranteeContract: 28000, prepayment: 0,
+        lots: [{ name: "Клинок ларингоскопа прямой, фиброоптика", qty: "40 шт", price: 560000 }],
+        matches: {
+          prod_blade: {
+            score: 89, verdict: "eligible",
+            checks: [
+              { req: "совместимость = ISO 7376", status: "pass", note: "ТЗ: «Flexline» — семантически то же крепление" },
+              { req: "форма = прямая", status: "pass" },
+              { req: "тип освещения = волоконная оптика", status: "pass" },
+              { req: "многоразовый, автоклавируемый", status: "pass" }
+            ],
+            explanation: "Проходите: ТЗ использует термин «Flexline», в карточке — ISO 7376, это одно и то же крепление. Форма и оптика совпадают полностью."
+          }
+        }
       },
       {
-        id: "t7", productId: "prod_blade",
-        title: "Поставка клинков к ларингоскопу, набор прямых и изогнутых",
-        number: "0128200000926000341", customer: "ГБУЗ «Детская краевая клиническая больница»",
-        source: "Росэлторг", region: "Приморский край", price: 310000, deadlineDays: 18,
-        ktru: "32.50.13.190-00007686", verdict: "eligible_with_gaps", score: 71,
-        checks: [
-          { req: "форма = прямая, есть в наборе", status: "pass" },
-          { req: "форма = изогнутая, есть в наборе", status: "gap", note: "в карточке только прямой клинок" },
-          { req: "тип освещения = волоконная оптика", status: "pass" }
-        ],
-        explanation: "Заказчик просит набор из прямого и изогнутого клинков. У вас в карточке только прямой — по прямому пройдёте, по набору в целом будет пробел."
+        id: "p7", number: "0128200000926000341",
+        title: "Поставка набора клинков к ларингоскопу: прямые и изогнутые",
+        customer: "ГБУЗ «Детская краевая клиническая больница»",
+        law: "44-ФЗ", source: "Росэлторг", region: "Приморский край",
+        okpd: "32.50.13.190", price: 310000,
+        stage: "committee", deadlineDays: 0, publishedDaysAgo: 20,
+        guaranteeApp: 3100, guaranteeContract: 15500, prepayment: 0,
+        lots: [{ name: "Набор клинков ларингоскопа (прямые + изогнутые)", qty: "20 наборов", price: 310000 }],
+        matches: {
+          prod_blade: {
+            score: 71, verdict: "eligible_with_gaps",
+            checks: [
+              { req: "форма = прямая, есть в наборе", status: "pass" },
+              { req: "форма = изогнутая, есть в наборе", status: "gap", note: "в карточке только прямой клинок" },
+              { req: "тип освещения = волоконная оптика", status: "pass" }
+            ],
+            explanation: "Заказчик просит набор из прямого и изогнутого клинков. У вас в карточке только прямой — по прямому пройдёте, по набору в целом будет пробел."
+          }
+        }
       },
       {
-        id: "t8", productId: "prod_blade",
+        id: "p8", number: "0166200002326000104",
         title: "Поставка ларингоскопов с одноразовыми клинками (полный комплект)",
-        number: "0166200002326000104", customer: "ГБУЗ «Городская больница скорой помощи»",
-        source: "ЕИС", region: "Ростовская область", price: 1120000, deadlineDays: 8,
-        ktru: "32.50.13.190-00007686", verdict: "disqualified", score: 22,
-        checks: [
-          { req: "одноразовость = да, обязательна", status: "fail", note: "в карточке многоразовый клинок" },
-          { req: "комплект с рукоятью", status: "gap" }
-        ],
-        explanation: "Дисквалификация: заказчику нужны одноразовые клинки без права повторной стерилизации — жёсткое требование, многоразовый вариант не подойдёт."
+        customer: "ГБУЗ «Городская больница скорой помощи»",
+        law: "44-ФЗ", source: "ЕИС", region: "Ростовская область",
+        okpd: "32.50.13.190", price: 1120000,
+        stage: "active", deadlineDays: 8, publishedDaysAgo: 2,
+        guaranteeApp: 11200, guaranteeContract: 56000, prepayment: 0,
+        lots: [{ name: "Ларингоскоп с одноразовыми клинками", qty: "30 комплектов", price: 1120000 }],
+        matches: {
+          prod_blade: {
+            score: 22, verdict: "disqualified",
+            checks: [
+              { req: "одноразовость = да, обязательна", status: "fail", note: "в карточке многоразовый клинок" },
+              { req: "комплект с рукоятью", status: "gap" }
+            ],
+            explanation: "Дисквалификация: заказчику нужны одноразовые клинки без права повторной стерилизации — жёсткое требование, многоразовый вариант не подойдёт."
+          }
+        }
       },
       {
-        id: "t9", productId: "prod_gloves",
-        title: "Поставка перчаток нитриловых для лабораторий контроля качества",
-        number: "0872300007826000067", customer: "ФБУЗ «Центр гигиены и эпидемиологии»",
-        source: "РТС-маркет", region: "Новосибирская область", price: 275000, deadlineDays: 4,
-        ktru: "32.50.50.190-00001458", verdict: "eligible", score: 100,
-        checks: [
-          { req: "материал = нитрил", status: "pass" },
-          { req: "химстойкость к спиртам", status: "pass" },
-          { req: "размеры: S, M, L", status: "pass" }
-        ],
-        explanation: "Полное совпадение по всем пунктам ТЗ. Срок подачи короткий — успевайте за 4 дня."
-      },
-      {
-        id: "t10", productId: "prod_blade",
+        id: "p9", number: "0356200000426000512",
         title: "Поставка изделий медицинского назначения для оториноларингологии",
-        number: "0356200000426000512", customer: "ГБУЗ «Клиническая больница №4»",
-        source: "Сбербанк-АСТ", region: "Воронежская область", price: 890000, deadlineDays: 23,
-        ktru: "32.50.13.190-00007686", verdict: "eligible_with_gaps", score: 76,
-        checks: [
-          { req: "совместимость = ISO 7376", status: "pass" },
-          { req: "форма = прямая", status: "pass" },
-          { req: "срок службы ≥ 5 лет, документально", status: "gap", note: "нет протокола испытаний в карточке" }
-        ],
-        explanation: "Технически подходите. Заказчик просит документальное подтверждение срока службы — добавьте протокол в карточку, чтобы закрыть пробел."
+        customer: "ГБУЗ «Клиническая больница №4»",
+        law: "223-ФЗ", source: "Сбербанк-АСТ", region: "Воронежская область",
+        okpd: "32.50.13.190", price: 890000,
+        stage: "active", deadlineDays: 23, publishedDaysAgo: 6,
+        guaranteeApp: 0, guaranteeContract: 44500, prepayment: 15,
+        lots: [{ name: "Клинки ларингоскопические, срок службы ≥ 5 лет", qty: "60 шт", price: 890000 }],
+        matches: {
+          prod_blade: {
+            score: 76, verdict: "eligible_with_gaps",
+            checks: [
+              { req: "совместимость = ISO 7376", status: "pass" },
+              { req: "форма = прямая", status: "pass" },
+              { req: "срок службы ≥ 5 лет, документально", status: "gap", note: "нет протокола испытаний в карточке" }
+            ],
+            explanation: "Технически подходите. Заказчик просит документальное подтверждение срока службы — добавьте протокол в карточку, чтобы закрыть пробел."
+          }
+        }
+      },
+      // --- закупки других категорий: площадка ищет ЛЮБЫЕ торги, не только медицину ---
+      {
+        id: "p10", number: "0173200001426000778",
+        title: "Поставка бумаги офисной А4, класс C, 80 г/м²",
+        customer: "Администрация городского округа",
+        law: "44-ФЗ", source: "РТС-тендер", region: "г. Москва",
+        okpd: "17.12.14.110", price: 320000,
+        stage: "active", deadlineDays: 12, publishedDaysAgo: 3,
+        guaranteeApp: 3200, guaranteeContract: 16000, prepayment: 0,
+        lots: [{ name: "Бумага А4 80 г/м²", qty: "4 000 пачек", price: 320000 }],
+        matches: {}
+      },
+      {
+        id: "p11", number: "0119300012826000091",
+        title: "Выполнение работ по текущему ремонту кровли здания школы",
+        customer: "МБОУ «Средняя общеобразовательная школа №12»",
+        law: "44-ФЗ", source: "ЕИС", region: "Краснодарский край",
+        okpd: "43.91.19.000", price: 4750000,
+        stage: "active", deadlineDays: 17, publishedDaysAgo: 4,
+        guaranteeApp: 47500, guaranteeContract: 475000, prepayment: 0,
+        lots: [{ name: "Текущий ремонт кровли (1 200 м²)", qty: "1 объект", price: 4750000 }],
+        matches: {}
+      },
+      {
+        id: "p12", number: "0348100004526000203",
+        title: "Поставка канцелярских товаров и расходных материалов для офиса",
+        customer: "ФКУ «Центр обеспечения деятельности»",
+        law: "44-ФЗ", source: "Росэлторг", region: "г. Санкт-Петербург",
+        okpd: "17.23.13.190", price: 540000,
+        stage: "active", deadlineDays: 5, publishedDaysAgo: 1,
+        guaranteeApp: 5400, guaranteeContract: 27000, prepayment: 0,
+        lots: [{ name: "Канцтовары (набор из 42 позиций)", qty: "1 партия", price: 540000 }],
+        matches: {}
+      },
+      {
+        id: "p13", number: "0173100008826000340",
+        title: "Оказание услуг по поставке и настройке серверного оборудования",
+        customer: "ГКУ «Информационные технологии региона»",
+        law: "223-ФЗ", source: "РТС-тендер", region: "Свердловская область",
+        okpd: "26.20.14.000", price: 8900000,
+        stage: "active", deadlineDays: 26, publishedDaysAgo: 7,
+        guaranteeApp: 0, guaranteeContract: 890000, prepayment: 20,
+        lots: [{ name: "Серверы стоечные + пусконаладка", qty: "6 ед.", price: 8900000 }],
+        matches: {}
+      },
+      {
+        id: "p14", number: "0362200005926000058",
+        title: "Поставка дезинфицирующих средств и антисептиков для рук",
+        customer: "ГБУЗ «Инфекционная клиническая больница»",
+        law: "44-ФЗ", source: "Сбербанк-АСТ", region: "Новосибирская область",
+        okpd: "20.20.14.000", price: 470000,
+        stage: "committee", deadlineDays: 0, publishedDaysAgo: 15,
+        guaranteeApp: 4700, guaranteeContract: 23500, prepayment: 0,
+        lots: [{ name: "Кожный антисептик, 1 л", qty: "3 000 флаконов", price: 470000 }],
+        matches: {}
+      },
+      {
+        id: "p15", number: "0326200015826000019",
+        title: "Поставка перчаток нитриловых текстурированных на пальцах для процедурных кабинетов",
+        customer: "ГАУЗ «Краевая клиническая больница №1»",
+        law: "44-ФЗ", source: "РТС-тендер", region: "Краснодарский край",
+        okpd: "32.50.50.190", price: 980000,
+        stage: "active", deadlineDays: 27, publishedDaysAgo: 5,
+        guaranteeApp: 9800, guaranteeContract: 49000, prepayment: 0,
+        lots: [{ name: "Перчатки нитриловые текстурированные", qty: "24 000 пар", price: 980000 }],
+        matches: {
+          prod_gloves: {
+            score: 84, verdict: "eligible_with_gaps",
+            checks: [
+              { req: "материал = нитрил", status: "pass" },
+              { req: "текстура на пальцах = да", status: "gap", note: "в карточке не указано — уточните у производителя" },
+              { req: "длина манжеты ≥ 240 мм", status: "pass" }
+            ],
+            explanation: "Похоже, подходите. Не хватает данных по текстуре пальцев в карточке — стоит внести один раз и закрыть пробел для будущих закупок."
+          }
+        }
+      },
+      {
+        id: "p16", number: "0134300004526000612",
+        title: "Поставка мебели офисной (столы, кресла, шкафы) для административного здания",
+        customer: "Департамент имущественных отношений",
+        law: "44-ФЗ", source: "ЕИС", region: "Ростовская область",
+        okpd: "31.01.12.000", price: 1650000,
+        stage: "completed", deadlineDays: 0, publishedDaysAgo: 40,
+        guaranteeApp: 16500, guaranteeContract: 82500, prepayment: 0,
+        lots: [{ name: "Комплект офисной мебели", qty: "1 партия", price: 1650000 }],
+        matches: {}
       }
     ];
   }
 
   return {
     getCompany, setCompany, clearSession, isLoggedIn,
-    getProducts, setProducts, addProduct, getCurrentProduct, setCurrentProduct,
-    seedDemo, allTenders
+    getProducts, setProducts, addProduct,
+    getSearches, setSearches, addSearch, updateSearch, deleteSearch,
+    getCurrentSearchId, setCurrentSearchId,
+    seedDemo, allPurchases
   };
 })();
 
-// ---------- shared small utils ----------
+// ---------- общие утилиты ----------
 
 function lkFormatMoney(n) {
   return new Intl.NumberFormat("ru-RU").format(n) + " ₽";
@@ -262,7 +463,16 @@ function lkToast(msg) {
   t._timer = setTimeout(() => t.classList.remove("is-visible"), 2600);
 }
 
-// ---------- header auth-state (index.html) ----------
+// склонение слова по числу: lkPlural(5, ["день","дня","дней"])
+function lkPlural(n, forms) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return forms[2];
+  if (b > 1 && b < 5) return forms[1];
+  if (b === 1) return forms[0];
+  return forms[2];
+}
+
+// ---------- состояние шапки лендинга (index.html) ----------
 
 function lkInitHeaderState() {
   const cta = document.querySelector("[data-header-cta]");

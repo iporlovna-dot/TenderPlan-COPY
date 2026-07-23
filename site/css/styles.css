@@ -654,7 +654,7 @@ section { padding: 78px 0; }
   padding: 9px 16px;
   max-width: 420px;
 }
-.search-box input { border: none; background: transparent; outline: none; width: 100%; font-size: 0.9rem; color: var(--ink); }
+.search-box input { border: none; background: transparent; outline: none; flex: 1; min-width: 0; width: 100%; font-size: 0.9rem; color: var(--ink); }
 .search-box svg { flex-shrink: 0; opacity: 0.5; }
 
 .sort-select {
@@ -785,6 +785,196 @@ section { padding: 78px 0; }
 }
 .toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ================= ПОИСК ТОРГОВ: сайдбар, фильтры, лента ================= */
+
+/* строка поиска в топбаре */
+.search-box { max-width: 620px; }
+.search-save {
+  flex-shrink: 0;
+  border: none;
+  background: var(--rust-tint);
+  color: var(--rust);
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.search-save:hover { background: var(--rust); color: var(--white); }
+
+/* кнопка «новый поиск» в сайдбаре — растянуть */
+.app-sidebar .btn-block { justify-content: center; }
+
+/* сохранённые поиски */
+.saved-searches { display: flex; flex-direction: column; gap: 2px; }
+.saved-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.saved-search:hover { background: var(--paper); color: var(--ink); }
+.saved-search.is-active { background: var(--white); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-sm); }
+.saved-search__name { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-search__count {
+  flex-shrink: 0;
+  background: var(--rust);
+  color: var(--white);
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.saved-search__edit {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0;
+  display: flex;
+}
+.saved-search:hover .saved-search__edit { opacity: 1; }
+.saved-search__edit:hover { color: var(--rust); }
+.saved-empty { font-size: 0.82rem; color: var(--ink-faint); line-height: 1.5; padding: 4px 2px; }
+
+/* панель фильтров */
+.filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 30px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+.filter-chip { display: flex; flex-direction: column; gap: 5px; }
+.filter-chip label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); font-weight: 700; }
+.filter-chip select,
+.filter-chip input {
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  color: var(--ink);
+}
+.chip-range { display: flex; align-items: center; gap: 6px; }
+.chip-range input { width: 92px; }
+.chip-range span { color: var(--ink-faint); }
+.filter-reset {
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.filter-reset:hover { color: var(--rust); }
+
+/* надстройка сверки по ТЗ */
+.match-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 30px;
+  background: var(--paper-alt);
+  border-bottom: 1px solid var(--line-soft);
+  flex-wrap: wrap;
+}
+.match-bar.is-on { background: var(--rust-tint); border-bottom-color: var(--rust); }
+.match-toggle { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+.match-toggle input { display: none; }
+.match-toggle__track {
+  width: 40px; height: 22px; border-radius: 999px;
+  background: var(--line); position: relative; transition: background 0.15s ease; flex-shrink: 0;
+}
+.match-toggle__thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--white); box-shadow: var(--shadow-sm); transition: transform 0.15s ease;
+}
+.match-toggle input:checked + .match-toggle__track { background: var(--rust); }
+.match-toggle input:checked + .match-toggle__track .match-toggle__thumb { transform: translateX(18px); }
+.match-bar select {
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  color: var(--ink);
+  max-width: 320px;
+}
+.match-bar select:disabled { opacity: 0.5; }
+.match-hint { font-size: 0.82rem; color: var(--ink-soft); }
+
+/* badges: закон / этап / новизна */
+.badge-law { background: var(--sage-tint); color: var(--sage); }
+.badge-law.is-223 { background: var(--brass-tint); color: var(--brass); }
+.badge-stage.stage-active { background: var(--ok-bg); color: var(--ok); }
+.badge-stage.stage-committee { background: var(--gap-bg); color: var(--gap); }
+.badge-stage.stage-done { background: var(--paper-deep); color: var(--ink-faint); }
+.badge-fresh { background: var(--rust-tint); color: var(--rust); }
+
+/* карточка закупки: доп. мета и раскрытие */
+.tender-score__cap { display: block; font-size: 0.64rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+.tender-card:not(.has-match) .tender-card__main { padding-left: 22px; }
+.tender-meta--strong { margin-top: 8px; font-size: 0.9rem; }
+.tender-meta--strong b { color: var(--ink); }
+.deadline { color: var(--ink-soft); }
+.deadline b { color: var(--rust); font-weight: 700; }
+.deadline.muted { color: var(--ink-faint); }
+.tender-title mark { background: var(--brass-tint); color: var(--ink); border-radius: 3px; padding: 0 2px; }
+
+.tender-detail { display: none; border-top: 1px dashed var(--line); padding: 18px 22px 22px; }
+.tender-card.is-open .tender-detail { display: block; }
+.detail-block { margin-bottom: 20px; }
+.detail-block__title {
+  font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-faint); font-weight: 700; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.detail-match { background: var(--paper-alt); border-radius: var(--radius-md); padding: 16px 18px; }
+.detail-match .check-row { font-size: 0.9rem; }
+.detail-match .check-status.bad { color: var(--bad); }
+.check-note { color: var(--ink-faint); }
+
+.lot-line {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 0.9rem;
+}
+.lot-line:first-of-type { border-top: none; }
+.lot-line__idx { color: var(--ink-faint); }
+.lot-line__qty { color: var(--ink-faint); font-size: 0.84rem; white-space: nowrap; }
+.lot-line__price { font-weight: 600; white-space: nowrap; }
+
+.facts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 28px; }
+.fact { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); font-size: 0.88rem; }
+.fact__k { color: var(--ink-faint); }
+.fact__v { font-weight: 600; text-align: right; }
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 1024px) {
@@ -797,6 +987,8 @@ section { padding: 78px 0; }
   .app-shell { grid-template-columns: 1fr; }
   .app-sidebar { display: none; }
   .main-nav { display: none; }
+  .filter-bar { padding: 12px 18px; gap: 12px; }
+  .match-bar { padding: 10px 18px; }
 }
 
 @media (max-width: 640px) {
@@ -804,7 +996,10 @@ section { padding: 78px 0; }
   .footer-grid { flex-direction: column; }
   .tender-card__main { flex-direction: column; }
   .tender-score { display: flex; align-items: center; gap: 8px; width: auto; text-align: left; }
-  .tender-detail { padding-left: 22px; }
+  .tender-score__cap { margin-top: 0; }
+  .facts-grid { grid-template-columns: 1fr; }
+  .lot-line { grid-template-columns: 16px 1fr; }
+  .lot-line__qty, .lot-line__price { grid-column: 2; text-align: left; }
   .field-row { grid-template-columns: 1fr; }
   .auth-shell { grid-template-columns: 1fr; }
   .auth-side { display: none; }

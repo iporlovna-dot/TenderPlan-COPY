@@ -1,4 +1,6 @@
-/* Рендер и интерактивность app.html: фильтры, лента, ондбординг товара. */
+/* Рендер и интерактивность app.html — площадка поиска торгов.
+   Точка входа = поиск по ключевым словам. Лента = карточки закупок.
+   Сверка по ТЗ (score/checks) — надстройка, включается тумблером. */
 
 (function () {
 
@@ -17,96 +19,138 @@
 
   const company = LK.getCompany();
 
+  const DEFAULT_FILTERS = () => ({
+    law: "all", stage: "active", region: "all",
+    priceMin: 0, priceMax: null, source: "all", windowDays: 999
+  });
+
   const state = {
     query: "",
-    sort: "score",
-    region: "all",
-    windowDays: 30,
-    priceMin: 0,
-    priceMax: 5000000,
-    sources: new Set(["ЕИС", "РТС-тендер", "РТС-маркет", "Сбербанк-АСТ", "Росэлторг"]),
-    lotMode: "any",
-    disqOpen: false
+    minus: "",
+    searchId: null,          // id сохранённого поиска или null (свободный / «Все закупки»)
+    filters: DEFAULT_FILTERS(),
+    sort: "fresh",
+    matchEnabled: false,
+    matchProductId: null
   };
 
-  // ---------- заголовок / юзер-меню ----------
+  // ---------- шапка / юзер ----------
 
   document.getElementById("user-company").textContent = company.name;
-  document.getElementById("user-avatar").textContent = company.name.replace(/[^А-ЯA-Z]/g, "").slice(0, 2) || "ЛК";
+  document.getElementById("user-avatar").textContent =
+    company.name.replace(/[^А-ЯA-Z]/g, "").slice(0, 2) || "ЛК";
   document.getElementById("plan-name").textContent =
-    company.plan === "business" ? "Тариф «Бизнес»" : company.plan === "corp" ? "Тариф «Корпоративный»" : "Тариф «Старт»";
+    company.plan === "business" ? "Тариф «Бизнес»" :
+    company.plan === "corp" ? "Тариф «Корпоративный»" : "Тариф «Старт»";
 
   document.getElementById("logout-btn").addEventListener("click", () => {
     LK.clearSession();
     window.location.href = "index.html";
   });
 
-  // ---------- переключатель товара ----------
+  // ---------- сайдбар: сохранённые поиски ----------
 
-  function renderProductSwitch() {
-    const products = LK.getProducts();
-    const sel = document.getElementById("product-select");
-    sel.innerHTML = products.map(p => `<option value="${p.id}">${lkEscape(p.name)}</option>`).join("");
-    const current = LK.getCurrentProduct();
-    if (current) sel.value = current.id;
+  function renderSidebar() {
+    const searches = LK.getSearches();
+    const wrap = document.getElementById("saved-searches");
+    if (!searches.length) {
+      wrap.innerHTML = `<div class="saved-empty">Пока нет сохранённых поисков.<br>Задайте ключевые слова и нажмите «Сохранить поиск».</div>`;
+    } else {
+      wrap.innerHTML = searches.map(s => `
+        <a href="#" class="saved-search ${s.id === state.searchId ? "is-active" : ""}" data-search="${s.id}">
+          <span class="saved-search__name">${lkEscape(s.name)}</span>
+          ${s.newCount ? `<span class="saved-search__count">${s.newCount}</span>` : ""}
+          <button class="saved-search__edit" data-edit="${s.id}" title="Изменить поиск" aria-label="Изменить">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 00-3-3L5 17v3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </a>`).join("");
+    }
+
+    wrap.querySelectorAll("[data-search]").forEach(el => {
+      el.addEventListener("click", (e) => {
+        if (e.target.closest("[data-edit]")) return;
+        e.preventDefault();
+        loadSearch(el.dataset.search);
+      });
+    });
+    wrap.querySelectorAll("[data-edit]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openSearchModal(btn.dataset.edit);
+      });
+    });
   }
 
-  document.getElementById("product-select").addEventListener("change", (e) => {
-    LK.setCurrentProduct(e.target.value);
-    syncFiltersFromProduct();
-    renderFeed();
+  document.querySelector('[data-quick="all"]').addEventListener("click", (e) => {
+    e.preventDefault();
+    selectAllPurchases();
   });
 
-  document.getElementById("add-product-link").addEventListener("click", (e) => {
-    e.preventDefault();
-    openOnboarding();
-  });
+  // ---------- загрузка поиска в состояние ----------
+
+  function loadSearch(id) {
+    const s = LK.getSearches().find(x => x.id === id);
+    if (!s) return;
+    state.searchId = id;
+    state.query = s.query || "";
+    state.minus = s.minus || "";
+    const f = s.filters || {};
+    state.filters = {
+      law: f.law || "all",
+      stage: f.stage || "active",
+      region: f.region || "all",
+      priceMin: f.priceMin ?? 0,
+      priceMax: f.priceMax ?? null,
+      source: (f.sources && f.sources.length === 1) ? f.sources[0] : "all",
+      windowDays: f.windowDays ?? 999
+    };
+    if (s.newCount) LK.updateSearch(id, { newCount: 0 });
+    syncControlsFromState();
+    renderSidebar();
+    renderFeed();
+  }
+
+  function selectAllPurchases() {
+    state.searchId = null;
+    state.query = "";
+    state.minus = "";
+    state.filters = { ...DEFAULT_FILTERS(), stage: "all" };
+    syncControlsFromState();
+    renderSidebar();
+    renderFeed();
+  }
+
+  function syncControlsFromState() {
+    document.getElementById("search-input").value = state.query;
+    document.getElementById("f-law").value = state.filters.law;
+    document.getElementById("f-stage").value = state.filters.stage;
+    document.getElementById("f-region").value = state.filters.region;
+    document.getElementById("f-price-min").value = state.filters.priceMin || 0;
+    document.getElementById("f-price-max").value = state.filters.priceMax ?? "";
+    document.getElementById("f-source").value = state.filters.source;
+  }
 
   // ---------- фильтры ----------
 
-  function syncFiltersFromProduct() {
-    const p = LK.getCurrentProduct();
-    if (!p || !p.search) return;
-    state.windowDays = p.search.windowDays ?? 30;
-    state.priceMin = p.search.priceMin ?? 0;
-    state.priceMax = p.search.priceMax ?? 5000000;
-    state.lotMode = p.search.lotMode ?? "any";
-    state.sources = new Set(p.search.sources || ["ЕИС", "РТС-тендер", "РТС-маркет", "Сбербанк-АСТ", "Росэлторг"]);
-
-    document.getElementById("f-window").value = state.windowDays;
-    document.getElementById("f-price-min").value = state.priceMin;
-    document.getElementById("f-price-max").value = state.priceMax;
-    document.querySelectorAll("input[name=lot-mode]").forEach(r => r.checked = (r.value === state.lotMode));
-    document.querySelectorAll(".f-source").forEach(cb => cb.checked = state.sources.has(cb.value));
-  }
-
-  document.getElementById("f-window").addEventListener("input", (e) => {
-    state.windowDays = Number(e.target.value) || 0;
-    renderFeed();
-  });
-  document.getElementById("f-price-min").addEventListener("input", (e) => {
-    state.priceMin = Number(e.target.value) || 0;
-    renderFeed();
-  });
-  document.getElementById("f-price-max").addEventListener("input", (e) => {
-    state.priceMax = Number(e.target.value) || 999999999;
-    renderFeed();
-  });
-  document.getElementById("f-region").addEventListener("change", (e) => {
-    state.region = e.target.value;
-    renderFeed();
-  });
-  document.querySelectorAll("input[name=lot-mode]").forEach(r => {
-    r.addEventListener("change", (e) => { state.lotMode = e.target.value; renderFeed(); });
-  });
-  document.querySelectorAll(".f-source").forEach(cb => {
-    cb.addEventListener("change", () => {
-      state.sources = new Set([...document.querySelectorAll(".f-source:checked")].map(x => x.value));
-      renderFeed();
-    });
-  });
   document.getElementById("search-input").addEventListener("input", (e) => {
-    state.query = e.target.value.trim().toLowerCase();
+    state.query = e.target.value.trim();
+    state.searchId = null;          // свободный ввод «отвязывает» от шаблона
+    renderSidebar();
+    renderFeed();
+  });
+  document.getElementById("f-law").addEventListener("change", (e) => { state.filters.law = e.target.value; renderFeed(); });
+  document.getElementById("f-stage").addEventListener("change", (e) => { state.filters.stage = e.target.value; renderFeed(); });
+  document.getElementById("f-region").addEventListener("change", (e) => { state.filters.region = e.target.value; renderFeed(); });
+  document.getElementById("f-source").addEventListener("change", (e) => { state.filters.source = e.target.value; renderFeed(); });
+  document.getElementById("f-price-min").addEventListener("input", (e) => { state.filters.priceMin = Number(e.target.value) || 0; renderFeed(); });
+  document.getElementById("f-price-max").addEventListener("input", (e) => {
+    state.filters.priceMax = e.target.value === "" ? null : Number(e.target.value);
+    renderFeed();
+  });
+  document.getElementById("filter-reset").addEventListener("click", () => {
+    state.filters = { ...DEFAULT_FILTERS(), stage: state.filters.stage };
+    syncControlsFromState();
     renderFeed();
   });
   document.getElementById("sort-select").addEventListener("change", (e) => {
@@ -114,7 +158,90 @@
     renderFeed();
   });
 
-  // ---------- лента ----------
+  // ---------- надстройка: сверка по ТЗ ----------
+
+  function renderMatchProducts() {
+    const products = LK.getProducts();
+    const sel = document.getElementById("match-product");
+    const toggle = document.getElementById("match-enable");
+    if (!products.length) {
+      sel.innerHTML = `<option>нет карточек товара</option>`;
+      sel.disabled = true;
+      toggle.disabled = true;
+      document.getElementById("match-hint").textContent = "— добавьте карточку товара, чтобы включить сверку по ТЗ";
+      return;
+    }
+    sel.innerHTML = products.map(p => `<option value="${p.id}">${lkEscape(p.name)}</option>`).join("");
+    state.matchProductId = state.matchProductId || products[0].id;
+    sel.value = state.matchProductId;
+  }
+
+  document.getElementById("match-enable").addEventListener("change", (e) => {
+    state.matchEnabled = e.target.checked;
+    document.getElementById("match-product").disabled = !state.matchEnabled;
+    document.getElementById("match-bar").classList.toggle("is-on", state.matchEnabled);
+    document.getElementById("match-hint").style.display = state.matchEnabled ? "none" : "";
+    renderFeed();
+  });
+  document.getElementById("match-product").addEventListener("change", (e) => {
+    state.matchProductId = e.target.value;
+    renderFeed();
+  });
+
+  function matchFor(p) {
+    if (!state.matchEnabled || !state.matchProductId) return null;
+    return (p.matches && p.matches[state.matchProductId]) || null;
+  }
+
+  // ---------- фильтрация и поиск ----------
+
+  function tokens(str) {
+    return (str || "").toLowerCase().split(/[\s,]+/).map(t => t.trim()).filter(Boolean);
+  }
+  // грубый стемминг: отсекаем окончание, чтобы «перчатки» ловило «перчаток».
+  // Не лингвистика — временный приём для демо; на проде заменят морфоанализатор / эмбеддинги.
+  function stem(word) {
+    return word.length <= 4 ? word : word.slice(0, word.length - 2);
+  }
+
+  function passesSearch(p) {
+    const hay = (p.title + " " + p.customer + " " + p.number + " " + p.okpd).toLowerCase();
+    const plus = tokens(state.query);
+    const minus = tokens(state.minus);
+    if (minus.some(m => hay.includes(stem(m)))) return false;
+    if (plus.length && !plus.some(w => hay.includes(stem(w)))) return false;
+    return true;
+  }
+
+  function passesFilters(p) {
+    const f = state.filters;
+    if (f.law !== "all" && p.law !== f.law) return false;
+    if (f.stage !== "all" && p.stage !== f.stage) return false;
+    if (f.region !== "all" && p.region !== f.region) return false;
+    if (f.source !== "all" && p.source !== f.source) return false;
+    if (p.price < (f.priceMin || 0)) return false;
+    if (f.priceMax != null && p.price > f.priceMax) return false;
+    return true;
+  }
+
+  // ---------- рендер карточек ----------
+
+  const STAGE = {
+    active:    { label: "Подача идёт", cls: "stage-active" },
+    committee: { label: "Работа комиссии", cls: "stage-committee" },
+    completed: { label: "Завершена", cls: "stage-done" }
+  };
+
+  function highlight(text) {
+    let out = lkEscape(text);
+    const plus = tokens(state.query);
+    plus.forEach(w => {
+      const esc = stem(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // подсвечиваем слово целиком, начиная от стема (перчато́к, нитрило́вых)
+      out = out.replace(new RegExp("(" + esc + "[а-яёa-z0-9]*)", "gi"), "<mark>$1</mark>");
+    });
+    return out;
+  }
 
   function verdictClass(v) { return v === "eligible" ? "ok" : v === "eligible_with_gaps" ? "gap" : "bad"; }
   function verdictBadge(v) {
@@ -125,178 +252,223 @@
   function checkClass(s) { return s === "pass" ? "ok" : s === "gap" ? "gap" : "bad"; }
   function checkIcon(s) { return s === "pass" ? "✓" : s === "gap" ? "⚠" : "✕"; }
 
-  function cardHtml(t) {
-    const lot = t.lot ? `<span class="lot-note">позиция ${t.lot.position} из ${t.lot.total}</span>` : "";
-    const checksHtml = t.checks.map(c => `
+  function deadlineText(p) {
+    if (p.stage === "active") {
+      return `<span class="deadline"><b>${p.deadlineDays}</b> ${lkPlural(p.deadlineDays, ["день","дня","дней"])} до конца подачи</span>`;
+    }
+    return `<span class="deadline muted">${STAGE[p.stage].label}</span>`;
+  }
+
+  function matchDetail(m) {
+    const checks = m.checks.map(c => `
       <div class="check-row">
-        <span>${lkEscape(c.req)}${c.note ? ` — <span style="color:var(--ink-faint)">${lkEscape(c.note)}</span>` : ""}</span>
+        <span>${lkEscape(c.req)}${c.note ? ` — <span class="check-note">${lkEscape(c.note)}</span>` : ""}</span>
         <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span>
       </div>`).join("");
+    return `
+      <div class="detail-block detail-match">
+        <div class="detail-block__title">Сверка с ТЗ ${verdictBadge(m.verdict)}</div>
+        ${checks}
+        <div class="explanation">${lkEscape(m.explanation)}</div>
+      </div>`;
+  }
+
+  function purchaseDetail(p, m) {
+    const lots = p.lots.map((l, i) => `
+      <div class="lot-line">
+        <span class="lot-line__idx">${p.lots.length > 1 ? (i + 1) + "." : "•"}</span>
+        <span class="lot-line__name">${lkEscape(l.name)}</span>
+        <span class="lot-line__qty">${lkEscape(l.qty)}</span>
+        <span class="lot-line__price">${lkFormatMoney(l.price)}</span>
+      </div>`).join("");
+
+    const facts = [
+      ["НМЦК", lkFormatMoney(p.price)],
+      ["Обеспечение заявки", p.guaranteeApp ? lkFormatMoney(p.guaranteeApp) : "не требуется"],
+      ["Обеспечение контракта", p.guaranteeContract ? lkFormatMoney(p.guaranteeContract) : "не требуется"],
+      ["Аванс", p.prepayment ? p.prepayment + "%" : "нет"],
+      ["Опубликована", p.publishedDaysAgo === 0 ? "сегодня" : `${p.publishedDaysAgo} ${lkPlural(p.publishedDaysAgo, ["день","дня","дней"])} назад`],
+      ["Регион поставки", p.region]
+    ].map(([k, v]) => `<div class="fact"><span class="fact__k">${k}</span><span class="fact__v">${lkEscape(String(v))}</span></div>`).join("");
 
     return `
-    <article class="tender-card" data-id="${t.id}">
-      <div class="tender-card__main">
-        <div class="tender-score">
-          <div class="tender-score__num ${verdictClass(t.verdict)}">${t.score}<span class="tender-score__pct">%</span></div>
+      <div class="tender-detail">
+        ${m ? matchDetail(m) : ""}
+        <div class="detail-block">
+          <div class="detail-block__title">Позиции лота${p.lots.length > 1 ? ` (${p.lots.length})` : ""}</div>
+          ${lots}
         </div>
+        <div class="detail-block">
+          <div class="detail-block__title">Условия закупки</div>
+          <div class="facts-grid">${facts}</div>
+        </div>
+        <div class="tender-actions">
+          <a class="btn btn-primary btn-sm" href="#" onclick="return false;">Открыть на площадке</a>
+          <a class="btn btn-ghost btn-sm" href="#" onclick="return false;">Скрыть</a>
+        </div>
+      </div>`;
+  }
+
+  function cardHtml(p) {
+    const m = matchFor(p);
+    const fresh = p.publishedDaysAgo <= 2 ? `<span class="badge badge-fresh">новая</span>` : "";
+    const lot = p.lotNote ? `<span class="lot-note">позиция ${p.lotNote.position} из ${p.lotNote.total}</span>` : "";
+    const scoreCol = m
+      ? `<div class="tender-score"><div class="tender-score__num ${verdictClass(m.verdict)}">${m.score}<span class="tender-score__pct">%</span></div><span class="tender-score__cap">совпадение ТЗ</span></div>`
+      : "";
+
+    return `
+    <article class="tender-card ${m ? "has-match" : ""}" data-id="${p.id}">
+      <div class="tender-card__main">
+        ${scoreCol}
         <div class="tender-body">
-          <div class="tender-body__top">${verdictBadge(t.verdict)}<span class="badge badge-source">${lkEscape(t.source)}</span>${lot}</div>
-          <h3 class="tender-title">${lkEscape(t.title)}</h3>
+          <div class="tender-body__top">
+            <span class="badge badge-law ${p.law === "223-ФЗ" ? "is-223" : ""}">${p.law}</span>
+            <span class="badge badge-stage ${STAGE[p.stage].cls}">${STAGE[p.stage].label}</span>
+            <span class="badge badge-source">${lkEscape(p.source)}</span>
+            ${fresh}${lot}
+          </div>
+          <h3 class="tender-title">${highlight(p.title)}</h3>
           <div class="tender-meta">
-            <span><b>№${t.number}</b></span>
-            <span>${lkEscape(t.customer)}</span>
-            <span>${lkEscape(t.region)}</span>
-            <span>НМЦК: <b>${lkFormatMoney(t.price)}</b></span>
-            <span>Подача: <b>${t.deadlineDays} дн.</b></span>
+            <span><b>№${p.number}</b></span>
+            <span>${lkEscape(p.customer)}</span>
+            <span>${lkEscape(p.region)}</span>
+            <span>ОКПД2 ${lkEscape(p.okpd)}</span>
+          </div>
+          <div class="tender-meta tender-meta--strong">
+            <span>НМЦК: <b>${lkFormatMoney(p.price)}</b></span>
+            ${deadlineText(p)}
           </div>
         </div>
         <svg class="tender-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </div>
-      <div class="tender-detail">
-        ${checksHtml}
-        <div class="explanation">${lkEscape(t.explanation)}</div>
-        <div class="tender-actions">
-          <a class="btn btn-primary btn-sm" href="#" onclick="return false;">Открыть на площадке</a>
-          <a class="btn btn-ghost btn-sm" href="#" onclick="return false;">Скрыть из ленты</a>
-        </div>
-      </div>
+      ${purchaseDetail(p, m)}
     </article>`;
   }
 
-  function passesFilters(t) {
-    if (state.region !== "all" && t.region !== state.region) return false;
-    if (t.deadlineDays > state.windowDays) return false;
-    if (t.price < state.priceMin || t.price > state.priceMax) return false;
-    if (!state.sources.has(t.source)) return false;
-    if (state.lotMode === "solo" && t.lot) return false;
-    if (state.query) {
-      const hay = (t.title + " " + t.customer + " " + t.number).toLowerCase();
-      if (!hay.includes(state.query)) return false;
-    }
-    return true;
-  }
+  // ---------- лента ----------
 
   function renderFeed() {
-    const product = LK.getCurrentProduct();
-    const feedWrap = document.getElementById("feed-content");
+    const feed = document.getElementById("feed-content");
+    const title = document.getElementById("feed-title");
+    const count = document.getElementById("feed-count");
 
-    if (!product) {
-      feedWrap.innerHTML = "";
-      document.getElementById("empty-state").style.display = "block";
-      document.getElementById("feed-header").style.display = "none";
-      return;
-    }
-    document.getElementById("empty-state").style.display = "none";
-    document.getElementById("feed-header").style.display = "flex";
+    const current = state.searchId ? LK.getSearches().find(s => s.id === state.searchId) : null;
+    title.textContent = current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
 
-    const all = LK.allTenders().filter(t => t.productId === product.id).filter(passesFilters);
-
-    const main = all.filter(t => t.verdict !== "disqualified");
-    const disq = all.filter(t => t.verdict === "disqualified");
+    let list = LK.allPurchases().filter(passesSearch).filter(passesFilters);
 
     const sortFn = {
-      score: (a, b) => b.score - a.score || a.deadlineDays - b.deadlineDays,
-      deadline: (a, b) => a.deadlineDays - b.deadlineDays,
-      price: (a, b) => b.price - a.price
+      fresh: (a, b) => a.publishedDaysAgo - b.publishedDaysAgo,
+      deadline: (a, b) => rank(a) - rank(b) || a.deadlineDays - b.deadlineDays,
+      "price-desc": (a, b) => b.price - a.price,
+      "price-asc": (a, b) => a.price - b.price,
+      score: (a, b) => (score(b) - score(a)) || a.publishedDaysAgo - b.publishedDaysAgo
     }[state.sort];
+    function rank(p) { return p.stage === "active" ? 0 : 1; }
+    function score(p) { const m = matchFor(p); return m ? m.score : -1; }
 
-    main.sort(sortFn);
-    disq.sort(sortFn);
+    list.sort(sortFn);
 
-    document.getElementById("feed-count").textContent =
-      all.length ? `${main.length} подходит · ${disq.length} не подходит` : "ничего не найдено под текущие фильтры";
+    count.textContent = list.length
+      ? `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}`
+      : "ничего не найдено";
 
-    let html = "";
-    if (!main.length && !disq.length) {
-      html = `<div class="empty-state"><h3>По этому товару пока нет совпадений</h3>
-        <p>Мы каждый день просматриваем новые закупки на всех подключённых площадках и пришлём уведомление,
-        как только появится подходящая по вашей карточке и настройкам поиска.</p></div>`;
-    } else {
-      html += main.map(cardHtml).join("");
-      if (disq.length) {
-        html += `<div class="section-toggle" id="disq-toggle">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          Не подходит (${disq.length}) — дисквалифицированы по обязательным требованиям
-        </div>
-        <div id="disqualified-list">${disq.map(cardHtml).join("")}</div>`;
-      }
+    if (!list.length) {
+      feed.innerHTML = `<div class="empty-state">
+        <h3>Ничего не найдено</h3>
+        <p>Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап.</p>
+      </div>`;
+      return;
     }
-    feedWrap.innerHTML = html;
 
-    feedWrap.querySelectorAll(".tender-card__main").forEach(el => {
+    feed.innerHTML = list.map(cardHtml).join("");
+    feed.querySelectorAll(".tender-card__main").forEach(el => {
       el.addEventListener("click", () => el.closest(".tender-card").classList.toggle("is-open"));
     });
-    const toggle = document.getElementById("disq-toggle");
-    if (toggle) {
-      toggle.addEventListener("click", () => {
-        toggle.classList.toggle("is-open");
-        document.getElementById("disqualified-list").classList.toggle("is-open");
-      });
+  }
+
+  // ---------- модалка поиска ----------
+
+  const modal = document.getElementById("search-modal");
+  let editingId = null;
+
+  function openSearchModal(id) {
+    editingId = id || null;
+    const del = document.getElementById("search-delete");
+    if (editingId) {
+      const s = LK.getSearches().find(x => x.id === editingId);
+      document.getElementById("search-modal-title").textContent = "Изменить поиск";
+      document.getElementById("sf-name").value = s.name;
+      document.getElementById("sf-query").value = s.query || "";
+      document.getElementById("sf-minus").value = s.minus || "";
+      document.getElementById("sf-law").value = (s.filters && s.filters.law) || "all";
+      document.getElementById("sf-window").value = (s.filters && s.filters.windowDays) || 30;
+      del.style.display = "";
+    } else {
+      document.getElementById("search-modal-title").textContent = "Новый поиск";
+      document.getElementById("sf-name").value = "";
+      document.getElementById("sf-query").value = state.query || "";
+      document.getElementById("sf-minus").value = state.minus || "";
+      document.getElementById("sf-law").value = "all";
+      document.getElementById("sf-window").value = 30;
+      del.style.display = "none";
     }
-  }
-
-  // ---------- ондбординг: добавить товар ----------
-
-  const modal = document.getElementById("onboarding-modal");
-  let attrCount = 0;
-
-  function attrRow(key = "", value = "", critical = false) {
-    attrCount++;
-    const id = "attr-" + attrCount;
-    return `<div class="attr-row" id="${id}">
-      <input type="text" placeholder="характеристика (напр. материал)" class="attr-key" value="${lkEscape(key)}">
-      <input type="text" placeholder="значение (напр. нитрил)" class="attr-value" value="${lkEscape(value)}">
-      <button type="button" class="attr-remove" onclick="document.getElementById('${id}').remove()">✕</button>
-    </div>`;
-  }
-
-  function openOnboarding() {
-    document.getElementById("attrs-wrap").innerHTML = attrRow() + attrRow() + attrRow();
     modal.classList.add("is-open");
   }
-  function closeOnboarding() { modal.classList.remove("is-open"); }
+  function closeSearchModal() { modal.classList.remove("is-open"); }
 
-  document.getElementById("add-attr-btn").addEventListener("click", () => {
-    document.getElementById("attrs-wrap").insertAdjacentHTML("beforeend", attrRow());
-  });
-  document.getElementById("onboarding-skip").addEventListener("click", closeOnboarding);
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeOnboarding();
+  document.getElementById("new-search-btn").addEventListener("click", () => openSearchModal(null));
+  document.getElementById("search-cancel").addEventListener("click", closeSearchModal);
+  document.getElementById("search-save-btn").addEventListener("click", () => openSearchModal(null));
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeSearchModal(); });
+
+  document.getElementById("search-delete").addEventListener("click", () => {
+    if (editingId) {
+      LK.deleteSearch(editingId);
+      if (state.searchId === editingId) selectAllPurchases();
+      else renderSidebar();
+      closeSearchModal();
+      lkToast("Поиск удалён");
+    }
   });
 
-  document.getElementById("onboarding-form").addEventListener("submit", (e) => {
+  document.getElementById("search-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const name = document.getElementById("np-name").value.trim();
+    const name = document.getElementById("sf-name").value.trim();
     if (!name) return;
-    const ktru = document.getElementById("np-ktru").value.trim();
-    const attrs = [...document.querySelectorAll(".attr-row")].map(row => ({
-      key: row.querySelector(".attr-key").value.trim(),
-      value: row.querySelector(".attr-value").value.trim()
-    })).filter(a => a.key);
-
-    const product = LK.addProduct({
+    const payload = {
       name,
-      ktru: ktru ? [ktru] : [],
-      category: "Новая категория",
-      attributes: attrs,
-      documents: [],
-      delivery_regions: ["вся РФ"],
-      search: { windowDays: 30, priceMin: 0, priceMax: 5000000, lotMode: "any",
-        sources: ["ЕИС", "РТС-тендер", "РТС-маркет", "Сбербанк-АСТ", "Росэлторг"] }
-    });
-    closeOnboarding();
-    renderProductSwitch();
-    syncFiltersFromProduct();
-    renderFeed();
-    lkToast(`Товар «${product.name}» добавлен — проверяем закупки`);
+      query: document.getElementById("sf-query").value.trim(),
+      minus: document.getElementById("sf-minus").value.trim(),
+      filters: {
+        law: document.getElementById("sf-law").value,
+        stage: "active", region: "all", priceMin: 0, priceMax: null,
+        windowDays: Number(document.getElementById("sf-window").value) || 30,
+        sources: ["ЕИС", "РТС-тендер", "РТС-маркет", "Сбербанк-АСТ", "Росэлторг"]
+      }
+    };
+    let id;
+    if (editingId) {
+      LK.updateSearch(editingId, payload);
+      id = editingId;
+      lkToast("Поиск обновлён");
+    } else {
+      const s = LK.addSearch({ ...payload, newCount: 0 });
+      id = s.id;
+      lkToast(`Поиск «${name}» сохранён`);
+    }
+    closeSearchModal();
+    loadSearch(id);
   });
 
   // ---------- init ----------
 
-  renderProductSwitch();
-  syncFiltersFromProduct();
-  renderFeed();
+  renderMatchProducts();
+  renderSidebar();
 
-  if (LK.getProducts().length === 0) openOnboarding();
+  const startId = LK.getCurrentSearchId();
+  if (startId && LK.getSearches().some(s => s.id === startId)) loadSearch(startId);
+  else selectAllPurchases();
 
 })();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Лента закупок — Лекало</title>
+<title>Поиск торгов — Лекало</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -20,67 +20,20 @@
       <span class="brand__word" style="font-size:1.1rem">Лекало</span>
     </a>
 
+    <button class="btn btn-primary btn-block btn-sm" id="new-search-btn" style="margin-top:4px;">+ Новый поиск</button>
+
     <div class="sidebar-block">
-      <div class="product-switch">
-        <div class="product-switch__label">Товар</div>
-        <select id="product-select"></select>
-      </div>
-      <div style="margin-top:8px;"><a href="#" id="add-product-link" style="font-size:0.83rem;color:var(--rust);text-decoration:none;font-weight:600;">+ добавить товар</a></div>
+      <h5>Мои поиски</h5>
+      <nav class="saved-searches" id="saved-searches"></nav>
     </div>
 
     <div class="sidebar-block">
-      <h5>Регион поставки</h5>
-      <div class="filter-group">
-        <select id="f-region">
-          <option value="all">Вся РФ</option>
-          <option value="г. Москва">г. Москва</option>
-          <option value="г. Санкт-Петербург">г. Санкт-Петербург</option>
-          <option value="Алтайский край">Алтайский край</option>
-          <option value="Краснодарский край">Краснодарский край</option>
-          <option value="Приморский край">Приморский край</option>
-          <option value="Ростовская область">Ростовская область</option>
-          <option value="Свердловская область">Свердловская область</option>
-          <option value="Новосибирская область">Новосибирская область</option>
-          <option value="Воронежская область">Воронежская область</option>
-          <option value="Удмуртская Республика">Удмуртская Республика</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="sidebar-block">
-      <h5>Срок подачи</h5>
-      <div class="filter-group">
-        <label for="f-window">Не позже, чем за (дней)</label>
-        <input type="number" id="f-window" min="1" max="60" value="30">
-      </div>
-    </div>
-
-    <div class="sidebar-block">
-      <h5>НМЦК, ₽</h5>
-      <div class="filter-range">
-        <input type="number" id="f-price-min" placeholder="от" value="0">
-        <span style="color:var(--ink-faint)">—</span>
-        <input type="number" id="f-price-max" placeholder="до" value="5000000">
-      </div>
-    </div>
-
-    <div class="sidebar-block">
-      <h5>Площадки</h5>
-      <div class="checklist">
-        <label><input type="checkbox" class="f-source" value="ЕИС" checked> ЕИС (zakupki.gov.ru)</label>
-        <label><input type="checkbox" class="f-source" value="РТС-тендер" checked> РТС-тендер</label>
-        <label><input type="checkbox" class="f-source" value="РТС-маркет" checked> РТС-маркет</label>
-        <label><input type="checkbox" class="f-source" value="Сбербанк-АСТ" checked> Сбербанк-АСТ</label>
-        <label><input type="checkbox" class="f-source" value="Росэлторг" checked> Росэлторг</label>
-      </div>
-    </div>
-
-    <div class="sidebar-block">
-      <h5>Сборные лоты</h5>
-      <div class="radio-pair">
-        <label><input type="radio" name="lot-mode" value="solo"><span>Только чистые</span></label>
-        <label><input type="radio" name="lot-mode" value="any" checked><span>Включая сборные</span></label>
-      </div>
+      <h5>Быстрый доступ</h5>
+      <nav class="saved-searches">
+        <a href="#" class="saved-search" data-quick="all">
+          <span class="saved-search__name">Все закупки</span>
+        </a>
+      </nav>
     </div>
 
     <div class="sidebar-foot">
@@ -96,13 +49,9 @@
     <div class="app-topbar">
       <div class="search-box">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input type="text" id="search-input" placeholder="Поиск по названию, номеру, заказчику…">
+        <input type="text" id="search-input" placeholder="Ключевые слова: перчатки нитриловые, ларингоскоп, бумага А4…">
+        <button class="search-save" id="search-save-btn" title="Сохранить этот поиск">Сохранить поиск</button>
       </div>
-      <select class="sort-select" id="sort-select">
-        <option value="score">Сортировка: по % совпадения</option>
-        <option value="deadline">Сортировка: по сроку подачи</option>
-        <option value="price">Сортировка: по НМЦК</option>
-      </select>
       <div class="user-menu">
         <div style="text-align:right;">
           <div class="user-name" id="user-company">—</div>
@@ -113,46 +62,133 @@
       </div>
     </div>
 
+    <!-- панель фильтров -->
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter-chip">
+        <label>Закон</label>
+        <select id="f-law">
+          <option value="all">44-ФЗ и 223-ФЗ</option>
+          <option value="44-ФЗ">только 44-ФЗ</option>
+          <option value="223-ФЗ">только 223-ФЗ</option>
+        </select>
+      </div>
+      <div class="filter-chip">
+        <label>Этап</label>
+        <select id="f-stage">
+          <option value="active">Подача идёт</option>
+          <option value="all">Любой этап</option>
+          <option value="committee">Работа комиссии</option>
+          <option value="completed">Завершена</option>
+        </select>
+      </div>
+      <div class="filter-chip">
+        <label>Регион</label>
+        <select id="f-region">
+          <option value="all">Вся РФ</option>
+          <option value="г. Москва">г. Москва</option>
+          <option value="г. Санкт-Петербург">г. Санкт-Петербург</option>
+          <option value="Алтайский край">Алтайский край</option>
+          <option value="Краснодарский край">Краснодарский край</option>
+          <option value="Приморский край">Приморский край</option>
+          <option value="Ростовская область">Ростовская область</option>
+          <option value="Свердловская область">Свердловская область</option>
+          <option value="Новосибирская область">Новосибирская область</option>
+          <option value="Воронежская область">Воронежская область</option>
+          <option value="Удмуртская Республика">Удмуртская Республика</option>
+        </select>
+      </div>
+      <div class="filter-chip">
+        <label>НМЦК, ₽</label>
+        <div class="chip-range">
+          <input type="number" id="f-price-min" placeholder="от" value="0">
+          <span>—</span>
+          <input type="number" id="f-price-max" placeholder="до">
+        </div>
+      </div>
+      <div class="filter-chip">
+        <label>Площадка</label>
+        <select id="f-source">
+          <option value="all">Все площадки</option>
+          <option value="ЕИС">ЕИС (zakupki.gov.ru)</option>
+          <option value="РТС-тендер">РТС-тендер</option>
+          <option value="РТС-маркет">РТС-маркет</option>
+          <option value="Сбербанк-АСТ">Сбербанк-АСТ</option>
+          <option value="Росэлторг">Росэлторг</option>
+        </select>
+      </div>
+      <button class="filter-reset" id="filter-reset">Сбросить</button>
+    </div>
+
+    <!-- надстройка: сверка по ТЗ -->
+    <div class="match-bar" id="match-bar">
+      <label class="match-toggle">
+        <input type="checkbox" id="match-enable">
+        <span class="match-toggle__track"><span class="match-toggle__thumb"></span></span>
+        <span class="match-toggle__label">Умная сверка по ТЗ</span>
+      </label>
+      <select id="match-product" disabled></select>
+      <span class="match-hint" id="match-hint">— сверяем текст ТЗ каждой закупки с характеристиками товара и показываем % совпадения</span>
+    </div>
+
     <div class="feed-wrap">
       <div class="feed-header" id="feed-header">
-        <h2>Лента закупок</h2>
-        <span class="feed-count" id="feed-count"></span>
+        <div>
+          <h2 id="feed-title">Все закупки</h2>
+          <span class="feed-count" id="feed-count"></span>
+        </div>
+        <select class="sort-select" id="sort-select">
+          <option value="fresh">Сначала новые</option>
+          <option value="deadline">По сроку подачи</option>
+          <option value="price-desc">НМЦК: по убыванию</option>
+          <option value="price-asc">НМЦК: по возрастанию</option>
+          <option value="score">По % совпадения с товаром</option>
+        </select>
       </div>
 
       <div id="feed-content"></div>
-
-      <div class="empty-state" id="empty-state" style="display:none;">
-        <h3>Пока нет карточки товара</h3>
-        <p>Добавьте первый товар с характеристиками — и мы начнём подбирать закупки, которые ему подходят.</p>
-        <button class="btn btn-primary" id="empty-add-btn" onclick="document.getElementById('add-product-link').click()">Добавить товар</button>
-      </div>
     </div>
   </div>
 
 </div>
 
-<!-- ---------- онбординг: добавить товар ---------- -->
-<div class="modal-backdrop" id="onboarding-modal">
+<!-- ---------- модалка: новый / сохранённый поиск ---------- -->
+<div class="modal-backdrop" id="search-modal">
   <div class="modal-box">
-    <h2>Новая карточка товара</h2>
-    <p style="color:var(--ink-faint);font-size:0.9rem;">Чем точнее характеристики — тем точнее совпадение с ТЗ закупок.</p>
-    <form id="onboarding-form">
+    <h2 id="search-modal-title">Новый поиск</h2>
+    <p style="color:var(--ink-faint);font-size:0.9rem;">Задайте ключевые слова и минус-слова — мы будем присылать новые закупки по этому шаблону.</p>
+    <form id="search-form">
       <div class="field">
-        <label for="np-name">Название товара</label>
-        <input type="text" id="np-name" placeholder="Например: Перчатки нитриловые смотровые" required>
+        <label for="sf-name">Название поиска</label>
+        <input type="text" id="sf-name" placeholder="Например: Перчатки нитриловые" required>
       </div>
       <div class="field">
-        <label for="np-ktru">Код КТРУ / ОКПД2</label>
-        <input type="text" id="np-ktru" placeholder="32.50.50.190-00001458">
+        <label for="sf-query">Ключевые слова</label>
+        <input type="text" id="sf-query" placeholder="перчатки нитриловые смотровые">
+        <div class="field-hint">Через пробел. Закупка попадёт в ленту, если содержит любое из слов.</div>
       </div>
       <div class="field">
-        <label>Характеристики</label>
-        <div id="attrs-wrap"></div>
-        <button type="button" class="add-attr-btn" id="add-attr-btn">+ добавить характеристику</button>
+        <label for="sf-minus">Минус-слова</label>
+        <input type="text" id="sf-minus" placeholder="боксёрские латексные">
+        <div class="field-hint">Закупки с этими словами будут исключены из ленты.</div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="sf-law">Закон</label>
+          <select id="sf-law">
+            <option value="all">44-ФЗ и 223-ФЗ</option>
+            <option value="44-ФЗ">только 44-ФЗ</option>
+            <option value="223-ФЗ">только 223-ФЗ</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sf-window">Срок подачи не позже (дней)</label>
+          <input type="number" id="sf-window" min="1" max="90" value="30">
+        </div>
       </div>
       <div style="display:flex; gap:10px; margin-top:10px;">
-        <button type="button" class="btn btn-ghost btn-block" id="onboarding-skip">Позже</button>
-        <button type="submit" class="btn btn-primary btn-block">Сохранить товар</button>
+        <button type="button" class="btn btn-ghost" id="search-delete" style="display:none; color:var(--bad); border-color:var(--bad);">Удалить</button>
+        <button type="button" class="btn btn-ghost btn-block" id="search-cancel">Отмена</button>
+        <button type="submit" class="btn btn-primary btn-block">Сохранить поиск</button>
       </div>
     </form>
   </div>
