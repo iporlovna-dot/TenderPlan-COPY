@@ -303,7 +303,9 @@
           <div class="facts-grid">${facts}</div>
         </div>
         <div class="tender-actions">
-          <a class="btn btn-primary btn-sm" href="#" onclick="return false;">Открыть на площадке</a>
+          ${p.href
+            ? `<a class="btn btn-primary btn-sm" href="${lkEscape(p.href)}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
+            : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:not-allowed;" title="Ссылка на площадку недоступна">Ссылка недоступна</span>`}
           <a class="btn btn-ghost btn-sm" href="#" onclick="return false;">Скрыть</a>
         </div>
       </div>`;
