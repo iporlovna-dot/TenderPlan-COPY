@@ -291,6 +291,14 @@
       ["Регион поставки", p.region]
     ].map(([k, v]) => `<div class="fact"><span class="fact__k">${k}</span><span class="fact__v">${lkEscape(String(v))}</span></div>`).join("");
 
+    const docsHtml = (p.documents && p.documents.length) ? `
+        <div class="detail-block">
+          <div class="detail-block__title">Документы (${p.documents.length})</div>
+          <div class="doc-list">
+            ${p.documents.map(d => `<a class="doc-link" href="${lkEscape(d.url)}" target="_blank" rel="noopener noreferrer"><span class="doc-ic">📎</span><span class="doc-name">${lkEscape(d.name)}</span><span class="doc-dl">скачать ↓</span></a>`).join("")}
+          </div>
+        </div>` : "";
+
     return `
       <div class="tender-detail">
         ${m ? matchDetail(m) : ""}
@@ -302,6 +310,7 @@
           <div class="detail-block__title">Условия закупки</div>
           <div class="facts-grid">${facts}</div>
         </div>
+        ${docsHtml}
         <div class="tender-actions">
           ${p.href
             ? `<a class="btn btn-primary btn-sm" href="${lkEscape(p.href)}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
