@@ -11,3 +11,6 @@ __pycache__/
 # временное / скачанные ТЗ с ПДн
 scratchpad/
 *.log
+
+# секреты фронта (токен Telegram-бота) — не коммитить
+site/js/secrets.js
