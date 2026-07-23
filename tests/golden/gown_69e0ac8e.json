@@ -1,0 +1,172 @@
+{
+  "id": "gown_69e0ac8e",
+  "source": "Закупка 69e0ac8e (поставка мед. халатов для оснащения школ, Москва). Источник требований — ХАРАКТЕРИСТИКИ ПОЗИЦИИ ЕИС (не общий 44-ФЗ ТЗ-докс, где контрактная обвязка). Товар: Халат Бонус ХМ 2/1Ю бязь. Экспертная истина: поставляли → подходит 100% (7/7).",
+  "expected_verdict": "eligible",
+  "expected_score": 100,
+  "score_tolerance": 0,
+  "synonyms": {},
+  "product": {
+    "id": "gown-bonus-hm-2-1yu",
+    "name": "Халат медицинский женский «Бонус ХМ 2/1Ю», бязь, белый",
+    "ktru": [
+      "14.12.30.190"
+    ],
+    "attributes": [
+      {
+        "key": "материал",
+        "value": "бязь",
+        "status": "declared"
+      },
+      {
+        "key": "назначение",
+        "value": "для защиты от общих производственных загрязнений",
+        "status": "declared"
+      },
+      {
+        "key": "страна_происхождения",
+        "value": "Российская Федерация",
+        "status": "declared"
+      },
+      {
+        "key": "рост",
+        "value": "170-176 см",
+        "status": "declared"
+      },
+      {
+        "key": "состав",
+        "value": "100% хлопок",
+        "status": "declared"
+      },
+      {
+        "key": "состав_комплекта",
+        "value": "халат",
+        "status": "declared"
+      },
+      {
+        "key": "гост",
+        "value": "24760-81",
+        "status": "declared"
+      },
+      {
+        "key": "цвет",
+        "value": "белый",
+        "status": "declared"
+      },
+      {
+        "key": "пол",
+        "value": "женский",
+        "status": "declared"
+      },
+      {
+        "key": "силуэт",
+        "value": "прямой",
+        "status": "declared"
+      },
+      {
+        "key": "застежка",
+        "value": "центральная бортовая на пять петель и пуговиц",
+        "status": "declared"
+      },
+      {
+        "key": "выточки",
+        "value": "две нагрудные",
+        "status": "declared"
+      },
+      {
+        "key": "полочка",
+        "value": "цельнокроеная",
+        "status": "declared"
+      },
+      {
+        "key": "карманы",
+        "value": "три накладных, отделаны в цвет основной ткани",
+        "status": "declared"
+      },
+      {
+        "key": "рукав",
+        "value": "втачной одношовный, низ с манжетом на петлю и пуговицу",
+        "status": "declared"
+      },
+      {
+        "key": "воротник",
+        "value": "втачной отложной",
+        "status": "declared"
+      },
+      {
+        "key": "спинка",
+        "value": "цельнокроеная, с хлястиком в области талии",
+        "status": "declared"
+      },
+      {
+        "key": "размер",
+        "value": "48-50/170-176",
+        "status": "declared"
+      }
+    ]
+  },
+  "requirements": [
+    {
+      "key": "материал",
+      "operator": "eq",
+      "value": "Бязь",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материал: Бязь"
+    },
+    {
+      "key": "застежка",
+      "operator": "eq",
+      "value": "центральная бортовая на пять петель и пуговиц",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Вид застежки: петли, пуговицы"
+    },
+    {
+      "key": "назначение",
+      "operator": "eq",
+      "value": "Для защиты от общих производственных загрязнений",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Назначение: Для защиты от общих производственных загрязнений"
+    },
+    {
+      "key": "размер",
+      "operator": "eq",
+      "value": "48-50",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Размер модели: 48-50"
+    },
+    {
+      "key": "рост",
+      "operator": "eq",
+      "value": "170-176",
+      "unit": "см",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Рост: 170-176 см"
+    },
+    {
+      "key": "цвет",
+      "operator": "eq",
+      "value": "белый",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Цвет: белый"
+    },
+    {
+      "key": "страна_происхождения",
+      "operator": "eq",
+      "value": "Российская Федерация",
+      "unit": "",
+      "hardness": "soft",
+      "type": "documentary",
+      "raw": "Страна происхождения товара: Российская Федерация"
+    }
+  ]
+}
