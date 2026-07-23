@@ -63,6 +63,8 @@ function map(it) {
   let documents = [];
   let lots = [{ name: it.name || "Позиция", qty: "—", price }];
   let okpd = "";
+  let deliveryDays = null;
+  let deliveryPlace = "";
   const card = fetchCard(aid);
   if (card) {
     documents = (card.files || []).map(f => ({
@@ -79,6 +81,16 @@ function map(it) {
       }));
       okpd = lots[0].okpd || "";
     }
+    if (Array.isArray(card.deliveries) && card.deliveries.length) {
+      const now = new Date();
+      const days = card.deliveries.map(x => {
+        if (typeof x.periodDaysTo === "number") return x.periodDaysTo;
+        const dt = parseListDate(x.periodDateTo) || (x.periodDateTo ? new Date(x.periodDateTo) : null);
+        return dt ? Math.max(0, Math.round((dt - now) / DAY)) : null;
+      }).filter(x => typeof x === "number");
+      if (days.length) deliveryDays = Math.max(...days);
+      deliveryPlace = card.deliveries[0].deliveryPlace || "";
+    }
   }
 
   return {
@@ -89,7 +101,7 @@ function map(it) {
     customerInn: cust.inn || "",
     law: it.federalLawName || "44-ФЗ",
     source: "Портал поставщиков (mos.ru)",
-    region: (it.regionName || "").replace(/^г\s+/, "г. "),
+    region: (it.regionName || "").trim().replace(/^г\s+/, "г. "),
     okpd,
     price,
     stage: it.stateId === 19000002 ? "active" : (end && end > now ? "active" : "committee"),
@@ -97,6 +109,8 @@ function map(it) {
     publishedDaysAgo: begin ? Math.max(0, Math.round((now - begin) / DAY)) : 0,
     guaranteeApp: 0, guaranteeContract: 0, prepayment: 0,
     href: "https://zakupki.mos.ru/auction/" + aid,
+    deliveryDays,
+    deliveryPlace,
     lots,
     documents,
     matches: {}

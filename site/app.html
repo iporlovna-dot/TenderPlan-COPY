@@ -65,6 +65,33 @@
     <!-- панель фильтров -->
     <div class="filter-bar" id="filter-bar">
       <div class="filter-chip">
+        <label>Заказчик</label>
+        <input type="text" id="f-customer" placeholder="ИНН или название">
+      </div>
+      <div class="filter-chip">
+        <label>Регион</label>
+        <select id="f-region"><option value="all">Вся РФ</option></select>
+      </div>
+      <div class="filter-chip">
+        <label>Срок поставки</label>
+        <select id="f-delivery">
+          <option value="all">Любой</option>
+          <option value="7">до 7 дней</option>
+          <option value="14">до 14 дней</option>
+          <option value="30">до 30 дней</option>
+          <option value="60">до 60 дней</option>
+          <option value="90">до 90 дней</option>
+        </select>
+      </div>
+      <div class="filter-chip">
+        <label>Сумма (НМЦК), ₽</label>
+        <div class="chip-range">
+          <input type="number" id="f-price-min" placeholder="от" value="0">
+          <span>—</span>
+          <input type="number" id="f-price-max" placeholder="до">
+        </div>
+      </div>
+      <div class="filter-chip">
         <label>Закон</label>
         <select id="f-law">
           <option value="all">44-ФЗ и 223-ФЗ</option>
@@ -82,39 +109,8 @@
         </select>
       </div>
       <div class="filter-chip">
-        <label>Регион</label>
-        <select id="f-region">
-          <option value="all">Вся РФ</option>
-          <option value="г. Москва">г. Москва</option>
-          <option value="г. Санкт-Петербург">г. Санкт-Петербург</option>
-          <option value="Алтайский край">Алтайский край</option>
-          <option value="Краснодарский край">Краснодарский край</option>
-          <option value="Приморский край">Приморский край</option>
-          <option value="Ростовская область">Ростовская область</option>
-          <option value="Свердловская область">Свердловская область</option>
-          <option value="Новосибирская область">Новосибирская область</option>
-          <option value="Воронежская область">Воронежская область</option>
-          <option value="Удмуртская Республика">Удмуртская Республика</option>
-        </select>
-      </div>
-      <div class="filter-chip">
-        <label>НМЦК, ₽</label>
-        <div class="chip-range">
-          <input type="number" id="f-price-min" placeholder="от" value="0">
-          <span>—</span>
-          <input type="number" id="f-price-max" placeholder="до">
-        </div>
-      </div>
-      <div class="filter-chip">
         <label>Площадка</label>
-        <select id="f-source">
-          <option value="all">Все площадки</option>
-          <option value="ЕИС">ЕИС (zakupki.gov.ru)</option>
-          <option value="РТС-тендер">РТС-тендер</option>
-          <option value="РТС-маркет">РТС-маркет</option>
-          <option value="Сбербанк-АСТ">Сбербанк-АСТ</option>
-          <option value="Росэлторг">Росэлторг</option>
-        </select>
+        <select id="f-source"><option value="all">Все площадки</option></select>
       </div>
       <button class="filter-reset" id="filter-reset">Сбросить</button>
     </div>

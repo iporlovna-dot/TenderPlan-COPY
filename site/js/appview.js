@@ -20,7 +20,8 @@
   const company = LK.getCompany();
 
   const DEFAULT_FILTERS = () => ({
-    law: "all", stage: "active", region: "all",
+    customer: "", region: "all", delivery: "all",
+    law: "all", stage: "active",
     priceMin: 0, priceMax: null, source: "all", windowDays: 999
   });
 
@@ -97,9 +98,11 @@
     state.minus = s.minus || "";
     const f = s.filters || {};
     state.filters = {
+      customer: f.customer || "",
+      region: f.region || "all",
+      delivery: f.delivery || "all",
       law: f.law || "all",
       stage: f.stage || "active",
-      region: f.region || "all",
       priceMin: f.priceMin ?? 0,
       priceMax: f.priceMax ?? null,
       source: (f.sources && f.sources.length === 1) ? f.sources[0] : "all",
@@ -123,12 +126,30 @@
 
   function syncControlsFromState() {
     document.getElementById("search-input").value = state.query;
+    document.getElementById("f-customer").value = state.filters.customer || "";
+    document.getElementById("f-delivery").value = state.filters.delivery || "all";
     document.getElementById("f-law").value = state.filters.law;
     document.getElementById("f-stage").value = state.filters.stage;
     document.getElementById("f-region").value = state.filters.region;
     document.getElementById("f-price-min").value = state.filters.priceMin || 0;
     document.getElementById("f-price-max").value = state.filters.priceMax ?? "";
     document.getElementById("f-source").value = state.filters.source;
+  }
+
+  // регион и площадка — из реальных данных
+  function populateFacets() {
+    const all = LK.allPurchases();
+    fillSelect("f-region", "all", "Вся РФ",
+      [...new Set(all.map(p => p.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru")));
+    fillSelect("f-source", "all", "Все площадки",
+      [...new Set(all.map(p => p.source).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru")));
+  }
+  function fillSelect(id, allValue, allLabel, values) {
+    const sel = document.getElementById(id);
+    const cur = sel.value || allValue;
+    sel.innerHTML = `<option value="${allValue}">${allLabel}</option>` +
+      values.map(v => `<option value="${lkEscape(v)}">${lkEscape(v)}</option>`).join("");
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : allValue;
   }
 
   // ---------- фильтры ----------
@@ -139,6 +160,8 @@
     renderSidebar();
     renderFeed();
   });
+  document.getElementById("f-customer").addEventListener("input", (e) => { state.filters.customer = e.target.value.trim(); renderFeed(); });
+  document.getElementById("f-delivery").addEventListener("change", (e) => { state.filters.delivery = e.target.value; renderFeed(); });
   document.getElementById("f-law").addEventListener("change", (e) => { state.filters.law = e.target.value; renderFeed(); });
   document.getElementById("f-stage").addEventListener("change", (e) => { state.filters.stage = e.target.value; renderFeed(); });
   document.getElementById("f-region").addEventListener("change", (e) => { state.filters.region = e.target.value; renderFeed(); });
@@ -215,9 +238,18 @@
 
   function passesFilters(p) {
     const f = state.filters;
+    if (f.customer) {
+      const hay = (p.customer + " " + (p.customerInn || "")).toLowerCase();
+      if (!hay.includes(f.customer.toLowerCase())) return false;
+    }
+    if (f.region !== "all" && p.region !== f.region) return false;
+    if (f.delivery !== "all") {
+      const max = Number(f.delivery);
+      // неизвестный срок поставки не прячем
+      if (p.deliveryDays != null && p.deliveryDays > max) return false;
+    }
     if (f.law !== "all" && p.law !== f.law) return false;
     if (f.stage !== "all" && p.stage !== f.stage) return false;
-    if (f.region !== "all" && p.region !== f.region) return false;
     if (f.source !== "all" && p.source !== f.source) return false;
     if (p.price < (f.priceMin || 0)) return false;
     if (f.priceMax != null && p.price > f.priceMax) return false;
@@ -287,8 +319,9 @@
       ["Обеспечение заявки", p.guaranteeApp ? lkFormatMoney(p.guaranteeApp) : "не требуется"],
       ["Обеспечение контракта", p.guaranteeContract ? lkFormatMoney(p.guaranteeContract) : "не требуется"],
       ["Аванс", p.prepayment ? p.prepayment + "%" : "нет"],
+      ["Срок поставки", p.deliveryDays != null ? `${p.deliveryDays} ${lkPlural(p.deliveryDays, ["день","дня","дней"])}` : "—"],
       ["Опубликована", p.publishedDaysAgo === 0 ? "сегодня" : `${p.publishedDaysAgo} ${lkPlural(p.publishedDaysAgo, ["день","дня","дней"])} назад`],
-      ["Регион поставки", p.region]
+      ["Место поставки", p.deliveryPlace || p.region || "—"]
     ].map(([k, v]) => `<div class="fact"><span class="fact__k">${k}</span><span class="fact__v">${lkEscape(String(v))}</span></div>`).join("");
 
     const docsHtml = (p.documents && p.documents.length) ? `
@@ -481,6 +514,7 @@
   document.getElementById("feed-count").textContent = "загружаем закупки…";
 
   LK.loadPurchases().then(() => {
+    populateFacets();  // регион/площадка из реальных данных
     // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
     selectAllPurchases();
   });
