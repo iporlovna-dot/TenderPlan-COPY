@@ -467,8 +467,11 @@
   renderMatchProducts();
   renderSidebar();
 
-  const startId = LK.getCurrentSearchId();
-  if (startId && LK.getSearches().some(s => s.id === startId)) loadSearch(startId);
-  else selectAllPurchases();
+  document.getElementById("feed-count").textContent = "загружаем закупки…";
+
+  LK.loadPurchases().then(() => {
+    // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
+    selectAllPurchases();
+  });
 
 })();

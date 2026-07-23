@@ -141,8 +141,7 @@ const LK = (() => {
   // Стандартная карточка закупки + опциональный matches{productId → MatchResult}.
   // matches заполнен только там, где имеет смысл сверять с демо-товарами.
 
-  function allPurchases() {
-    return [
+  const MOCK_PURCHASES = [
       {
         id: "p1", number: "0372200034526000112",
         title: "Поставка перчаток смотровых нитриловых неопудренных для нужд стационара",
@@ -429,14 +428,28 @@ const LK = (() => {
         matches: {}
       }
     ];
+
+  // реальные закупки грузятся из data/purchases.json (снапшот Портала поставщиков),
+  // моки — фолбэк для file:// и офлайна.
+  let _purchases = null;
+  async function loadPurchases() {
+    try {
+      const r = await fetch("data/purchases.json", { cache: "no-store" });
+      if (r.ok) {
+        const d = await r.json();
+        if (d && Array.isArray(d.purchases) && d.purchases.length) _purchases = d.purchases;
+      }
+    } catch (e) { /* file:// или нет сети → остаёмся на моках */ }
+    return allPurchases();
   }
+  function allPurchases() { return _purchases || MOCK_PURCHASES; }
 
   return {
     getCompany, setCompany, clearSession, isLoggedIn,
     getProducts, setProducts, addProduct,
     getSearches, setSearches, addSearch, updateSearch, deleteSearch,
     getCurrentSearchId, setCurrentSearchId,
-    seedDemo, allPurchases
+    seedDemo, allPurchases, loadPurchases
   };
 })();
 
