@@ -392,8 +392,8 @@
           <div class="tender-meta">
             <span><b>№${p.number}</b></span>
             <span>${lkEscape(p.customer)}</span>
-            <span>${lkEscape(p.region)}</span>
-            <span>ОКПД2 ${lkEscape(p.okpd)}</span>
+            ${p.region ? `<span>${lkEscape(p.region)}</span>` : ""}
+            ${p.okpd ? `<span>ОКПД2 ${lkEscape(p.okpd)}</span>` : ""}
           </div>
           <div class="tender-meta tender-meta--strong">
             <span>НМЦК: <b>${lkFormatMoney(p.price)}</b></span>
