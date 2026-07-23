@@ -77,6 +77,52 @@ def test_wrong_material_disqualifies():
     assert res.verdict == Verdict.DISQUALIFIED
 
 
+def test_eq_number_in_string_with_unit_passes():
+    # карточка «2,5 В» (строка, запятичная десятичная) ↔ требование 2.5 / «В»
+    p = _product(напряжение="2,5 В")
+    r = [_req("напряжение", "eq", 2.5, unit="В")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_eq_number_matches_but_unit_differs_violation():
+    # то же число, но ЕДИНИЦА другая: «2,5 А» не должно подтвердить «2,5 В»
+    p = _product(напряжение="2,5 А")
+    r = [_req("напряжение", "eq", 2.5, unit="В")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
+def test_eq_number_differs_violation():
+    p = _product(напряжение="3 В")
+    r = [_req("напряжение", "eq", 2.5, unit="В")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
+def test_eq_unit_absent_on_card_is_lenient():
+    # карточка без единицы — сверяем только число (частый случай неполной карточки)
+    p = _product(напряжение="2,5")
+    r = [_req("напряжение", "eq", 2.5, unit="В")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_gte_unit_mismatch_violation():
+    # 3 ≥ 2.5 по числу, но «А» ≠ «В» → не проходит (иначе амперы «подтвердят» вольты)
+    p = _product(ток="3 А")
+    r = [_req("ток", "gte", 2.5, unit="В")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
+def test_gte_comma_decimal_with_unit_passes():
+    p = _product(толщина="0,11 мм")
+    r = [_req("толщина", "gte", 0.11, unit="мм")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
 def test_full_match_is_eligible_100():
     p = _product(материал="нитрил", размеры=["S", "M", "L"], рег_удостоверение="есть")
     r = [_req("материал", "eq", "нитрильный латекс"),

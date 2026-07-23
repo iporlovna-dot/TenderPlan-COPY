@@ -33,6 +33,46 @@ def _norm_str(v: object) -> str:
     return str(v).strip().lower()
 
 
+_NUM_RE = re.compile(r"-?\d+(?:[.,]\d+)?")
+_UNIT_RE = re.compile(r"\s*([^\W\d_]+|%|°)")  # единица — токен СРАЗУ после числа
+
+
+def _num_unit(v: object) -> tuple:
+    """Достаёт (число, единицу) из значения: «2,5 В» -> (2.5, 'b'), 50000 -> (50000.0, '').
+
+    Единица — буквенный токен СРАЗУ за числом (В, мм, дптр, %), свёрнутый через
+    гомоглифы (В↔B, А↔A), чтобы «В»/«в», «мм»/«MM» сравнивались одинаково. Берём токен
+    после числа, а не все буквы строки — иначе компаундные значения («1-4 дптр: 1; 4-10
+    дптр: 2») дают мусорную единицу. Нет токена сразу за числом → единица пустая (мягко).
+    (None, '') — если числа нет. bool не число (True/False не путать с 1/0)."""
+    if isinstance(v, bool):
+        return None, ""
+    if isinstance(v, (int, float)):
+        return float(v), ""
+    if isinstance(v, str):
+        s = v.replace("\xa0", " ")
+        m = _NUM_RE.search(s)
+        if not m:
+            return None, ""
+        um = _UNIT_RE.match(s, m.end())
+        return float(m.group(0).replace(",", ".")), (_fold(um.group(1)) if um else "")
+    return None, ""
+
+
+def _units_compatible(au: str, ru: str) -> bool:
+    """Единицы совместимы, если совпадают ИЛИ хотя бы одна не задана (карта/ТЗ часто
+    опускают единицу). Заданы и различны — НЕ совместимы: «В» ≠ «А», иначе вольты
+    ложно «подтвердятся» амперами."""
+    return not (au and ru and au != ru)
+
+
+def _req_unit(req: Requirement) -> str:
+    """Единица требования: явное поле unit (если извлечено), иначе — из строки value."""
+    if req.unit:
+        return _fold(req.unit)
+    return _num_unit(req.value)[1]
+
+
 # Кириллица → латиница для визуально одинаковых букв. Размеры/коды в ТЗ пишут вперемешку
 # («М» кир. ≡ «M» лат., «С»≡«C», «Х»≡«X») — без этого набор размеров ложно не сходится.
 _HOMOGLYPHS = str.maketrans({
@@ -61,21 +101,26 @@ def evaluate(req: Requirement, attr: Optional[Attribute],
     op = req.operator
 
     if op == Operator.EQ:
-        ok = _eq(attr.value, req.value, synonyms)
+        num = _eq_numeric(attr.value, req)     # «2,5 В» vs 2.5/«В»: число+единица
+        ok = num if num is not None else _eq(attr.value, req.value, synonyms)
         return _pass_or_violation(req, ok, attr)
 
     if op in (Operator.GTE, Operator.LTE):
-        pv, rv = _to_number(attr.value), _to_number(req.value)
+        pv, au = _num_unit(attr.value)
+        rv = _to_number(req.value)
         if pv is None or rv is None:
             return Check(req, Status.GAP, note="значение не распознано как число")
+        if not _units_compatible(au, _req_unit(req)):
+            return _pass_or_violation(req, False, attr)   # напр. «3 А» ≠ «≥2,5 В»
         ok = pv >= rv if op == Operator.GTE else pv <= rv
         note = "проходит впритык" if ok and pv == rv else ""
         return _pass_or_violation(req, ok, attr, note=note)
 
     if op == Operator.RANGE:
-        pv = _to_number(attr.value)
+        pv, au = _num_unit(attr.value)
         lo, hi = _to_number(req.value[0]), _to_number(req.value[1])
-        ok = pv is not None and lo <= pv <= hi
+        ok = (pv is not None and _units_compatible(au, _req_unit(req))
+              and lo <= pv <= hi)
         return _pass_or_violation(req, ok, attr)
 
     if op == Operator.ONE_OF:
@@ -100,6 +145,19 @@ def evaluate(req: Requirement, attr: Optional[Attribute],
         return _pass_or_violation(req, True, attr)
 
     return Check(req, Status.GAP, note="неизвестный оператор")
+
+
+def _eq_numeric(attr_value: object, req: Requirement) -> Optional[bool]:
+    """Числовая сверка eq с учётом единицы. None — если не оба значения числовые
+    (тогда решает строковая _eq). Иначе: число совпало И единица совместима.
+    «2,5 В»↔2.5/«В» → True; «2,5 А»↔2.5/«В» → False (единица другая)."""
+    an, _au = _num_unit(attr_value)
+    rn, _ru = _num_unit(req.value)
+    if an is None or rn is None:
+        return None
+    if an != rn:
+        return False
+    return _units_compatible(_au, _req_unit(req))
 
 
 def _eq(pv: object, rv: object, synonyms: Optional[dict]) -> bool:
