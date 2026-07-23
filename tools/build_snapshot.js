@@ -16,8 +16,9 @@ const { collectEis } = require("./sources/eis");
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
 
-const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 200);
-const EIS_TAKE = Number(process.env.LK_EIS_TAKE || 120);
+const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 400);
+const EIS_LIST = Number(process.env.LK_EIS_TAKE || 600);   // сколько ЕИС тянуть списком (дёшево)
+const EIS_DOCS = Number(process.env.LK_EIS_DOCS || 150);   // для скольких ближайших качать документы
 
 function endTs(p) { return p.endDate ? new Date(p.endDate).getTime() : Infinity; }
 
@@ -27,7 +28,7 @@ async function main() {
   // обе площадки — параллельно
   const [portal, eis] = await Promise.all([
     collectPortal(PORTAL_TAKE).catch(e => (console.error("Портал: ошибка —", e.message), [])),
-    collectEis(EIS_TAKE).catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
+    collectEis(EIS_LIST, EIS_DOCS).catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
   ]);
   purchases = purchases.concat(portal, eis);
 

@@ -993,6 +993,9 @@ section { padding: 78px 0; }
 .doc-name { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-dl { flex-shrink: 0; font-size: 0.78rem; font-weight: 600; color: var(--rust); }
 
+/* «показать ещё» */
+.load-more { margin-top: 8px; }
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 1024px) {

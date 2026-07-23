@@ -408,7 +408,11 @@
 
   // ---------- лента ----------
 
-  function renderFeed() {
+  const PAGE = 60;
+  let shownCount = PAGE;
+
+  function renderFeed(resetPage = true) {
+    if (resetPage) shownCount = PAGE;
     const feed = document.getElementById("feed-content");
     const title = document.getElementById("feed-title");
     const count = document.getElementById("feed-count");
@@ -431,11 +435,8 @@
 
     list.sort(sortFn);
 
-    count.textContent = list.length
-      ? `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}`
-      : "ничего не найдено";
-
     if (!list.length) {
+      count.textContent = "ничего не найдено";
       feed.innerHTML = `<div class="empty-state">
         <h3>Ничего не найдено</h3>
         <p>Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап.</p>
@@ -443,10 +444,23 @@
       return;
     }
 
-    feed.innerHTML = list.map(cardHtml).join("");
+    const shown = Math.min(shownCount, list.length);
+    count.textContent =
+      `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}` +
+      (shown < list.length ? ` · показаны ${shown}` : "");
+
+    let html = list.slice(0, shown).map(cardHtml).join("");
+    if (shown < list.length) {
+      html += `<button class="btn btn-ghost btn-block load-more" id="load-more">
+        Показать ещё ${Math.min(PAGE, list.length - shown)} из ${list.length - shown}</button>`;
+    }
+    feed.innerHTML = html;
+
     feed.querySelectorAll(".tender-card__main").forEach(el => {
       el.addEventListener("click", () => el.closest(".tender-card").classList.toggle("is-open"));
     });
+    const more = document.getElementById("load-more");
+    if (more) more.addEventListener("click", () => { shownCount += PAGE; renderFeed(false); });
   }
 
   // ---------- модалка поиска ----------
@@ -534,8 +548,8 @@
     populateFacets();  // регион/площадка из реальных данных
     // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
     selectAllPurchases();
-    // живое устаревание: раз в минуту перерисовываем, просроченные отваливаются сами
-    setInterval(renderFeed, 60000);
+    // живое устаревание: раз в минуту перерисовываем (без сброса пагинации)
+    setInterval(() => renderFeed(false), 60000);
   });
 
 })();
