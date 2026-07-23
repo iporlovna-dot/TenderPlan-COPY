@@ -1,75 +1,131 @@
-# CLAUDE.md — SpecMatch (tender-matcher)
+# CLAUDE.md — Лекало (поиск торгов)
 
-> Проектная памятка. Глобальные правила (про скиллы) грузятся отдельно из
-> `~/.claude/CLAUDE.md` — здесь их НЕ дублируем. Статус/дорожная карта — в `plan.md`,
-> здесь только специфика проекта: правило синка, карта модулей, запуск, git.
+> Операционная памятка проекта. Читаю в начале каждой сессии. Дорожная карта и
+> статус — в [`plan.md`](plan.md). Здесь — что это, как устроено, как обновлять
+> данные и деплоить, и грабли, на которые уже наступали.
 
-**SpecMatch** — сервис подбора госзакупок (44-ФЗ/223-ФЗ) под товар поставщика по
-**фактическим характеристикам ТЗ**, а не по классификаторам ОКПД2/КТРУ. Полное описание,
-архитектура, статус и этапы — в [`plan.md`](plan.md) (Часть I — действия и приоритеты).
+**Лекало** — собственная площадка поиска госзакупок (аналог Тендерплана/Контура):
+поиск по ключевым словам, лента закупок 44/223-ФЗ со всех площадок, фильтры,
+скачивание документов. Сверху — дифференциатор: сверка своего ТЗ с ТЗ закупки
+(надстройка). Замысел: **независимость от чужих агрегаторов** — свой сбор данных.
 
----
-
-## Правило: синхронизация с plan.md
-
-`plan.md` — источник истины по замыслу и статусу. Структура: **Часть I** (действия/приоритеты)
-сверху, **Часть II** (справка) ниже. В начале сессии читаю Часть I и этот файл. **После каждой
-завершённой и проверенной правки** сразу отмечаю сделанное в `plan.md`: §2 «Сделано», §3 «Прямо
-сейчас», §4 «Этапы» — `[x]` сделано / `[~]` в работе / `[ ]` нет. Не «авансом». Состояние живёт
-в файлах, а не в контексте — это спасает при заполнении контекста.
+> ⚠️ **Историческая справка.** Раньше проект назывался «SpecMatch» и строился как
+> надстройка на API Тендерплана. От этого ушли. Если встретишь в старых заметках
+> «SpecMatch / Тендерплан как источник / src/matcher.py» — это устарело.
 
 ---
 
-## Карта модулей (`src/`)
+## Архитектура (как есть сейчас)
 
-| Файл | Что делает | LLM |
-|---|---|---|
-| `schema.py` | модели: `Product`, `Requirement`, `MatchResult`, `Purchase` (+`company_id`) | нет |
-| `matcher.py` | ядро: операторы, скоринг, дисквалификация, гомоглифы кир/лат | нет |
-| `filter.py` | воронка-фильтры: ОКПД2/КТРУ + слова + срок подачи + регион (шаг 2) | нет |
-| `ktru.py` | сверка КТРУ товар↔позиция закупки с градацией `exact`/`group`/`none` (шаг 2) | нет |
-| `keymatch.py` | семантика ТЗ↔карточка до матчера: `align_keys` (имена полей) + `align_values` (значения) | Haiku |
-| `parser.py` | `.docx/.pdf/.xlsx/.txt` → текст + таблицы (шаг 5); PDF-скан → OCR-fallback | нет |
-| `ocr.py` | OCR сканов-PDF: tesseract → easyocr (шаг 5) | нет |
-| `models.py` | маршрутизация Haiku/Sonnet/Opus по сложности (`pick_model`) | — |
-| `extractor.py` | извлечение требований из ТЗ (шаг 6) — ждёт `ANTHROPIC_API_KEY` | Sonnet/Opus |
-| `source.py` | интерфейс источника закупок (заменяемый адаптер) | нет |
-| `tenderplan.py` | адаптер Тендерплана: discovery по фиду + забор ТЗ с zakupki | нет |
+**Статический снапшот + статический фронт.** Никакого живого бэкенда в проде:
 
-`scripts/`: `run_match.py` (товар+требования→вердикт) · `run_pipeline.py` (документ→вердикт) ·
-`run_auto.py` (сквозной автопрогон, флаг `--collect-only` работает без API) ·
-`tp_probe.py` (снять схемы Тендерплана) · `setup_ca_bundle.py` (CA-бандл Минцифры).
-
-**Инвариант:** LLM в ядро (`matcher.py`) не заходит — сюда приходит уже структура.
-Мультиарендность (`company_id`) живёт на уровне БД/API, не в ядре.
-
----
-
-## Запуск
-
-```bash
-# зависимости
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-
-# ядро на готовых требованиях (без LLM)
-.venv/bin/python scripts/run_match.py data/products/gloves_nitrile.json \
-    data/golden/gloves_med_6a5f0d4e.json data/profiles/gloves.json
-
-# автосбор ТЗ по перчаткам (на подписке Тендерплана, без Anthropic)
-export TENDERPLAN_TOKEN=...            # PAT со scope resources+keys+relations+marks
-.venv/bin/python scripts/setup_ca_bundle.py            # один раз: CA-бандл zakupki
-.venv/bin/python scripts/run_auto.py data/profiles/gloves.json data/products/ \
-    --collect-only --out scratchpad/tz_texts
-
-# тесты
-.venv/bin/python tests/test_matcher.py && .venv/bin/python tests/test_filter.py
+```
+Node-сборщики (tools/) → site/data/purchases.json → статический фронт (site/) → nginx на VPS
+        ↑ гоняются на машине пользователя (гос-сайты блокируют IP дата-центров)
 ```
 
-Ключи в окружении, не в коде и не в чате: `TENDERPLAN_TOKEN`, `ANTHROPIC_API_KEY`.
+- **Фронт** (`site/`) — чистый HTML/CSS/JS, состояние в localStorage. Грузит
+  `data/purchases.json` и рендерит ленту с поиском/фильтрами/пагинацией. ТЗ-сверка —
+  надстройка (тумблер), на снапшоте пока без данных `matches`.
+- **Сборщики** (`tools/`) — тянут закупки с площадок, нормализуют в единую схему,
+  пишут `site/data/purchases.json`.
+- **Бэкенд** (`server/`, FastAPI) — **написан, но в проде НЕ работает**: VPS
+  заблокирован источниками (см. грабли). Оставлен на будущее (БД-бэкенд).
+
+### Карта файлов
+
+| Путь | Что |
+|---|---|
+| `site/index.html` | лендинг · `site/app.html` — приложение (лента) · `login/register.html` |
+| `site/js/config.js` | `window.LK_API_BASE` — "" = статический снапшот; URL = живой API |
+| `site/js/app.js` | стор `LK` (localStorage), моки-фолбэк, `loadPurchases()` (API→снапшот→моки) |
+| `site/js/appview.js` | лента, поиск, фильтры, **пагинация**, живое устаревание, ТЗ-надстройка |
+| `site/css/styles.css` | дизайн-система (бумага/чернила/ржавчина) |
+| `site/data/purchases.json` | снапшот закупок (генерится сборщиком) |
+| `tools/build_snapshot.js` | **оркестратор** — собирает все площадки, пишет снапшот |
+| `tools/sources/portal.js` | адаптер Портала поставщиков (mos.ru) |
+| `tools/sources/eis.js` | адаптер ЕИС (zakupki.gov.ru) |
+| `tools/sources/util.js` | `curlAsync` + `mapLimit` (конкурентность) |
+| `tools/refresh.sh` | автообновление: пересобрать → коммит если состав изменился → push → git pull на VPS |
+| `tools/refresh.cmd` | обёртка для Планировщика Windows |
+| `server/` | FastAPI-бэкенд (отложен) + `deploy/` (systemd, nginx, DEPLOY.md) |
+
+### Схема закупки (единая для всех площадок)
+`{ id, number, title, customer, customerInn, law, source, region, okpd, price,
+stage, endDate(ISO), beginDate, deadlineDays, publishedDaysAgo, guaranteeApp,
+guaranteeContract, prepayment, href, deliveryDays, deliveryPlace,
+lots[{name,qty,price,okpd}], documents[{id,name,url}], matches{productId→MatchResult} }`
+
+---
+
+## Источники (проверенные эндпоинты, анонимно)
+
+**Портал поставщиков (mos.ru)** — чистый JSON:
+- поиск: `GET old.zakupki.mos.ru/api/Cssp/Purchase/Query?queryDto=<json>` (typeIn=1 КС, stateIdIn=19000002 «Активная»)
+- карточка: `GET zakupki.mos.ru/newapi/api/Auction/Get?auctionId=<id>` (files[], items[], deliveries[])
+- файл: `GET zakupki.mos.ru/newapi/api/FileStorage/Download?id=<fileId>`
+
+**ЕИС (zakupki.gov.ru)** — HTML/RSS:
+- список: `GET epz/order/extendedsearch/results.html?fz44=on&fz223=on&af=on&recordsPerPage=_50&pageNumber=N`
+  (в блоках `search-registry-entry-block`: №, закон, предмет, заказчик, цена, срок)
+- карточка (для вкладки документов): открыть `href` закупки со следованием 301
+- документы: со страницы `…/documents.html` — ссылки `…/filestore/…/file.html?uid=…`
+
+**Скачивание файлов работает из браузера напрямую** (навигация, не fetch → CORS не мешает;
+браузер пользователя с жилым IP видит источник). Сервер к источникам не ходит.
+
+---
+
+## Как обновить данные
+
+Сбор — **только на машине с доступом к mos.ru/zakupki.gov.ru** (не на VPS!):
+```bash
+node tools/build_snapshot.js         # пишет site/data/purchases.json (~1 мин)
+git add site/data/purchases.json && git commit -m "refresh" && git push
+ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'cd /opt/lekalo && git pull --ff-only'
+```
+Или разом: `bash tools/refresh.sh` (коммитит/деплоит только если изменился состав).
+
+**Автообновление:** Планировщик Windows `LekaloSnapshotRefresh` запускает `refresh.cmd` каждый
+час (лог `C:\Users\nikit\lekalo-refresh.log`). Управление: `schtasks /Run|/Change /TN LekaloSnapshotRefresh`.
+
+**Тюнинг объёма (env):** `LK_SNAPSHOT_TAKE` (Портал, деф. 400), `LK_EIS_TAKE` (ЕИС список, 600),
+`LK_EIS_DOCS` (для скольких ЕИС качать документы, 150), `LK_POOL`, `LK_PORTAL_CONC`, `LK_EIS_CONC`.
+
+---
+
+## VPS (Timeweb) — деплой
+
+- IP `186.246.30.213`, ключ `C:/Users/nikit/.ssh/nexara_deploy`, `root`. nginx отдаёт
+  `/opt/lekalo/site` (это git-клон репо), сайт `lekalo` включён.
+- Заменили статику **Nexara** (это отдельный проект!). Бэкап: `/root/backups/nexara-*.tgz`.
+  Откат — см. `server/deploy/DEPLOY.md`.
+- Деплой правок = `git push` + `ssh … 'cd /opt/lekalo && git pull --ff-only'`.
+- Живой сайт: `http://186.246.30.213/` (лендинг), `/app.html?demo=1` (лента). HTTP, без домена.
+
+---
+
+## Грабли (проверено болью)
+
+1. **VPS заблокирован источниками.** С дата-центра `mos.ru` и `zakupki.gov.ru` не открываются
+   (TCP-таймаут), хотя `ya.ru`/интернет есть. Поэтому сбор — на машине пользователя, а не на сервере.
+   Из-за этого live-бэкенд на этом VPS невозможен.
+2. **Локальный `python` — сломанная Store-заглушка** (Windows). Печатает «Python», ничего не
+   исполняет. Для инструментов — Node. FastAPI запускать только на хосте с доступом к источникам.
+3. **SSH host-key на VPS меняется после ребута** (Timeweb пересоздаёт окружение). При `REMOTE HOST IDENTIFICATION
+   CHANGED` → `ssh-keygen -R 186.246.30.213` и переподключиться (это НЕ fail2ban).
+4. **fail2ban на VPS:** если SSH не подключился с первой попытки (таймаут «banner exchange») —
+   НЕ долбить повторно, попросить пользователя перезагрузить сервер через панель Timeweb.
+5. **Cyrillic в curl-параметрах** → кракозябры. Кодировать через `curl --data-urlencode` / `--data`,
+   не вставлять кириллицу прямо в URL.
+6. **Снапшот 2.1 МБ коммитится ежечасно** (при смене состава) → git-история растёт. Если мешает —
+   переключить доставку на прямой `scp` на VPS (без git).
 
 ---
 
 ## Git
 
-Ветка по умолчанию — `main`. **Не коммитить:** секреты (`.env`, токены), `certs/`,
-`scratchpad/`, скачанные ТЗ с ПДн. Коммитить/пушить — только по явной просьбе.
+Ветка `main`. **Не коммитить:** секреты (`.env`, токены), `certs/`, `scratchpad/`, `server/.venv/`
+(см. `.gitignore`). Коммит-сообщения заканчивать:
+`Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+Пуш/деплой данных — часть рабочего цикла обновления (см. выше); правки кода — по договорённости.
