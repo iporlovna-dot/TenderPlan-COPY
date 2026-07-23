@@ -1,117 +1,8 @@
 {
-  "generatedAt": "2026-07-23T14:11:09.290Z",
+  "generatedAt": "2026-07-23T14:13:58.260Z",
   "source": "Портал поставщиков (zakupki.mos.ru) — активные котировочные сессии",
-  "total": 510,
+  "total": 504,
   "purchases": [
-    {
-      "id": "pp_10256487",
-      "number": "10256487",
-      "title": "Поставка роутеров для нужд Заказчика",
-      "customer": "Автономная некоммерческая организация «Московский институт искусственного интеллекта \nв здравоохранении»",
-      "customerInn": "9729415553",
-      "law": "Положение о закупках организации",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Средства связи, выполняющие функцию цифровых транспортных систем",
-      "price": 13800,
-      "stage": "active",
-      "endDate": "2026-07-23T17:31:24",
-      "beginDate": "2026-07-23T14:31:24",
-      "deadlineDays": 1,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10256487",
-      "deliveryDays": 7,
-      "deliveryPlace": "г г Москва, г Москва, вн.тер.г. муниципальный округ Тропарево-Никулино, пр-кт Вернадского, д 96",
-      "lots": [
-        {
-          "name": "Роутер Netcraze 4G (NC-1213) LTE/4G/3G с Mesh Wi-Fi N300 и 4-портовым Smart-коммутатором",
-          "qty": "4",
-          "price": 3450,
-          "okpd": "Средства связи, выполняющие функцию цифровых транспортных систем"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279742439",
-          "name": "Договор_поставки_типовая форма_пост оплата_23.07.26.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279742439"
-        },
-        {
-          "id": "279742433",
-          "name": "ТЗ_Роутер_23.07.26.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279742433"
-        },
-        {
-          "id": "279745536",
-          "name": "Краткое описание КС 10256487.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279745536"
-        }
-      ],
-      "matches": {}
-    },
-    {
-      "id": "pp_10256214",
-      "number": "10256214",
-      "title": "СТУЛЬЯ НА ДЕРЕВЯННОМ КАРКАСЕ",
-      "customer": "Государственное бюджетное общеобразовательное учреждение города Москвы «Школа № 281»",
-      "customerInn": "7716696769",
-      "law": "44-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Мебель для сидения, преимущественно с деревянным каркасом",
-      "price": 24225,
-      "stage": "active",
-      "endDate": "2026-07-23T17:32:11",
-      "beginDate": "2026-07-23T11:32:11",
-      "deadlineDays": 1,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10256214",
-      "deliveryDays": 7,
-      "deliveryPlace": "г г Москва, Город Москва, улица Радужная, дом 13",
-      "lots": [
-        {
-          "name": "Стул барный СПК Лазурный Харли дерево черный 965х400х420 мм",
-          "qty": "2",
-          "price": 8625,
-          "okpd": "Мебель для сидения, преимущественно с деревянным каркасом"
-        },
-        {
-          "name": "Стул-стремянка трансформер дерево ROKU 90-45-32, 900х320х400мм черный",
-          "qty": "1",
-          "price": 6975,
-          "okpd": "Мебель для сидения, преимущественно с деревянным каркасом"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279723057",
-          "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279723057"
-        },
-        {
-          "id": "279723058",
-          "name": "ТЗ Живая сцена (Лот 10) итог.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279723058"
-        },
-        {
-          "id": "279726330",
-          "name": "Краткое описание КС 10256214.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279726330"
-        },
-        {
-          "id": "279726411",
-          "name": "Краткое описание КС 10256214.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279726411"
-        }
-      ],
-      "matches": {}
-    },
     {
       "id": "pp_10256215",
       "number": "10256215",
@@ -2913,6 +2804,67 @@
       "matches": {}
     },
     {
+      "id": "pp_10256512",
+      "number": "10256512",
+      "title": "ТОВАРЫ ХОЗЯЙСТВЕННЫЕ, ТЕХНИКА БЫТОВАЯ",
+      "customer": "управа района Арбат города Москвы",
+      "customerInn": "7704248709",
+      "law": "44-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "г. Москва",
+      "okpd": "Мешки и сумки бумажные",
+      "price": 3482.5,
+      "stage": "active",
+      "endDate": "2026-07-23T18:00:00",
+      "beginDate": "2026-07-23T15:00:00",
+      "deadlineDays": 1,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10256512",
+      "deliveryDays": 3,
+      "deliveryPlace": "г г Москва, Город Москва, улица Арбат, дом 40, строение 2",
+      "lots": [
+        {
+          "name": "Крафт-мешок бумажный трехслойный с вкладышем 50x100х9 см (20 штук в упаковке)",
+          "qty": "1",
+          "price": 2007,
+          "okpd": "Мешки и сумки бумажные"
+        },
+        {
+          "name": "Клейкая лента бумажная (малярная) \"Союзпак\" 48х50",
+          "qty": "5",
+          "price": 175.5,
+          "okpd": "Плиты, листы, пленка, лента и прочие плоские полимерные самоклеящиеся формы, в рулонах шириной не более 20 см"
+        },
+        {
+          "name": "Стакан одноразовый 200 мл прозр., для хол/гор., КОМУС ПП, 100 шт/уп",
+          "qty": "5",
+          "price": 119.6,
+          "okpd": "Посуда столовая и кухонная пластмассовая"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279745753",
+          "name": "Проект контракта.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279745753"
+        },
+        {
+          "id": "279745754",
+          "name": "ТЗ ХТ выборы.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279745754"
+        },
+        {
+          "id": "279748520",
+          "name": "Краткое описание КС 10256512.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279748520"
+        }
+      ],
+      "matches": {}
+    },
+    {
       "id": "pp_10256293",
       "number": "10256293",
       "title": "ОБСЛУЖИВАНИЕ ТЕХНИЧЕСКОЕ, СОДЕРЖАНИЕ И ТЕКУЩИЙ РЕМОНТ",
@@ -3052,62 +3004,99 @@
       "matches": {}
     },
     {
-      "id": "pp_10256512",
-      "number": "10256512",
-      "title": "ТОВАРЫ ХОЗЯЙСТВЕННЫЕ, ТЕХНИКА БЫТОВАЯ",
-      "customer": "управа района Арбат города Москвы",
-      "customerInn": "7704248709",
+      "id": "pp_10255613",
+      "number": "10255613",
+      "title": "Ремонт приточно-вытяжной системы вентиляции",
+      "customer": "Государственное бюджетное общеобразовательное учреждение города Москвы «Школа № 1247 имени Юргиса Балтрушайтиса»",
+      "customerInn": "7701032028",
       "law": "44-ФЗ",
       "source": "Портал поставщиков (mos.ru)",
       "region": "г. Москва",
-      "okpd": "Мешки и сумки бумажные",
-      "price": 3482.5,
+      "okpd": "Услуги по ремонту и техническому обслуживанию небытового холодильного и вентиляционного оборудования",
+      "price": 22409.57,
       "stage": "active",
-      "endDate": "2026-07-23T18:00:00",
-      "beginDate": "2026-07-23T15:00:00",
+      "endDate": "2026-07-23T18:50:03",
+      "beginDate": "2026-07-22T18:50:03",
       "deadlineDays": 1,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10256512",
-      "deliveryDays": 3,
-      "deliveryPlace": "г г Москва, Город Москва, улица Арбат, дом 40, строение 2",
+      "href": "https://zakupki.mos.ru/auction/10255613",
+      "deliveryDays": 5,
+      "deliveryPlace": "г г Москва, Город Москва, переулок Госпитальный, дом 3",
       "lots": [
         {
-          "name": "Крафт-мешок бумажный трехслойный с вкладышем 50x100х9 см (20 штук в упаковке)",
+          "name": "Ремонт приточно-вытяжной системы вентиляции",
           "qty": "1",
-          "price": 2007,
-          "okpd": "Мешки и сумки бумажные"
-        },
-        {
-          "name": "Клейкая лента бумажная (малярная) \"Союзпак\" 48х50",
-          "qty": "5",
-          "price": 175.5,
-          "okpd": "Плиты, листы, пленка, лента и прочие плоские полимерные самоклеящиеся формы, в рулонах шириной не более 20 см"
-        },
-        {
-          "name": "Стакан одноразовый 200 мл прозр., для хол/гор., КОМУС ПП, 100 шт/уп",
-          "qty": "5",
-          "price": 119.6,
-          "okpd": "Посуда столовая и кухонная пластмассовая"
+          "price": 22409.57,
+          "okpd": "Услуги по ремонту и техническому обслуживанию небытового холодильного и вентиляционного оборудования"
         }
       ],
       "documents": [
         {
-          "id": "279745753",
+          "id": "279694336",
           "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279745753"
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279694336"
         },
         {
-          "id": "279745754",
-          "name": "ТЗ ХТ выборы.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279745754"
+          "id": "279694337",
+          "name": "Техническое_задание_монтаж вентиляции (1).docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279694337"
         },
         {
-          "id": "279748520",
-          "name": "Краткое описание КС 10256512.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279748520"
+          "id": "279694338",
+          "name": "ГБОУ Школа №1247. Москва_ Госпитальный пер_ 3. Монтаж вытяжной вентиляции в пищеблоке (в ценах на 01.07.2026 г) (3) (1) (1).xlsx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279694338"
+        }
+      ],
+      "matches": {}
+    },
+    {
+      "id": "pp_10255614",
+      "number": "10255614",
+      "title": "Стул складной, Раут Мебель, РМ Квизо на мобильных опорах, \t850x530x850 мм",
+      "customer": "Государственное бюджетное профессиональное образовательное учреждение города Москвы «Московский колледж социальных профессий имени Е.И.Холостовой»",
+      "customerInn": "7715029811",
+      "law": "44-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "г. Москва",
+      "okpd": "Мебель для сидения, преимущественно с металлическим каркасом",
+      "price": 20000,
+      "stage": "active",
+      "endDate": "2026-07-23T19:19:05",
+      "beginDate": "2026-07-22T19:19:05",
+      "deadlineDays": 1,
+      "publishedDaysAgo": 1,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10255614",
+      "deliveryDays": 20,
+      "deliveryPlace": "г г Москва, Город Москва, улица Большая Новодмитровская, дом 63",
+      "lots": [
+        {
+          "name": "Стул складной, Раут Мебель, РМ Квизо на мобильных опорах, \t850x530x850 мм",
+          "qty": "1",
+          "price": 20000,
+          "okpd": "Мебель для сидения, преимущественно с металлическим каркасом"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279695414",
+          "name": "Проект контракта.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279695414"
+        },
+        {
+          "id": "279695415",
+          "name": "тз стул складной.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279695415"
+        },
+        {
+          "id": "279696119",
+          "name": "Краткое описание КС 10255614.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279696119"
         }
       ],
       "matches": {}
