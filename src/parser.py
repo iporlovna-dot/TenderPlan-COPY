@@ -1,6 +1,7 @@
 """Извлечение текста ТЗ из документов (шаг 5 конвейера, plan.md §3).
 
-Детерминированный код, БЕЗ LLM: docx / pdf / xlsx / txt → нормализованный текст.
+Детерминированный код, БЕЗ LLM: docx / pdf / xlsx / doc / txt → нормализованный текст.
+(.doc — старый Word — через внешний конвертер textutil/antiword/soffice, плоским текстом.)
 Таблицы рендерятся как pipe-таблицы (| a | b |), чтобы и человек, и LLM видели
 структуру строк — в ТЗ характеристики почти всегда лежат таблицей.
 
@@ -22,6 +23,8 @@ def parse(path: str) -> str:
         return _parse_pdf(path)
     if ext in (".xlsx", ".xls"):
         return _parse_xlsx(path)
+    if ext == ".doc":
+        return _parse_doc(path)
     if ext in (".txt", ".md"):
         with open(path, encoding="utf-8") as f:
             return f.read().strip()
@@ -81,6 +84,41 @@ def _parse_pdf(path: str) -> str:
     except ImportError:
         raise ValueError(
             "PDF без текстового слоя (скан) — нужен OCR (модуль ocr.py): %s" % path)
+
+
+def _parse_doc(path: str) -> str:
+    """Старый Word .doc → текст через внешний конвертер (штатного парсера нет).
+
+    Порядок: textutil (macOS, встроен) → antiword/catdoc (Linux) → LibreOffice soffice
+    (кросс-платформенно, тяжелее). .doc отдаёт ПЛОСКИЙ текст — таблицы не рендерятся в
+    pipe-формат (ограничение формата); для характеристик в таблицах лучше .docx/.pdf.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    if shutil.which("textutil"):  # macOS
+        r = subprocess.run(["textutil", "-convert", "txt", "-stdout", path],
+                           capture_output=True, timeout=60)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.decode("utf-8", "replace").strip()
+    for tool in ("antiword", "catdoc"):  # Linux
+        if shutil.which(tool):
+            r = subprocess.run([tool, path], capture_output=True, timeout=60)
+            if r.returncode == 0 and r.stdout.strip():
+                return r.stdout.decode("utf-8", "replace").strip()
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if soffice:
+        with tempfile.TemporaryDirectory() as td:
+            subprocess.run([soffice, "--headless", "--convert-to", "txt:Text",
+                            "--outdir", td, path], capture_output=True, timeout=120)
+            fp = os.path.join(td, os.path.splitext(os.path.basename(path))[0] + ".txt")
+            if os.path.exists(fp):
+                with open(fp, encoding="utf-8", errors="replace") as f:
+                    return f.read().strip()
+    raise ValueError(
+        "Формат .doc (старый Word): нужен конвертер — textutil (macOS), antiword/catdoc "
+        "или LibreOffice (soffice). Ни один не найден: %s" % path)
 
 
 def _parse_xlsx(path: str) -> str:
