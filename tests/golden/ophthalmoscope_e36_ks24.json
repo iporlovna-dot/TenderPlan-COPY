@@ -2,7 +2,7 @@
   "id": "ophthalmoscope_e36_ks24",
   "source": "ТЗ КС24-ПСЗ2024-350 (локальный docx). Товар KaWe Eurolight E36 LED 2,5В. Поставляли → подходит.",
   "expected_verdict": "eligible_with_gaps",
-  "expected_score": 84,
+  "expected_score": 89,
   "score_tolerance": 0,
   "synonyms": {
     "асферическая": [

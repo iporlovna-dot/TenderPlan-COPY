@@ -164,10 +164,19 @@ def _val_match(pv: object, allowed: list, synonyms: Optional[dict]) -> bool:
     return False
 
 
+def _multi_number(v: object) -> bool:
+    """В значении больше одного числа? («48-50/170-176», «170-176»). Такие КОМПАУНДЫ
+    числовой eq сверять нельзя — прочитали бы только первое число и дали ложь; их
+    отдаём строковой _eq (подстрока)."""
+    return len(_NUM_RE.findall(str(v))) > 1
+
+
 def _eq_numeric(attr_value: object, req: Requirement) -> Optional[bool]:
-    """Числовая сверка eq с учётом единицы. None — если не оба значения числовые
-    (тогда решает строковая _eq). Иначе: число совпало И единица совместима.
-    «2,5 В»↔2.5/«В» → True; «2,5 А»↔2.5/«В» → False (единица другая)."""
+    """Числовая сверка eq с учётом единицы. None — если не оба значения числовые ИЛИ
+    хотя бы одно компаундное (несколько чисел) — тогда решает строковая _eq. Иначе:
+    число совпало И единица совместима. «2,5 В»↔2.5/«В» → True; «2,5 А»↔2.5/«В» → False."""
+    if _multi_number(attr_value) or _multi_number(req.value):
+        return None  # компаунд («48-50/170-176») → строковая сверка, не первое число
     an, _au = _num_unit(attr_value)
     rn, _ru = _num_unit(req.value)
     if an is None or rn is None:
