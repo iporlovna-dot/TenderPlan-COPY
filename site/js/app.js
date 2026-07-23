@@ -433,14 +433,22 @@ const LK = (() => {
   // моки — фолбэк для file:// и офлайна.
   let _purchases = null;
   async function loadPurchases() {
-    try {
-      const r = await fetch("data/purchases.json", { cache: "no-store" });
-      if (r.ok) {
+    const api = (typeof window !== "undefined" && window.LK_API_BASE) || "";
+    const urls = [];
+    if (api) urls.push(api.replace(/\/$/, "") + "/api/purchases?take=60");
+    urls.push("data/purchases.json");          // снапшот (Pages)
+    for (const u of urls) {
+      try {
+        const r = await fetch(u, { cache: "no-store" });
+        if (!r.ok) continue;
         const d = await r.json();
-        if (d && Array.isArray(d.purchases) && d.purchases.length) _purchases = d.purchases;
-      }
-    } catch (e) { /* file:// или нет сети → остаёмся на моках */ }
-    return allPurchases();
+        if (d && Array.isArray(d.purchases) && d.purchases.length) {
+          _purchases = d.purchases;
+          return allPurchases();
+        }
+      } catch (e) { /* пробуем следующий источник */ }
+    }
+    return allPurchases();                       // фолбэк — моки (file:///офлайн)
   }
   function allPurchases() { return _purchases || MOCK_PURCHASES; }
 

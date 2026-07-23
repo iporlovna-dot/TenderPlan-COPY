@@ -1,0 +1,13 @@
+# секреты и окружение
+.env
+*.env
+certs/
+
+# python
+server/.venv/
+__pycache__/
+*.pyc
+
+# временное / скачанные ТЗ с ПДн
+scratchpad/
+*.log
