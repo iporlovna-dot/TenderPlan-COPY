@@ -75,13 +75,6 @@ def parse_position_specs(tz_text: str) -> list:
     return specs
 
 
-def to_reqs(spec: dict):
-    """Характеристики позиции → требования (все eq/soft; % ранжирует покрытие)."""
-    return [Requirement(key=k, operator=Operator.EQ, value=v, unit="",
-                        hardness=Hardness.SOFT, type=ReqType.TECHNICAL, raw="%s: %s" % (k, v))
-            for k, v in spec.items()]
-
-
 def load_catalog(path):
     files = [path] if path.endswith(".json") else glob.glob(os.path.join(path, "*.json"))
     cat = []
@@ -92,25 +85,30 @@ def load_catalog(path):
     return cat
 
 
-def best_card(spec, pos_code, catalog, synonyms):
-    """Лучший товар каталога под позицию: КТРУ-предфильтр (не 'none') → align → match."""
+def best_card(spec, pos_code, catalog, synonyms, critical):
+    """Лучший товар каталога под позицию: КТРУ-предфильтр (не 'none') → align → match.
+
+    Критичные поля профиля (`тип_клинка`, `одноразовость`…) делаем ЖЁСТКИМИ: расхождение
+    по ним → дисквалификация, товар не считается покрытием (Миллер vs Макинтош → не наш,
+    а не «57%»). Ранжируем: сначала не-дисквалифицированные, потом по %."""
+    crit = set(critical or [])
     reqs_raw = [{"key": k, "value": v} for k, v in spec.items()]
     best = None
     for d, product in catalog:
         codes = d.get("ktru") or []
         if pos_code and codes and ktru_relation(codes, [pos_code]) == "none":
             continue  # чужая категория — не тратим align
-        req_fields = {k: v for k, v in spec.items()}
-        mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
+        mapping = align_keys(dict(spec), {a.key: a.value for a in product.attributes})
         aligned = align_values(apply_mapping(reqs_raw, mapping), product)
-        # aligned — dict'ы {key,value}; собираем Requirement'ы
         reqs = [Requirement(key=r["key"], operator=Operator.EQ, value=r.get("value"), unit="",
-                            hardness=Hardness.SOFT, type=ReqType.TECHNICAL,
-                            raw="%s: %s" % (r["key"], r.get("value"))) for r in aligned]
+                            hardness=(Hardness.HARD if r["key"] in crit else Hardness.SOFT),
+                            type=ReqType.TECHNICAL, raw="%s: %s" % (r["key"], r.get("value")))
+                for r in aligned]
         res = match(product, reqs, "cov", synonyms)
-        if best is None or res.score > best[1]:
-            best = (product.id, res.score, res.verdict)
-    return best
+        rank = (res.verdict != Verdict.DISQUALIFIED, res.score)  # не-дисквал важнее %
+        if best is None or rank > best[0]:
+            best = (rank, product.id, res.score, res.verdict)
+    return (best[1], best[2], best[3]) if best else None
 
 
 def main():
@@ -121,7 +119,9 @@ def main():
     ap.add_argument("--min-score", type=float, default=60, help="порог «покрыто», %")
     args = ap.parse_args()
 
-    synonyms = json.load(open(args.profile, encoding="utf-8")).get("synonyms") if args.profile else None
+    profile = json.load(open(args.profile, encoding="utf-8")) if args.profile else {}
+    synonyms = profile.get("synonyms")
+    critical = profile.get("critical_attributes")
     catalog = load_catalog(args.catalog)
 
     src = TenderplanSource()
@@ -146,15 +146,18 @@ def main():
     covered = 0
     for i, spec in enumerate(specs):
         code = pos_codes[i] if i < len(pos_codes) else (pos_codes[0] if pos_codes else None)
-        label = " ".join("%s=%s" % (k, v) for k, v in list(spec.items())[:4])
-        best = best_card(spec, code, catalog, synonyms)
-        if best and best[1] >= args.min_score:
+        label = ", ".join("%s: %s" % (k, v) for k, v in spec.items())
+        best = best_card(spec, code, catalog, synonyms, critical)
+        print("  [%d] %s" % (i + 1, label))
+        if best and best[2] != Verdict.DISQUALIFIED and best[1] >= args.min_score:
             covered += 1
-            print("  [%d] %-55s → %s %s (%d%%)" % (i + 1, label[:55], VR[best[2]], best[0], best[1]))
+            print("       → %s НАШ: %s (%d%%)" % (VR[best[2]], best[1] and best[0], best[1]))
+        elif best and best[2] == Verdict.DISQUALIFIED:
+            print("       → ✗ не наш (несовпадение по критичному полю; ближе всего %s)" % best[0])
         elif best:
-            print("  [%d] %-55s → ✗ ближе всего %s (%d%%, ниже порога)" % (i + 1, label[:55], best[0], best[1]))
+            print("       → ✗ ниже порога (ближе всего %s, %d%%)" % (best[0], best[1]))
         else:
-            print("  [%d] %-55s → ✗ нет в каталоге (чужой КТРУ)" % (i + 1, label[:55]))
+            print("       → ✗ нет в каталоге (чужой КТРУ)")
 
     print("\n▶ ПОКРЫТИЕ: %d из %d позиций — наш каталог (порог %g%%)" % (covered, len(specs), args.min_score))
 
