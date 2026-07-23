@@ -249,7 +249,7 @@
       if (p.deliveryDays != null && p.deliveryDays > max) return false;
     }
     if (f.law !== "all" && p.law !== f.law) return false;
-    if (f.stage !== "all" && p.stage !== f.stage) return false;
+    if (f.stage !== "all" && liveStage(p) !== f.stage) return false;
     if (f.source !== "all" && p.source !== f.source) return false;
     if (p.price < (f.priceMin || 0)) return false;
     if (f.priceMax != null && p.price > f.priceMax) return false;
@@ -263,6 +263,21 @@
     committee: { label: "Работа комиссии", cls: "stage-committee" },
     completed: { label: "Завершена", cls: "stage-done" }
   };
+
+  // живой отсчёт: срок считаем от текущего момента по endDate (а не по замороженному
+  // deadlineDays из снапшота), чтобы просроченные сами отваливались из ленты.
+  const DAY_MS = 86400000;
+  function daysLeft(p) {
+    if (p.endDate) return Math.ceil((new Date(p.endDate).getTime() - Date.now()) / DAY_MS);
+    return p.deadlineDays ?? 0;
+  }
+  function isExpired(p) {
+    return p.endDate ? new Date(p.endDate).getTime() <= Date.now() : false;
+  }
+  function liveStage(p) {
+    if (p.endDate) return isExpired(p) ? "completed" : "active";
+    return p.stage;
+  }
 
   function highlight(text) {
     let out = lkEscape(text);
@@ -285,10 +300,11 @@
   function checkIcon(s) { return s === "pass" ? "✓" : s === "gap" ? "⚠" : "✕"; }
 
   function deadlineText(p) {
-    if (p.stage === "active") {
-      return `<span class="deadline"><b>${p.deadlineDays}</b> ${lkPlural(p.deadlineDays, ["день","дня","дней"])} до конца подачи</span>`;
+    if (liveStage(p) === "active") {
+      const d = Math.max(1, daysLeft(p));
+      return `<span class="deadline"><b>${d}</b> ${lkPlural(d, ["день","дня","дней"])} до конца подачи</span>`;
     }
-    return `<span class="deadline muted">${STAGE[p.stage].label}</span>`;
+    return `<span class="deadline muted">${STAGE[liveStage(p)].label}</span>`;
   }
 
   function matchDetail(m) {
@@ -368,7 +384,7 @@
         <div class="tender-body">
           <div class="tender-body__top">
             <span class="badge badge-law ${p.law === "223-ФЗ" ? "is-223" : ""}">${p.law}</span>
-            <span class="badge badge-stage ${STAGE[p.stage].cls}">${STAGE[p.stage].label}</span>
+            <span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>
             <span class="badge badge-source">${lkEscape(p.source)}</span>
             ${fresh}${lot}
           </div>
@@ -400,16 +416,17 @@
     const current = state.searchId ? LK.getSearches().find(s => s.id === state.searchId) : null;
     title.textContent = current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
 
-    let list = LK.allPurchases().filter(passesSearch).filter(passesFilters);
+    // просроченные (дедлайн подачи прошёл) убираем автоматически
+    let list = LK.allPurchases().filter(p => !isExpired(p)).filter(passesSearch).filter(passesFilters);
 
     const sortFn = {
       fresh: (a, b) => a.publishedDaysAgo - b.publishedDaysAgo,
-      deadline: (a, b) => rank(a) - rank(b) || a.deadlineDays - b.deadlineDays,
+      deadline: (a, b) => rank(a) - rank(b) || daysLeft(a) - daysLeft(b),
       "price-desc": (a, b) => b.price - a.price,
       "price-asc": (a, b) => a.price - b.price,
       score: (a, b) => (score(b) - score(a)) || a.publishedDaysAgo - b.publishedDaysAgo
     }[state.sort];
-    function rank(p) { return p.stage === "active" ? 0 : 1; }
+    function rank(p) { return liveStage(p) === "active" ? 0 : 1; }
     function score(p) { const m = matchFor(p); return m ? m.score : -1; }
 
     list.sort(sortFn);
@@ -517,6 +534,8 @@
     populateFacets();  // регион/площадка из реальных данных
     // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
     selectAllPurchases();
+    // живое устаревание: раз в минуту перерисовываем, просроченные отваливаются сами
+    setInterval(renderFeed, 60000);
   });
 
 })();

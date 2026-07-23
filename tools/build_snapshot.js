@@ -29,11 +29,12 @@ function curlJson(url, extraArgs = []) {
   return JSON.parse(out);
 }
 
+const POOL = Number(process.env.LK_POOL || 400);  // сколько тянуть из реестра, чтобы отобрать открытые
 function fetchList() {
   const queryDto = JSON.stringify({
     filter: { typeIn: { values: [1] }, auctionSpecificFilter: { stateIdIn: [19000002] } },
-    order: [{ field: "endDate", desc: false }],
-    withCount: true, take: TAKE, skip: 0
+    order: [{ field: "endDate", desc: true }],  // самые поздние дедлайны сверху = среди них открытые
+    withCount: true, take: POOL, skip: 0
   });
   return curlJson(LIST_API, ["-G", "--data-urlencode", "queryDto=" + queryDto]);
 }
@@ -50,6 +51,11 @@ const DAY = 86400000;
 function parseListDate(s) {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/.exec(s || "");
   return m ? new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +m[6]) : null;
+}
+// "dd.MM.yyyy HH:mm:ss" -> "yyyy-MM-ddTHH:mm:ss" (naive local, для живого отсчёта на клиенте)
+function toIso(s) {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/.exec(s || "");
+  return m ? `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}` : null;
 }
 
 function map(it) {
@@ -105,6 +111,8 @@ function map(it) {
     okpd,
     price,
     stage: it.stateId === 19000002 ? "active" : (end && end > now ? "active" : "committee"),
+    endDate: toIso(it.endDate),
+    beginDate: toIso(it.beginDate),
     deadlineDays: end ? Math.max(0, Math.ceil((end - now) / DAY)) : 0,
     publishedDaysAgo: begin ? Math.max(0, Math.round((now - begin) / DAY)) : 0,
     guaranteeApp: 0, guaranteeContract: 0, prepayment: 0,
@@ -118,14 +126,20 @@ function map(it) {
 }
 
 const raw = fetchList();
-const items = raw.items || [];
+const now = Date.now();
+// берём только КС с реально открытой подачей (endDate в будущем), ближайшие к дедлайну сверху
+const openItems = (raw.items || [])
+  .filter(it => { const e = parseListDate(it.endDate); return e && e.getTime() > now; })
+  .sort((a, b) => parseListDate(a.endDate) - parseListDate(b.endDate))
+  .slice(0, TAKE);
+
 const purchases = [];
 let withDocs = 0;
-items.forEach((it, i) => {
+openItems.forEach((it, i) => {
   const p = map(it);
   if (p.documents.length) withDocs++;
   purchases.push(p);
-  process.stdout.write(`\r  карточек обработано: ${i + 1}/${items.length}`);
+  process.stdout.write(`\r  карточек обработано: ${i + 1}/${openItems.length}`);
 });
 process.stdout.write("\n");
 
@@ -137,4 +151,4 @@ const payload = {
 };
 fs.mkdirSync(OUT_DIR, { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(payload, null, 2), "utf8");
-console.log(`wrote ${purchases.length} purchases (of ${raw.count} active), ${withDocs} с документами -> ${OUT}`);
+console.log(`wrote ${purchases.length} открытых КС (пул ${raw.items ? raw.items.length : 0}/${raw.count} в статусе «Активная»), ${withDocs} с документами -> ${OUT}`);
