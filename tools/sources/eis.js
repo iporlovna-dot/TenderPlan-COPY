@@ -66,14 +66,48 @@ function parseItems(xml) {
   return items;
 }
 
-// срок окончания подачи со страницы карточки
-function fetchDeadlineIso(link) {
+// со страницы карточки (common-info): срок окончания подачи + ссылка на вкладку документов
+function fetchCardInfo(link) {
   try {
     const html = curlText(link);
-    const m = /Окончание подачи заявок<\/div>\s*<div class="data-block__value">\s*(\d{2}\.\d{2}\.\d{4}(?:\s+\d{2}:\d{2})?)/.exec(html);
-    return m ? toIso(m[1]) : null;
+    const dm = /Окончание подачи заявок<\/div>\s*<div class="data-block__value">\s*(\d{2}\.\d{2}\.\d{4}(?:\s+\d{2}:\d{2})?)/.exec(html);
+    const endIso = dm ? toIso(dm[1]) : null;
+    const hm = /href="([^"]*documents\.html[^"]*)"/i.exec(html);
+    let docsUrl = hm ? hm[1] : null;
+    if (docsUrl && docsUrl.startsWith("/")) docsUrl = "https://zakupki.gov.ru" + docsUrl;
+    return { endIso, docsUrl };
   } catch (e) {
-    return null;
+    return { endIso: null, docsUrl: null };
+  }
+}
+
+// вкладка документов: файлы качаются напрямую (навигация, CORS не мешает — как у Портала)
+function fetchDocs(docsUrl) {
+  try {
+    const html = curlText(docsUrl);
+    const seen = new Set();
+    const docs = [];
+    // разбор якоря с учётом кавычек (у ЕИС в data-tooltip='<span>...>' встречается «>»)
+    const re = /<a((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/a>/gi;
+    let m;
+    while ((m = re.exec(html)) && docs.length < 20) {
+      const attrs = m[1], inner = m[2];
+      if (!/file\.html\?uid=/i.test(attrs)) continue;
+      const url = (/(https?:\/\/[^"'\s]*filestore[^"'\s]*file\.html\?uid=[0-9A-Fa-f]+)/i.exec(attrs) || [])[1];
+      if (!url) continue;
+      const uid = (/uid=([0-9A-Fa-f]+)/i.exec(url) || [])[1];
+      if (!uid || seen.has(uid)) continue;
+      let name = inner.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      if (!name || name.length > 160) {
+        const t = /title="([^"]*)"|title='([^']*)'/i.exec(attrs);
+        name = (t && (t[1] || t[2])) ? (t[1] || t[2]).trim() : "документ " + uid.slice(0, 8);
+      }
+      seen.add(uid);
+      docs.push({ id: uid, name, url });
+    }
+    return docs;
+  } catch (e) {
+    return [];
   }
 }
 
@@ -96,7 +130,9 @@ function collectEis(limit = 24) {
   const now = Date.now();
   const purchases = [];
   items.forEach((it, i) => {
-    const endIso = fetchDeadlineIso(it.link);
+    const info = fetchCardInfo(it.link);
+    const endIso = info.endIso;
+    const documents = info.docsUrl ? fetchDocs(info.docsUrl) : [];
     const end = endIso ? new Date(endIso).getTime() : null;
     const pub = toIso(it.published);
     purchases.push({
@@ -120,7 +156,7 @@ function collectEis(limit = 24) {
       deliveryDays: null,
       deliveryPlace: "",
       lots: [{ name: it.title, qty: "—", price: it.price }],
-      documents: [],
+      documents,
       matches: {},
     });
     process.stdout.write(`\r  ЕИС: ${i + 1}/${items.length}`);
