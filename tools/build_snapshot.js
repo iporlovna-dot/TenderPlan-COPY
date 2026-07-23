@@ -16,27 +16,20 @@ const { collectEis } = require("./sources/eis");
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
 
-const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 48);
-const EIS_TAKE = Number(process.env.LK_EIS_TAKE || 24);
+const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 200);
+const EIS_TAKE = Number(process.env.LK_EIS_TAKE || 120);
 
 function endTs(p) { return p.endDate ? new Date(p.endDate).getTime() : Infinity; }
 
-function main() {
+async function main() {
   let purchases = [];
 
-  // 1) Портал поставщиков
-  try {
-    purchases = purchases.concat(collectPortal(PORTAL_TAKE));
-  } catch (e) {
-    console.error("Портал: ошибка сбора —", e.message);
-  }
-
-  // 2) ЕИС (zakupki.gov.ru)
-  try {
-    purchases = purchases.concat(collectEis(EIS_TAKE));
-  } catch (e) {
-    console.error("ЕИС: ошибка сбора —", e.message);
-  }
+  // обе площадки — параллельно
+  const [portal, eis] = await Promise.all([
+    collectPortal(PORTAL_TAKE).catch(e => (console.error("Портал: ошибка —", e.message), [])),
+    collectEis(EIS_TAKE).catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
+  ]);
+  purchases = purchases.concat(portal, eis);
 
   // убрать уже просроченные (на всякий случай) и отсортировать по близости дедлайна
   const now = Date.now();

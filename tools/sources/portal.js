@@ -1,23 +1,19 @@
-// Адаптер «Портал поставщиков» (zakupki.mos.ru) для сборщика снапшота.
-// Тянет реестр активных КС, отбирает реально открытые (endDate в будущем),
-// для каждой дозапрашивает карточку (документы, позиции, срок поставки).
-// Экспортирует collectPortal(take).
+// Адаптер «Портал поставщиков» (zakupki.mos.ru). Реестр активных КС → открытые →
+// карточка каждой (документы, позиции, срок поставки), с конкурентностью.
+// Экспортирует async collectPortal(take).
 
-const { execFileSync } = require("child_process");
+const { curlAsync, mapLimit } = require("./util");
 
 const LIST_API = "https://old.zakupki.mos.ru/api/Cssp/Purchase/Query";
 const CARD_API = "https://zakupki.mos.ru/newapi/api/Auction/Get";
 const FILE_API = "https://zakupki.mos.ru/newapi/api/FileStorage/Download";
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36";
 const DAY = 86400000;
+const CONC = Number(process.env.LK_PORTAL_CONC || 8);
 
-function curlJson(url, extraArgs = []) {
-  const out = execFileSync("curl", ["-s", "-A", UA, "--max-time", "25", ...extraArgs, url],
-    { maxBuffer: 20 * 1024 * 1024, encoding: "utf8" });
-  return JSON.parse(out);
+async function curlJson(url, extraArgs = []) {
+  return JSON.parse(await curlAsync([...extraArgs, url]));
 }
-
-function fetchList(pool) {
+async function fetchList(pool) {
   const queryDto = JSON.stringify({
     filter: { typeIn: { values: [1] }, auctionSpecificFilter: { stateIdIn: [19000002] } },
     order: [{ field: "endDate", desc: true }],
@@ -25,8 +21,8 @@ function fetchList(pool) {
   });
   return curlJson(LIST_API, ["-G", "--data-urlencode", "queryDto=" + queryDto]);
 }
-function fetchCard(auctionId) {
-  try { return curlJson(CARD_API + "?auctionId=" + auctionId); } catch (e) { return null; }
+async function fetchCard(auctionId) {
+  try { return await curlJson(CARD_API + "?auctionId=" + auctionId); } catch (e) { return null; }
 }
 
 function parseListDate(s) {
@@ -38,7 +34,7 @@ function toIso(s) {
   return m ? `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6]}` : null;
 }
 
-function map(it) {
+async function mapItem(it) {
   const now = new Date();
   const end = parseListDate(it.endDate), begin = parseListDate(it.beginDate);
   const cust = (it.customers && it.customers[0]) || {};
@@ -50,7 +46,7 @@ function map(it) {
   let okpd = "";
   let deliveryDays = null;
   let deliveryPlace = "";
-  const card = fetchCard(aid);
+  const card = await fetchCard(aid);
   if (card) {
     documents = (card.files || []).map(f => ({
       id: String(f.id), name: f.name || ("файл " + f.id), url: FILE_API + "?id=" + f.id,
@@ -82,9 +78,7 @@ function map(it) {
     law: it.federalLawName || "44-ФЗ",
     source: "Портал поставщиков (mos.ru)",
     region: (it.regionName || "").trim().replace(/^г\s+/, "г. "),
-    okpd,
-    price,
-    stage: "active",
+    okpd, price, stage: "active",
     endDate: toIso(it.endDate),
     beginDate: toIso(it.beginDate),
     deadlineDays: end ? Math.max(0, Math.ceil((end - now) / DAY)) : 0,
@@ -95,22 +89,19 @@ function map(it) {
   };
 }
 
-function collectPortal(take = 48) {
-  const pool = Number(process.env.LK_POOL || 400);
-  const raw = fetchList(pool);
+async function collectPortal(take = 150) {
+  const pool = Number(process.env.LK_POOL || 600);
+  const raw = await fetchList(pool);
   const now = Date.now();
   const openItems = (raw.items || [])
     .filter(it => { const e = parseListDate(it.endDate); return e && e.getTime() > now; })
     .sort((a, b) => parseListDate(a.endDate) - parseListDate(b.endDate))
     .slice(0, take);
 
-  const purchases = [];
-  openItems.forEach((it, i) => {
-    purchases.push(map(it));
-    process.stdout.write(`\r  Портал: ${i + 1}/${openItems.length}`);
-  });
+  const out = await mapLimit(openItems, CONC, mapItem,
+    (k, t) => process.stdout.write(`\r  Портал: ${k}/${t}`));
   if (openItems.length) process.stdout.write("\n");
-  return purchases;
+  return out.filter(Boolean);
 }
 
 module.exports = { collectPortal };
