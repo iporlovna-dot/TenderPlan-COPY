@@ -68,6 +68,16 @@
       "status": "declared"
     },
     {
+      "key": "матовая_поверхность",
+      "value": "да",
+      "status": "declared"
+    },
+    {
+      "key": "срок_годности_остаточный_мес",
+      "value": 12,
+      "status": "declared"
+    },
+    {
       "key": "упаковка",
       "value": "20 шт в полиэтиленовом пакете",
       "status": "declared"
