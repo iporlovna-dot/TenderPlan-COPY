@@ -124,17 +124,16 @@ def evaluate(req: Requirement, attr: Optional[Attribute],
         return _pass_or_violation(req, ok, attr)
 
     if op == Operator.ONE_OF:
-        # значение товара должно попасть в допустимый набор ТЗ (гомоглифы сведены)
-        allowed = {_fold(x) for x in _as_list(req.value)}
-        prod_vals = {_fold(x) for x in _as_list(attr.value)}
-        ok = bool(prod_vals & allowed)
+        # значение товара должно попасть в допустимый набор ТЗ (гомоглифы + синонимы)
+        allowed = _as_list(req.value)
+        ok = any(_val_match(pv, allowed, synonyms) for pv in _as_list(attr.value))
         return _pass_or_violation(req, ok, attr)
 
     if op == Operator.SET:
         # товар должен покрывать ВЕСЬ требуемый набор (напр. размеры S,M,L)
-        provided = {_fold(x) for x in _as_list(attr.value)}
+        prod_vals = _as_list(attr.value)
         # недостающие показываем в исходном регистре, а не нормализованными
-        missing = [x for x in _as_list(req.value) if _fold(x) not in provided]
+        missing = [x for x in _as_list(req.value) if not _val_match(x, prod_vals, synonyms)]
         if not missing:
             return _pass_or_violation(req, True, attr)
         joined = ", ".join(str(x) for x in missing)
@@ -145,6 +144,24 @@ def evaluate(req: Requirement, attr: Optional[Attribute],
         return _pass_or_violation(req, True, attr)
 
     return Check(req, Status.GAP, note="неизвестный оператор")
+
+
+def _val_match(pv: object, allowed: list, synonyms: Optional[dict]) -> bool:
+    """Значение `pv` совпадает с одним из `allowed`: по свёртке гомоглифов (М кир↔M лат,
+    для размеров/кодов) ИЛИ по синонимам категории (LED↔«светодиодная лампа»). Нужна для
+    one_of/set — раньше они матчили только строгой свёрткой и не знали синонимов."""
+    pf = _fold(pv)
+    if any(pf == _fold(a) for a in allowed):
+        return True
+    if synonyms:
+        pn = _norm_str(pv)
+        for a in allowed:
+            an = _norm_str(a)
+            for canon, alts in synonyms.items():
+                group = {_norm_str(canon)} | {_norm_str(x) for x in alts}
+                if pn in group and an in group:
+                    return True
+    return False
 
 
 def _eq_numeric(attr_value: object, req: Requirement) -> Optional[bool]:

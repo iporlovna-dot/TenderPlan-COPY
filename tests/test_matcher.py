@@ -123,6 +123,23 @@ def test_gte_comma_decimal_with_unit_passes():
     assert res.checks[0].status == Status.PASS
 
 
+def test_one_of_synonym_match_passes():
+    # ТЗ разрешает «Светодиодная лампа»; товар «LED» — то же по синонимам категории
+    syn = {"светодиодная лампа": ["led", "светодиодная"]}
+    p = _product(источник_света="LED")
+    r = [_req("источник_света", "one_of", ["Ксеноновая лампа", "Светодиодная лампа"])]
+    res = match(p, r, "t", syn)
+    assert res.checks[0].status == Status.PASS
+
+
+def test_one_of_no_match_violation():
+    syn = {"светодиодная лампа": ["led"]}
+    p = _product(источник_света="LED")
+    r = [_req("источник_света", "one_of", ["Ксеноновая лампа", "Галогенная лампа"])]
+    res = match(p, r, "t", syn)
+    assert res.checks[0].status == Status.VIOLATION
+
+
 def test_full_match_is_eligible_100():
     p = _product(материал="нитрил", размеры=["S", "M", "L"], рег_удостоверение="есть")
     r = [_req("материал", "eq", "нитрильный латекс"),
