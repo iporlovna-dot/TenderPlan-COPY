@@ -128,14 +128,20 @@ def parse_position_specs(tz_text: str) -> list:
     return _parse_format_a(tz_text) or _parse_format_b(tz_text)
 
 
+# ключи-реквизиты заказчика (адрес/контакты попали в разбор вместо характеристик товара) —
+# верный признак, что детерм. парсер сорвался на шапку/подвал ТЗ, а не на таблицу характеристик
+_JUNK_KEY_RE = re.compile(r"заказчик|адрес|почт|тел\.|факс|\bинн\b|огрн|кпп|литер|e-?mail|@", re.I)
+
+
 def _specs_ok(specs: list) -> bool:
-    """Разбор годный? Пусто или ключи в основном числовые («1.1», «2.3» — нумерованные
-    строки таблицы попали как ключи) → нет, нужен LLM-fallback."""
+    """Разбор годный? Нет, если ключи в основном МУСОРНЫЕ → нужен LLM-fallback. Мусор:
+    числовые («1.1» — нумерация строк таблицы) ИЛИ реквизиты заказчика (адрес/тел/почта —
+    парсер сорвался на шапку ТЗ). Порог 50%: половина+ ключей мусорные → разбор негоден."""
     keys = [r["key"] for s in specs for r in s["reqs"]]
     if not keys:
         return False
-    numeric = sum(1 for k in keys if re.fullmatch(r"[\d.\s]+", k))
-    return numeric / len(keys) < 0.5
+    junk = sum(1 for k in keys if re.fullmatch(r"[\d.\s]+", k) or _JUNK_KEY_RE.search(k))
+    return junk / len(keys) < 0.5
 
 
 def _expand_variants(d):

@@ -70,6 +70,23 @@ def test_expand_variants_noop_without_variants():
     assert len(lc._expand_variants(d)) == 1
 
 
+def test_specs_ok_rejects_customer_requisites():
+    # парсер сорвался на шапку ТЗ: реквизиты заказчика как «характеристики» → нужен LLM-fallback
+    junk = [{"reqs": [{"key": "заказчик"}, {"key": "почта"},
+                      {"key": "19/9,_литера_а_тел./факс"}, {"key": "косинова,_д.19/9_литер_а"}]}]
+    assert lc._specs_ok(junk) is False
+
+
+def test_specs_ok_accepts_real_characteristics():
+    good = [{"reqs": [{"key": "тип_клинка"}, {"key": "диаметр_световода_мм"},
+                      {"key": "материал"}, {"key": "длина_клинка_мм"}]}]
+    assert lc._specs_ok(good) is True
+
+
+def test_specs_ok_rejects_numeric_keys():
+    assert lc._specs_ok([{"reqs": [{"key": "1.1"}, {"key": "2.3"}, {"key": "4"}]}]) is False
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
