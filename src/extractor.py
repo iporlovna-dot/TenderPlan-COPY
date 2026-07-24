@@ -23,39 +23,57 @@ from models import pick_model  # маршрутизация моделей по 
 
 # Строгая схема вывода: массив требований ровно в форме schema.Requirement.
 # value полиморфен (число / строка / bool / список) — операторам матчинга это ок.
-_SCHEMA = {
+_REQ_ITEM = {
     "type": "object",
     "properties": {
-        "requirements": {
+        "key": {"type": "string"},
+        "operator": {
+            "type": "string",
+            "enum": ["eq", "gte", "lte", "range", "one_of", "set", "present"],
+        },
+        "value": {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "number"},
+                {"type": "boolean"},
+                {"type": "array", "items": {"type": "string"}},
+                {"type": "array", "items": {"type": "number"}},
+            ]
+        },
+        "unit": {"type": "string"},
+        "hardness": {"type": "string", "enum": ["hard", "soft"]},
+        "type": {"type": "string", "enum": ["technical", "documentary"]},
+        "raw": {"type": "string"},
+    },
+    "required": ["key", "operator", "value", "unit", "hardness", "type", "raw"],
+    "additionalProperties": False,
+}
+
+_SCHEMA = {
+    "type": "object",
+    "properties": {"requirements": {"type": "array", "items": _REQ_ITEM}},
+    "required": ["requirements"],
+    "additionalProperties": False,
+}
+
+# Схема для многолота: массив позиций, у каждой имя + свои требования.
+_POS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "positions": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "key": {"type": "string"},
-                    "operator": {
-                        "type": "string",
-                        "enum": ["eq", "gte", "lte", "range", "one_of", "set", "present"],
-                    },
-                    "value": {
-                        "anyOf": [
-                            {"type": "string"},
-                            {"type": "number"},
-                            {"type": "boolean"},
-                            {"type": "array", "items": {"type": "string"}},
-                            {"type": "array", "items": {"type": "number"}},
-                        ]
-                    },
-                    "unit": {"type": "string"},
-                    "hardness": {"type": "string", "enum": ["hard", "soft"]},
-                    "type": {"type": "string", "enum": ["technical", "documentary"]},
-                    "raw": {"type": "string"},
+                    "name": {"type": "string"},
+                    "requirements": {"type": "array", "items": _REQ_ITEM},
                 },
-                "required": ["key", "operator", "value", "unit", "hardness", "type", "raw"],
+                "required": ["name", "requirements"],
                 "additionalProperties": False,
             },
         }
     },
-    "required": ["requirements"],
+    "required": ["positions"],
     "additionalProperties": False,
 }
 
@@ -185,6 +203,57 @@ def extract_requirements(
 
     data = json.loads(text)  # output_config гарантирует валидный JSON по схеме
     return data["requirements"]
+
+
+_POS_SYSTEM = _SYSTEM + """
+
+ОСОБЫЙ РЕЖИМ — МНОГОПОЗИЦИОННЫЙ ЛОТ. ТЗ описывает НЕСКОЛЬКО позиций закупки (напр. клинки
+разного типа/размера, или разные изделия: клинок, рукоятка, сумка). Верни positions[] — по
+объекту на КАЖДУЮ позицию: {name: краткое имя позиции, requirements: [...требования этой
+позиции по правилам выше...]}. Раздели позиции по строкам таблицы / вариантам товара:
+одноимённые позиции с разными размерами — это РАЗНЫЕ позиции. Требования, общие для всей
+поставки (документы), можно продублировать в каждую позицию или опустить.\
+"""
+
+
+def extract_positions(
+    tz_text: str,
+    profile: Optional[dict] = None,
+    model: Optional[str] = None,
+    hard: bool = False,
+    client: Optional[anthropic.Anthropic] = None,
+) -> List[dict]:
+    """Многолот → список позиций [{name, requirements:[dict]}]. Один LLM-вызов на весь ТЗ.
+
+    Формат-независимый разбор лота: модель сама читает таблицу ТЗ (любого формата) и делит
+    её на позиции с их характеристиками, включая одноимённые позиции разных размеров (что
+    детерминированный табличный парсер и КТРУ-скоуп не могут). Для lot_coverage.py."""
+    model = model or pick_model("extract", hard=hard)
+    client = client or anthropic.Anthropic()
+
+    user = "Текст ТЗ:\n\n" + tz_text
+    if profile:
+        hint = {"категория": profile.get("category"),
+                "канонические_имена_ключей": _canonical_keys(profile),
+                "синонимы_значений": profile.get("synonyms")}
+        user += ("\n\nПрофиль (канонические имена ключей — используй ДОСЛОВНО, где подходит):\n"
+                 + json.dumps(hint, ensure_ascii=False))
+
+    resp = client.messages.create(
+        model=model,
+        max_tokens=16000,
+        system=_POS_SYSTEM,
+        messages=[{"role": "user", "content": user}],
+        output_config={"format": {"type": "json_schema", "schema": _POS_SCHEMA}, "effort": "medium"},
+    )
+    if resp.stop_reason == "refusal":
+        raise RuntimeError("Модель отклонила запрос (stop_reason=refusal)")
+    if resp.stop_reason == "max_tokens":
+        raise RuntimeError("Ответ обрезан по max_tokens — ТЗ слишком большое; сократи вход.")
+    text = next((b.text for b in resp.content if b.type == "text"), "")
+    if not text:
+        raise RuntimeError("Пустой ответ модели при извлечении позиций")
+    return json.loads(text)["positions"]
 
 
 if __name__ == "__main__":

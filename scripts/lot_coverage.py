@@ -127,6 +127,16 @@ def parse_position_specs(tz_text: str) -> list:
     return _parse_format_a(tz_text) or _parse_format_b(tz_text)
 
 
+def _specs_ok(specs: list) -> bool:
+    """Разбор годный? Пусто или ключи в основном числовые («1.1», «2.3» — нумерованные
+    строки таблицы попали как ключи) → нет, нужен LLM-fallback."""
+    keys = [r["key"] for s in specs for r in s["reqs"]]
+    if not keys:
+        return False
+    numeric = sum(1 for k in keys if re.fullmatch(r"[\d.\s]+", k))
+    return numeric / len(keys) < 0.5
+
+
 def load_catalog(path):
     files = [path] if path.endswith(".json") else glob.glob(os.path.join(path, "*.json"))
     cat = []
@@ -170,6 +180,7 @@ def main():
     ap.add_argument("--catalog", required=True, help="каталог карточек (папка или .json)")
     ap.add_argument("--profile", help="профиль категории (для синонимов)")
     ap.add_argument("--min-score", type=float, default=60, help="порог «покрыто», %")
+    ap.add_argument("--llm", action="store_true", help="принудительно LLM-разбор позиций (формат-независимо)")
     args = ap.parse_args()
 
     profile = json.load(open(args.profile, encoding="utf-8")) if args.profile else {}
@@ -191,9 +202,19 @@ def main():
         src.close()
 
     specs = parse_position_specs(tz)
+    src_label = "таблица ТЗ (детерм.)"
+    if tz.strip() and (args.llm or not _specs_ok(specs)):
+        from extractor import extract_positions  # noqa: E402
+        pos_ll = extract_positions(tz, profile=profile)
+        specs = [{"name": p.get("name"), "reqs": p["requirements"]} for p in pos_ll]
+        src_label = "LLM extract_positions (fallback)"
+
     print("Лот: %s" % (purchase.subject or "")[:80])
-    print("Позиций в закупке: %d | характеристик распознано из ТЗ: %d | каталог: %d\n"
-          % (len(positions), len(specs), len(catalog)))
+    print("Позиций в закупке: %d | распознано: %d [%s] | каталог: %d"
+          % (len(positions), len(specs), src_label, len(catalog)))
+    if not tz.strip():
+        print("  ⚠ ТЗ не скачалось/пустое (вложение или SSL) — разбирать нечего")
+    print()
 
     pos_codes = [p.code for p in positions]
     covered = 0
