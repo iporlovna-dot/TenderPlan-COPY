@@ -30,10 +30,10 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from schema import Attribute, Hardness, Operator, Product, ReqType, Requirement, Verdict  # noqa: E402
+from schema import Attribute, Hardness, Operator, Product, ReqType, Requirement, Status, Verdict  # noqa: E402
 from parser import parse  # noqa: E402
 from keymatch import align_keys, align_values, apply_mapping  # noqa: E402
-from matcher import match  # noqa: E402
+from matcher import field_kind, match  # noqa: E402
 from ktru import ktru_relation  # noqa: E402
 from tenderplan import TenderplanSource  # noqa: E402
 
@@ -68,8 +68,9 @@ def _op_value(raw: str):
 
 
 def _req(key, op, val):
+    # тип поля — детерминированно по имени: поставочные/бумажные → documentary (см. field_kind)
     return {"key": key, "operator": op, "value": val, "unit": "",
-            "hardness": "soft", "type": "technical", "raw": "%s: %s" % (key, val)}
+            "hardness": "soft", "type": field_kind(key).value, "raw": "%s: %s" % (key, val)}
 
 
 def _parse_format_a(tz_text: str) -> list:
@@ -163,15 +164,19 @@ def best_card(position_reqs, pos_code, catalog, synonyms, critical):
             continue  # чужая категория — не тратим align
         mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
         aligned = align_values(apply_mapping(position_reqs, mapping), product)
+        # тип требования — из спеки (field_kind); поставочные поля идут как DOCUMENTARY
         reqs = [Requirement(key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
-                            unit=r.get("unit"), type=ReqType.TECHNICAL,
+                            unit=r.get("unit"), type=ReqType(r.get("type", "technical")),
                             hardness=(Hardness.HARD if r["key"] in crit else Hardness.SOFT),
                             raw=r.get("raw", "")) for r in aligned]
         res = match(product, reqs, "cov", synonyms)
+        # техническое покрытие: сколько КАТЕГОРИЙНЫХ (не поставочных) требований реально совпало
+        tech_pass = sum(1 for c in res.checks
+                        if c.status == Status.PASS and c.req.type == ReqType.TECHNICAL)
         rank = (res.verdict != Verdict.DISQUALIFIED, res.score)  # не-дисквал важнее %
         if best is None or rank > best[0]:
-            best = (rank, product.id, res.score, res.verdict)
-    return (best[1], best[2], best[3]) if best else None
+            best = (rank, product.id, res.score, res.verdict, tech_pass)
+    return (best[1], best[2], best[3], best[4]) if best else None
 
 
 def main():
@@ -180,6 +185,8 @@ def main():
     ap.add_argument("--catalog", required=True, help="каталог карточек (папка или .json)")
     ap.add_argument("--profile", help="профиль категории (для синонимов)")
     ap.add_argument("--min-score", type=float, default=60, help="порог «покрыто», %")
+    ap.add_argument("--min-tech", type=int, default=1,
+                    help="минимум совпавших КАТЕГОРИЙНЫХ (не поставочных) требований для «покрыто»")
     ap.add_argument("--llm", action="store_true", help="принудительно LLM-разбор позиций (формат-независимо)")
     args = ap.parse_args()
 
@@ -224,13 +231,20 @@ def main():
             ", ".join("%s: %s" % (r["key"], r.get("value")) for r in spec["reqs"])
         best = best_card(spec["reqs"], code, catalog, synonyms, critical)
         print("  [%d] %s" % (i + 1, label))
-        if best and best[2] != Verdict.DISQUALIFIED and best[1] >= args.min_score:
+        if best:
+            pid, score, verdict, tech = best
+        if best and verdict != Verdict.DISQUALIFIED and score >= args.min_score \
+                and tech >= args.min_tech:
             covered += 1
-            print("       → %s НАШ: %s (%d%%)" % (VR[best[2]], best[1] and best[0], best[1]))
-        elif best and best[2] == Verdict.DISQUALIFIED:
-            print("       → ✗ не наш (несовпадение по критичному полю; ближе всего %s)" % best[0])
+            print("       → %s НАШ: %s (%d%%, категорийных совпадений: %d)" % (VR[verdict], pid, score, tech))
+        elif best and verdict == Verdict.DISQUALIFIED:
+            print("       → ✗ не наш (несовпадение по критичному полю; ближе всего %s)" % pid)
+        elif best and score >= args.min_score and tech < args.min_tech:
+            print("       → ✗ не наш: совпали только поставочные поля (РУ/срок/новизна), "
+                  "категорийных совпадений %d < %d (ближе всего %s, %d%%)"
+                  % (tech, args.min_tech, pid, score))
         elif best:
-            print("       → ✗ ниже порога (ближе всего %s, %d%%)" % (best[0], best[1]))
+            print("       → ✗ ниже порога (ближе всего %s, %d%%)" % (pid, score))
         else:
             print("       → ✗ нет в каталоге (чужой КТРУ)")
 

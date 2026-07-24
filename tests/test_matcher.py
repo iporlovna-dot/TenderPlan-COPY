@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from schema import (  # noqa: E402
     Attribute, Hardness, Operator, Product, ReqType, Requirement, Status, Verdict,
 )
-from matcher import match  # noqa: E402
+from matcher import field_kind, match  # noqa: E402
 
 SYN = {"нитрил": ["нитрильный латекс", "нитриловый"]}
 
@@ -148,6 +148,35 @@ def test_full_match_is_eligible_100():
     res = match(p, r, "t", SYN)
     assert res.score == 100
     assert res.verdict == Verdict.ELIGIBLE
+
+
+def test_field_kind_supply_fields_are_documentary():
+    # поставочные/бумажные поля — есть у любого медизделия, не несут категорийного сигнала
+    for k in ("рег_удостоверение", "ру_имеется", "срок_годности_остаточный_мес",
+              "новизна_товара", "документы_соответствия", "сертификат_декларация_соответствия",
+              "инструкция_на_русском", "маркировка_русский", "разрешён_в_рф", "гарантийный_срок"):
+        assert field_kind(k) == ReqType.DOCUMENTARY, k
+
+
+def test_field_kind_category_fields_are_technical():
+    # категорийные признаки товара — технические
+    for k in ("тип_клинка", "диаметр_световода_мм", "источник_света", "материал",
+              "напряжение_в", "размеры", "форма"):
+        assert field_kind(k) == ReqType.TECHNICAL, k
+
+
+def test_supply_fields_do_not_win_score_alone():
+    # позиция, где товар совпал ТОЛЬКО по поставочным полям, не должна давать высокий %:
+    # напряжение (техническое) расходится → низкий взвешенный %, категорийного совпадения нет
+    p = _product(рег_удостоверение="РУ имеется", срок_годности_остаточный_мес=12, напряжение_в=2.5)
+    reqs = [_req("рег_удостоверение", "present", None, rtype="documentary"),
+            _req("срок_годности_остаточный_мес", "gte", 6, rtype="documentary"),
+            _req("напряжение_в", "eq", 3.5, rtype="technical")]
+    res = match(p, reqs, "t")
+    tech_pass = sum(1 for c in res.checks
+                    if c.status == Status.PASS and c.req.type == ReqType.TECHNICAL)
+    assert tech_pass == 0                     # категорийных совпадений нет
+    assert res.score < 60                     # одни бумаги не тянут на «покрыто»
 
 
 if __name__ == "__main__":
