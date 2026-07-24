@@ -236,7 +236,10 @@ def main():
 
     specs = parse_position_specs(tz)
     src_label = "таблица ТЗ (детерм.)"
-    if tz.strip() and (args.llm or not _specs_ok(specs)):
+    # LLM-fallback: принудительно (--llm) ИЛИ разбор мусорный (_specs_ok) ИЛИ НЕПОЛНЫЙ —
+    # детерм. парсер распознал меньше позиций, чем реально в лоте (8 в лоте, 3 в таблице)
+    incomplete = bool(positions) and len(specs) < len(positions)
+    if tz.strip() and (args.llm or not _specs_ok(specs) or incomplete):
         from extractor import extract_positions  # noqa: E402
         pos_ll = extract_positions(tz, profile=profile)
         specs = [{"name": p.get("name"), "reqs": p["requirements"]} for p in pos_ll]
