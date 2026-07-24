@@ -251,12 +251,21 @@ def main():
 
     pos_codes = [p.code for p in positions]
     covered = 0
+    errors = 0
     for i, spec in enumerate(specs):
         code = pos_codes[i] if i < len(pos_codes) else (pos_codes[0] if pos_codes else None)
         label = (spec.get("name") + " — " if spec.get("name") else "") + \
             ", ".join("%s: %s" % (r["key"], r.get("value")) for r in spec["reqs"])
-        best = best_card(spec["reqs"], code, catalog, synonyms, critical)
         print("  [%d] %s" % (i + 1, label))
+        # изоляция сбоя по позиции: один упавший LLM-вызов (grammar timeout, rate limit)
+        # не должен ронять весь лот — помечаем позицию и идём дальше
+        try:
+            best = best_card(spec["reqs"], code, catalog, synonyms, critical)
+        except Exception as e:
+            errors += 1
+            print("       → ⚠ пропущено: сбой обработки позиции (%s: %s)"
+                  % (type(e).__name__, str(e)[:80]))
+            continue
         if best:
             pid, score, verdict, tech = best
         if best and verdict != Verdict.DISQUALIFIED and score >= args.min_score \
@@ -274,7 +283,9 @@ def main():
         else:
             print("       → ✗ нет в каталоге (чужой КТРУ)")
 
-    print("\n▶ ПОКРЫТИЕ: %d из %d позиций — наш каталог (порог %g%%)" % (covered, len(specs), args.min_score))
+    tail = "" if not errors else " · %d пропущено из-за сбоя обработки" % errors
+    print("\n▶ ПОКРЫТИЕ: %d из %d позиций — наш каталог (порог %g%%)%s"
+          % (covered, len(specs), args.min_score, tail))
 
 
 if __name__ == "__main__":
