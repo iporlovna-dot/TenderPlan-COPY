@@ -42,37 +42,89 @@ TZ_HINTS = ("описание объекта", "техническ", "задан
 VR = {Verdict.ELIGIBLE: "✓", Verdict.ELIGIBLE_WITH_GAPS: "✓~", Verdict.DISQUALIFIED: "✗"}
 
 
-def _kv_pairs(cell: str) -> dict:
-    """«Материал: Сталь. Тип клинка: Миллер. Размер: 00.» → {материал:'Сталь', ...}.
-
-    Характеристики позиции ЕИС — структурные пары. Делим по «. »/«; », ключ до первого
-    «:». Ключ нормализуем в snake_case (нижний регистр, пробелы→_)."""
-    out = {}
-    for seg in re.split(r"[.;]\s+", cell):
-        if ":" in seg:
-            k, v = seg.split(":", 1)
-            k = re.sub(r"\s+", "_", k.strip().lower())
-            v = v.strip().rstrip(".").strip()
-            if k and v and len(k) <= 40:
-                out[k] = v
-    return out
+_KTRU_RE = re.compile(r"\d\d\.\d\d\.\d\d")
 
 
-def parse_position_specs(tz_text: str) -> list:
-    """Из pipe-таблицы ТЗ достаём характеристики позиций: ячейки с ≥3 парами «Ключ: Значение».
+def _norm_key(s: str) -> str:
+    return re.sub(r"\s+", "_", s.strip().lower())[:60]
 
-    Возвращает список dict-ов (по позиции). Дедуп подряд идущих одинаковых строк
-    (в pdf одна позиция иногда двоится)."""
-    specs = []
+
+def _op_value(raw: str):
+    """Значение ЕИС → (operator, value). «≥ 60 и ≤ 65»→range[60,65]; «≥7.5»→gte 7.5;
+    «≤1.5»→lte 1.5; «АВС пластик»→eq строка. Русскую запятую нормализуем."""
+    s = raw.replace("\xa0", " ").strip().rstrip(".")
+    low = s.lower()
+    nums = re.findall(r"-?\d+(?:[.,]\d+)?", s)
+    ge = "≥" in s or "не менее" in low or "не ранее" in low
+    le = "≤" in s or "не более" in low or "не позднее" in low
+    f = lambda x: float(x.replace(",", "."))  # noqa: E731
+    if ge and le and len(nums) >= 2:
+        return "range", [f(nums[0]), f(nums[1])]
+    if ge and nums:
+        return "gte", f(nums[0])
+    if le and nums:
+        return "lte", f(nums[0])
+    return "eq", s
+
+
+def _req(key, op, val):
+    return {"key": key, "operator": op, "value": val, "unit": "",
+            "hardness": "soft", "type": "technical", "raw": "%s: %s" % (key, val)}
+
+
+def _parse_format_a(tz_text: str) -> list:
+    """Формат A (все характеристики позиции в ОДНОЙ ячейке: «Материал: X. Тип: Y.»)."""
+    out = []
     for line in tz_text.splitlines():
         if not line.startswith("|"):
             continue
         cell0 = line.strip("|").split("|")[0].strip()
-        pairs = _kv_pairs(cell0)
-        if len(pairs) >= 3:
-            if not specs or specs[-1] != pairs:
-                specs.append(pairs)
-    return specs
+        reqs = []
+        for seg in re.split(r"[.;]\s+", cell0):
+            if ":" in seg and len(seg) < 120:
+                k, v = seg.split(":", 1)
+                k, v = _norm_key(k), v.strip().rstrip(".")
+                if k and v and len(k) <= 40:
+                    op, val = _op_value(v)
+                    reqs.append(_req(k, op, val))
+        if len(reqs) >= 3:
+            name = None
+            pos = {"name": name, "reqs": reqs}
+            if not out or [r["key"] for r in out[-1]["reqs"]] != [r["key"] for r in reqs]:
+                out.append(pos)
+    return out
+
+
+def _parse_format_b(tz_text: str) -> list:
+    """Формат B (по строке на характеристику: «| товар | наименование | КТРУ | Хар | Значение |»).
+
+    Позиции группируем по наименованию; новая позиция — когда имя сменилось ИЛИ характеристика
+    уже встречалась в текущей (в лоте несколько позиций с одним именем/КТРУ идут подряд)."""
+    out = []
+    cur = None
+    for line in tz_text.splitlines():
+        if not line.startswith("|"):
+            continue
+        c = [x.strip() for x in line.strip("|").split("|")]
+        if len(c) < 5:
+            continue
+        name, ktru, char, val = c[1], c[2], c[3], c[4]
+        if not _KTRU_RE.search(ktru) or not char or not val:
+            continue
+        key = _norm_key(char)
+        keys_here = [r["key"] for r in cur["reqs"]] if cur else []
+        if cur is None or name != cur["name"] or key in keys_here:
+            cur = {"name": name, "reqs": []}
+            out.append(cur)
+        op, value = _op_value(val)
+        cur["reqs"].append(_req(key, op, value))
+    return [p for p in out if len(p["reqs"]) >= 2]
+
+
+def parse_position_specs(tz_text: str) -> list:
+    """Характеристики позиций из таблицы ТЗ. Поддержаны 2 формата ЕИС (A: всё в ячейке;
+    B: по строке на характеристику). Возвращает [{name, reqs:[req-dict]}] по позиции."""
+    return _parse_format_a(tz_text) or _parse_format_b(tz_text)
 
 
 def load_catalog(path):
@@ -85,25 +137,26 @@ def load_catalog(path):
     return cat
 
 
-def best_card(spec, pos_code, catalog, synonyms, critical):
+def best_card(position_reqs, pos_code, catalog, synonyms, critical):
     """Лучший товар каталога под позицию: КТРУ-предфильтр (не 'none') → align → match.
 
+    position_reqs — список req-dict {key,operator,value,...} характеристик позиции.
     Критичные поля профиля (`тип_клинка`, `одноразовость`…) делаем ЖЁСТКИМИ: расхождение
     по ним → дисквалификация, товар не считается покрытием (Миллер vs Макинтош → не наш,
     а не «57%»). Ранжируем: сначала не-дисквалифицированные, потом по %."""
     crit = set(critical or [])
-    reqs_raw = [{"key": k, "value": v} for k, v in spec.items()]
+    req_fields = {r["key"]: r.get("value") for r in position_reqs}
     best = None
     for d, product in catalog:
         codes = d.get("ktru") or []
         if pos_code and codes and ktru_relation(codes, [pos_code]) == "none":
             continue  # чужая категория — не тратим align
-        mapping = align_keys(dict(spec), {a.key: a.value for a in product.attributes})
-        aligned = align_values(apply_mapping(reqs_raw, mapping), product)
-        reqs = [Requirement(key=r["key"], operator=Operator.EQ, value=r.get("value"), unit="",
+        mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
+        aligned = align_values(apply_mapping(position_reqs, mapping), product)
+        reqs = [Requirement(key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
+                            unit=r.get("unit"), type=ReqType.TECHNICAL,
                             hardness=(Hardness.HARD if r["key"] in crit else Hardness.SOFT),
-                            type=ReqType.TECHNICAL, raw="%s: %s" % (r["key"], r.get("value")))
-                for r in aligned]
+                            raw=r.get("raw", "")) for r in aligned]
         res = match(product, reqs, "cov", synonyms)
         rank = (res.verdict != Verdict.DISQUALIFIED, res.score)  # не-дисквал важнее %
         if best is None or rank > best[0]:
@@ -146,8 +199,9 @@ def main():
     covered = 0
     for i, spec in enumerate(specs):
         code = pos_codes[i] if i < len(pos_codes) else (pos_codes[0] if pos_codes else None)
-        label = ", ".join("%s: %s" % (k, v) for k, v in spec.items())
-        best = best_card(spec, code, catalog, synonyms, critical)
+        label = (spec.get("name") + " — " if spec.get("name") else "") + \
+            ", ".join("%s: %s" % (r["key"], r.get("value")) for r in spec["reqs"])
+        best = best_card(spec["reqs"], code, catalog, synonyms, critical)
         print("  [%d] %s" % (i + 1, label))
         if best and best[2] != Verdict.DISQUALIFIED and best[1] >= args.min_score:
             covered += 1
