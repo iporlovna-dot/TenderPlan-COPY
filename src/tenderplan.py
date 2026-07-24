@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
+import sys
 import time
 from typing import Iterator, List, Optional
 
@@ -70,6 +72,11 @@ class _RateLimiter:
         self._calls.append(time.monotonic())
 
 
+# Госпорталы РФ, чей нац. УЦ (ГУЦ Минцифры 2022) не в бандле и недоступен для загрузки
+# из части сред → для их ПУБЛИЧНЫХ документов допускаем ослабленную TLS-проверку (см. ниже).
+_GOV_RELAXED_HOSTS = {"zakupki.mos.ru", "old.zakupki.mos.ru"}
+
+
 class TenderplanSource:
     """Источник закупок поверх API Тендерплана. Реализует source.TenderSource."""
 
@@ -95,12 +102,17 @@ class TenderplanSource:
             verify_files = _resolve_verify()
         # zakupki.gov.ru отклоняет запросы без браузерного User-Agent (отдаёт 404),
         # поэтому клиент скачивания представляется браузером.
+        self._ua = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36")
+        self._timeout = timeout
         self._files = httpx.Client(
             timeout=timeout, follow_redirects=True, verify=verify_files,
-            headers={"User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                                    "Chrome/122.0 Safari/537.36")},
+            headers={"User-Agent": self._ua},
         )
+        # Ленивый клиент БЕЗ TLS-проверки — только для известных госпорталов РФ, чей
+        # национальный УЦ (ГУЦ Минцифры) не в бандле и недоступен для загрузки. Публичные
+        # документы, токен на хост не шлётся. Создаётся при первой SSL-ошибке на таком хосте.
+        self._gov_files = None
         self._rl = _RateLimiter()
 
     # --- транспорт --------------------------------------------------------
@@ -187,15 +199,33 @@ class TenderplanSource:
             if not href:
                 continue
             name = att.get("realName") or att.get("displayName") or "attachment"
-            self._rl.wait()
-            r = self._files.get(href)
-            if r.status_code != 200:
+            r = self._fetch_file(href)
+            if r is None or r.status_code != 200:
                 continue
             path = os.path.join(dest_dir, "%s__%s" % (purchase.id, _safe(name)))
             with open(path, "wb") as f:
                 f.write(r.content)
             saved.append(path)
         return saved
+
+    def _fetch_file(self, href: str) -> Optional[httpx.Response]:
+        """GET файла ТЗ с проверкой TLS. На SSL-ошибке для известного госпортала РФ
+        (нац. УЦ вне бандла) — ретрай с ослабленной проверкой (публичный документ)."""
+        from urllib.parse import urlparse
+        self._rl.wait()
+        try:
+            return self._files.get(href)
+        except (httpx.ConnectError, ssl.SSLError) as e:
+            host = urlparse(href).netloc
+            if "CERTIFICATE_VERIFY" not in str(e) or host not in _GOV_RELAXED_HOSTS:
+                raise
+            if self._gov_files is None:
+                self._gov_files = httpx.Client(timeout=self._timeout, follow_redirects=True,
+                                               verify=False, headers={"User-Agent": self._ua})
+            sys.stderr.write("  [tls] ослаблена проверка для госпортала %s "
+                             "(нац. УЦ вне бандла; публичный документ)\n" % host)
+            self._rl.wait()
+            return self._gov_files.get(href)
 
     def fetch_tz(self, tender_id: str, dest_dir: str) -> tuple:
         """Точка входа Этапа 0: карточка + скачанные файлы ТЗ по id. -> (Purchase, [пути])."""
@@ -206,6 +236,8 @@ class TenderplanSource:
     def close(self) -> None:
         self._client.close()
         self._files.close()
+        if self._gov_files is not None:
+            self._gov_files.close()
 
 
 # --- маппинг ответов Тендерплана в наши модели (поля подтверждены probe) ---
