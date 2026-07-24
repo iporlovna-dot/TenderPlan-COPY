@@ -150,6 +150,22 @@ def test_full_match_is_eligible_100():
     assert res.verdict == Verdict.ELIGIBLE
 
 
+def test_eq_single_value_against_product_size_set():
+    # товар в размерах ['0'..'4'], ТЗ просит «№3» → проходит (входит в набор), не violation
+    p = _product(размеры=["0", "1", "2", "3", "4"])
+    r = [_req("размеры", "eq", "№3")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_eq_single_value_not_in_product_set_violation():
+    # ТЗ просит «№7», которого нет в наборе товара → violation
+    p = _product(размеры=["0", "1", "2", "3", "4"])
+    r = [_req("размеры", "eq", "№7")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
 def test_field_kind_supply_fields_are_documentary():
     # поставочные/бумажные поля — есть у любого медизделия, не несут категорийного сигнала
     for k in ("рег_удостоверение", "ру_имеется", "срок_годности_остаточный_мес",

@@ -125,6 +125,12 @@ def evaluate(req: Requirement, attr: Optional[Attribute],
     op = req.operator
 
     if op == Operator.EQ:
+        # товар доступен в НАБОРЕ значений (размеры ['0'..'4']), а ТЗ просит одно («№3») —
+        # проходит, если запрошенное входит в набор (иначе eq сравнил бы весь список строкой)
+        if isinstance(attr.value, (list, tuple)):
+            ok = any(_val_match(req.value, [x], synonyms) or _eq(x, req.value, synonyms)
+                     for x in attr.value)
+            return _pass_or_violation(req, ok, attr)
         num = _eq_numeric(attr.value, req)     # «2,5 В» vs 2.5/«В»: число+единица
         ok = num if num is not None else _eq(attr.value, req.value, synonyms)
         return _pass_or_violation(req, ok, attr)
