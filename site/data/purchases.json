@@ -1,55 +1,70 @@
 {
-  "generatedAt": "2026-07-24T19:15:59.972Z",
+  "generatedAt": "2026-07-24T20:16:09.116Z",
   "source": "Портал поставщиков + ЕИС (zakupki.gov.ru) — активные закупки",
-  "total": 829,
+  "total": 828,
   "purchases": [
     {
-      "id": "pp_10256611",
-      "number": "10256611",
-      "title": "Ролл-Ап 850х2000 мм, с рекламным полотном",
-      "customer": "Государственное бюджетное образовательное учреждение дополнительного образования города Москвы «Центр детского творчества «Ново-Переделкино»",
-      "customerInn": "7732120595",
-      "law": "44-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Мебель прочая",
-      "price": 14820,
+      "id": "eis_32616237131",
+      "number": "32616237131",
+      "title": "Поставка железобетонных изделий для нужд ГАУ ДО ВО СШ «Юный ястреб» им. А.М. Числова»",
+      "customer": "ГОСУДАРСТВЕННОЕ АВТОНОМНОЕ УЧРЕЖДЕНИЕ ДОПОЛНИТЕЛЬНОГО ОБРАЗОВАНИЯ ВОЛГОГРАДСКОЙ ОБЛАСТИ \"СПОРТИВНАЯ ШКОЛА \"ЮНЫЙ ЯСТРЕБ\" ИМЕНИ ГЕРОЯ СОВЕТСКОГО СОЮЗА А.М.ЧИСЛОВА\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 1548000,
       "stage": "active",
-      "endDate": "2026-07-24T22:19:13",
-      "beginDate": "2026-07-23T16:19:13",
+      "endDate": "2026-07-24T23:59:00",
+      "beginDate": "2026-07-24T23:59:00",
       "deadlineDays": 1,
-      "publishedDaysAgo": 1,
+      "publishedDaysAgo": 0,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10256611",
-      "deliveryDays": 10,
-      "deliveryPlace": "г г Москва, Город Москва, улица Чоботовская, дом 5, корпус 1",
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237131",
+      "deliveryDays": null,
+      "deliveryPlace": "",
       "lots": [
         {
-          "name": "Ролл-Ап 850х2000 мм, с рекламным полотном",
-          "qty": "3",
-          "price": 4940,
-          "okpd": "Мебель прочая"
+          "name": "Поставка железобетонных изделий для нужд ГАУ ДО ВО СШ «Юный ястреб» им. А.М. Числова»",
+          "qty": "—",
+          "price": 1548000
         }
       ],
-      "documents": [
+      "documents": [],
+      "matches": {}
+    },
+    {
+      "id": "eis_32616237129",
+      "number": "32616237129",
+      "title": "Выполнение работ по устройству брусчатого покрытия для нужд ГАУ ДО ВО СШ «Юный ястреб» им. А.М. Числова»",
+      "customer": "ГОСУДАРСТВЕННОЕ АВТОНОМНОЕ УЧРЕЖДЕНИЕ ДОПОЛНИТЕЛЬНОГО ОБРАЗОВАНИЯ ВОЛГОГРАДСКОЙ ОБЛАСТИ \"СПОРТИВНАЯ ШКОЛА \"ЮНЫЙ ЯСТРЕБ\" ИМЕНИ ГЕРОЯ СОВЕТСКОГО СОЮЗА А.М.ЧИСЛОВА\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 5029587.35,
+      "stage": "active",
+      "endDate": "2026-07-24T23:59:00",
+      "beginDate": "2026-07-24T23:59:00",
+      "deadlineDays": 1,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237129",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
         {
-          "id": "279753594",
-          "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279753594"
-        },
-        {
-          "id": "279753595",
-          "name": "Техническое_задание_.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279753595"
-        },
-        {
-          "id": "279757822",
-          "name": "Краткое описание КС 10256611.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279757822"
+          "name": "Выполнение работ по устройству брусчатого покрытия для нужд ГАУ ДО ВО СШ «Юный ястреб» им. А.М. Числова»",
+          "qty": "—",
+          "price": 5029587.35
         }
       ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -81,38 +96,7 @@
           "price": 10233333.33
         }
       ],
-      "documents": [
-        {
-          "id": "347305836C654C66A64B2F91188D8D68",
-          "name": "Договор проект_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=347305836C654C66A64B2F91188D8D68"
-        },
-        {
-          "id": "089DCD95D94E487088F230BF770528E1",
-          "name": "ТЕХНИЧЕСКОЕ ЗАДАНИЕ.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=089DCD95D94E487088F230BF770528E1"
-        },
-        {
-          "id": "B4CB2889D225465CA24E3A03FF65E18E",
-          "name": "Задание на оценку (Прил1 к договору).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B4CB2889D225465CA24E3A03FF65E18E"
-        },
-        {
-          "id": "ECDA099957B14EB29863BD5E1EA25973",
-          "name": "193 докум.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=ECDA099957B14EB29863BD5E1EA25973"
-        },
-        {
-          "id": "06682B9604E7445CB5B143F2EED08454",
-          "name": "Форма Заявка.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=06682B9604E7445CB5B143F2EED08454"
-        },
-        {
-          "id": "3DDDD832B6E04BA38811C3D9A4D2DB5D",
-          "name": "Прил 2 Обоснование НМЦ.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=3DDDD832B6E04BA38811C3D9A4D2DB5D"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -144,38 +128,7 @@
           "price": 18183551.98
         }
       ],
-      "documents": [
-        {
-          "id": "89C48F2067B949088080BA29503A99A7",
-          "name": "Сметная документация.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=89C48F2067B949088080BA29503A99A7"
-        },
-        {
-          "id": "7B0C7CE192FB4225B7E7CA08B08E432A",
-          "name": "200 докум.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7B0C7CE192FB4225B7E7CA08B08E432A"
-        },
-        {
-          "id": "41EEA4D2BA07433BBB5FCB4EFBAEFA0C",
-          "name": "Форма заявки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=41EEA4D2BA07433BBB5FCB4EFBAEFA0C"
-        },
-        {
-          "id": "A7BEB01AC9CF4D82B7D0DB2C1E824C4F",
-          "name": "Прил 2 Обоснование НМЦ.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A7BEB01AC9CF4D82B7D0DB2C1E824C4F"
-        },
-        {
-          "id": "9424B770F597493481CDF3DD8F303049",
-          "name": "тз.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9424B770F597493481CDF3DD8F303049"
-        },
-        {
-          "id": "37BEF0BF98E04D9092865104BB239C16",
-          "name": "Проект договора подряда .docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=37BEF0BF98E04D9092865104BB239C16"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -553,80 +506,6 @@
           "id": "279779805",
           "name": "Краткое описание КС 10256694.docx",
           "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279779805"
-        }
-      ],
-      "matches": {}
-    },
-    {
-      "id": "pp_10256708",
-      "number": "10256708",
-      "title": "поставка игрушек",
-      "customer": "МУНИЦИПАЛЬНОЕ АВТОНОМНОЕ ДОШКОЛЬНОЕ ОБРАЗОВАТЕЛЬНОЕ УЧРЕЖДЕНИЕ \"ДЕТСКИЙ САД № 66\"",
-      "customerInn": "5911027768",
-      "law": "223-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "Пермский край",
-      "okpd": "Предметы игрового обихода деревянные без механизмов",
-      "price": 21560,
-      "stage": "active",
-      "endDate": "2026-07-27T07:21:05",
-      "beginDate": "2026-07-24T07:21:05",
-      "deadlineDays": 3,
-      "publishedDaysAgo": 1,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10256708",
-      "deliveryDays": 5,
-      "deliveryPlace": "  Пермский край,  Пермский край, м.о. город Березники, г. Березники",
-      "lots": [
-        {
-          "name": "Счеты Абакус ",
-          "qty": "10",
-          "price": 364,
-          "okpd": "Предметы игрового обихода деревянные без механизмов"
-        },
-        {
-          "name": "Деревянная пирамидка",
-          "qty": "8",
-          "price": 1200,
-          "okpd": "Игрушки деревянные прочие"
-        },
-        {
-          "name": "Пирамидка цветная, логическая развивающая игрушка",
-          "qty": "8",
-          "price": 170,
-          "okpd": "Игрушки пластмассовые для детей ясельного возраста без механизмов"
-        },
-        {
-          "name": "Фигурная пирамидка",
-          "qty": "8",
-          "price": 300,
-          "okpd": "Игрушки пластмассовые для детей ясельного возраста без механизмов"
-        },
-        {
-          "name": "Пирамидка Зверята-акробаты",
-          "qty": "8",
-          "price": 370,
-          "okpd": "Игрушки пластмассовые прочие"
-        },
-        {
-          "name": "Пирамидка стаканчики для малышей",
-          "qty": "8",
-          "price": 200,
-          "okpd": "Игрушки пластмассовые для детей ясельного возраста без механизмов"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279730785",
-          "name": "тех задан пирамидки.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279730785"
-        },
-        {
-          "id": "279730756",
-          "name": "Договор игрушки.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279730756"
         }
       ],
       "matches": {}
@@ -1648,7 +1527,7 @@
       "endDate": "2026-07-27T10:18:27",
       "beginDate": "2026-07-24T10:18:27",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -1673,6 +1552,80 @@
           "id": "279787537",
           "name": "Техническое_задание_лифт.docx",
           "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279787537"
+        }
+      ],
+      "matches": {}
+    },
+    {
+      "id": "pp_10256708",
+      "number": "10256708",
+      "title": "поставка игрушек",
+      "customer": "МУНИЦИПАЛЬНОЕ АВТОНОМНОЕ ДОШКОЛЬНОЕ ОБРАЗОВАТЕЛЬНОЕ УЧРЕЖДЕНИЕ \"ДЕТСКИЙ САД № 66\"",
+      "customerInn": "5911027768",
+      "law": "223-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "Пермский край",
+      "okpd": "Предметы игрового обихода деревянные без механизмов",
+      "price": 21560,
+      "stage": "active",
+      "endDate": "2026-07-27T10:21:05",
+      "beginDate": "2026-07-24T07:21:05",
+      "deadlineDays": 3,
+      "publishedDaysAgo": 1,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10256708",
+      "deliveryDays": 5,
+      "deliveryPlace": "  Пермский край,  Пермский край, м.о. город Березники, г. Березники",
+      "lots": [
+        {
+          "name": "Счеты Абакус ",
+          "qty": "10",
+          "price": 364,
+          "okpd": "Предметы игрового обихода деревянные без механизмов"
+        },
+        {
+          "name": "Деревянная пирамидка",
+          "qty": "8",
+          "price": 1200,
+          "okpd": "Игрушки деревянные прочие"
+        },
+        {
+          "name": "Пирамидка цветная, логическая развивающая игрушка",
+          "qty": "8",
+          "price": 170,
+          "okpd": "Игрушки пластмассовые для детей ясельного возраста без механизмов"
+        },
+        {
+          "name": "Фигурная пирамидка",
+          "qty": "8",
+          "price": 300,
+          "okpd": "Игрушки пластмассовые для детей ясельного возраста без механизмов"
+        },
+        {
+          "name": "Пирамидка Зверята-акробаты",
+          "qty": "8",
+          "price": 370,
+          "okpd": "Игрушки пластмассовые прочие"
+        },
+        {
+          "name": "Пирамидка стаканчики для малышей",
+          "qty": "8",
+          "price": 200,
+          "okpd": "Игрушки пластмассовые для детей ясельного возраста без механизмов"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279730785",
+          "name": "тех задан пирамидки.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279730785"
+        },
+        {
+          "id": "279730756",
+          "name": "Договор игрушки.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279730756"
         }
       ],
       "matches": {}
@@ -1765,7 +1718,7 @@
       "endDate": "2026-07-27T10:34:11",
       "beginDate": "2026-07-24T10:34:11",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -1825,7 +1778,7 @@
       "endDate": "2026-07-27T10:38:47",
       "beginDate": "2026-07-24T10:38:47",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -1869,7 +1822,7 @@
       "endDate": "2026-07-27T10:39:22",
       "beginDate": "2026-07-24T10:39:22",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -1918,7 +1871,7 @@
       "endDate": "2026-07-27T10:40:00",
       "beginDate": "2026-07-24T10:40:00",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -1979,7 +1932,7 @@
       "endDate": "2026-07-27T10:50:35",
       "beginDate": "2026-07-24T10:50:35",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2028,7 +1981,7 @@
       "endDate": "2026-07-27T10:51:33",
       "beginDate": "2026-07-24T10:51:33",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2072,7 +2025,7 @@
       "endDate": "2026-07-27T10:57:01",
       "beginDate": "2026-07-24T10:57:01",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2121,7 +2074,7 @@
       "endDate": "2026-07-27T11:01:16",
       "beginDate": "2026-07-24T11:01:16",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2170,7 +2123,7 @@
       "endDate": "2026-07-27T11:06:34",
       "beginDate": "2026-07-24T11:06:34",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2231,7 +2184,7 @@
       "endDate": "2026-07-27T11:07:23",
       "beginDate": "2026-07-24T11:07:23",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2280,7 +2233,7 @@
       "endDate": "2026-07-27T11:10:34",
       "beginDate": "2026-07-24T11:10:34",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2335,7 +2288,7 @@
       "endDate": "2026-07-27T11:13:44",
       "beginDate": "2026-07-24T11:13:44",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -2528,7 +2481,7 @@
       "endDate": "2026-07-27T11:14:41",
       "beginDate": "2026-07-24T11:14:41",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -3405,55 +3358,6 @@
       "matches": {}
     },
     {
-      "id": "pp_10257082",
-      "number": "10257082",
-      "title": "Ширма 4- х секционная для зонирования, 1750х2000 мм черная",
-      "customer": "управа района Внуково города Москвы",
-      "customerInn": "7732119550",
-      "law": "44-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Мебель прочая",
-      "price": 34700,
-      "stage": "active",
-      "endDate": "2026-07-27T12:00:00",
-      "beginDate": "2026-07-24T10:00:00",
-      "deadlineDays": 3,
-      "publishedDaysAgo": 1,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10257082",
-      "deliveryDays": 5,
-      "deliveryPlace": "г г Москва, Город Москва, улица Спортивная, дом 3А",
-      "lots": [
-        {
-          "name": "Ширма 4- х секционная для зонирования, 1750х2000 мм черная",
-          "qty": "10",
-          "price": 3470,
-          "okpd": "Мебель прочая"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279786437",
-          "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279786437"
-        },
-        {
-          "id": "279786438",
-          "name": "Техническое_задание_Ширма.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279786438"
-        },
-        {
-          "id": "279790131",
-          "name": "Краткое описание КС 10257082.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279790131"
-        }
-      ],
-      "matches": {}
-    },
-    {
       "id": "pp_10257337",
       "number": "10257337",
       "title": "ИГРУШКИ И ИГРОВОЕ ОБОРУДОВАНИЕ",
@@ -3918,6 +3822,55 @@
           "id": "279801061",
           "name": "Краткое описание КС 10257337.docx",
           "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801061"
+        }
+      ],
+      "matches": {}
+    },
+    {
+      "id": "pp_10257082",
+      "number": "10257082",
+      "title": "Ширма 4- х секционная для зонирования, 1750х2000 мм черная",
+      "customer": "управа района Внуково города Москвы",
+      "customerInn": "7732119550",
+      "law": "44-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "г. Москва",
+      "okpd": "Мебель прочая",
+      "price": 34700,
+      "stage": "active",
+      "endDate": "2026-07-27T12:00:00",
+      "beginDate": "2026-07-24T10:00:00",
+      "deadlineDays": 3,
+      "publishedDaysAgo": 1,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10257082",
+      "deliveryDays": 5,
+      "deliveryPlace": "г г Москва, Город Москва, улица Спортивная, дом 3А",
+      "lots": [
+        {
+          "name": "Ширма 4- х секционная для зонирования, 1750х2000 мм черная",
+          "qty": "10",
+          "price": 3470,
+          "okpd": "Мебель прочая"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279786437",
+          "name": "Проект контракта.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279786437"
+        },
+        {
+          "id": "279786438",
+          "name": "Техническое_задание_Ширма.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279786438"
+        },
+        {
+          "id": "279790131",
+          "name": "Краткое описание КС 10257082.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279790131"
         }
       ],
       "matches": {}
@@ -4830,7 +4783,7 @@
       "endDate": "2026-07-27T12:15:37",
       "beginDate": "2026-07-24T10:15:37",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -5503,7 +5456,7 @@
       "endDate": "2026-07-27T12:32:09",
       "beginDate": "2026-07-24T10:32:09",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -5655,7 +5608,7 @@
       "endDate": "2026-07-27T12:35:36",
       "beginDate": "2026-07-24T10:35:36",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -17126,6 +17079,38 @@
       "matches": {}
     },
     {
+      "id": "eis_0103200008426006160",
+      "number": "0103200008426006160",
+      "title": "Закупка расходный медицинский материал-5",
+      "customer": "КОМИТЕТ ПО ГОСУДАРСТВЕННЫМ ЗАКУПКАМ РЕСПУБЛИКИ ДАГЕСТАН",
+      "customerInn": "",
+      "law": "44-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 900000,
+      "stage": "active",
+      "endDate": "2026-07-27T23:59:00",
+      "beginDate": "2026-07-15T23:59:00",
+      "deadlineDays": 4,
+      "publishedDaysAgo": 9,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0103200008426006160",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Закупка расходный медицинский материал-5",
+          "qty": "—",
+          "price": 900000
+        }
+      ],
+      "documents": [],
+      "matches": {}
+    },
+    {
       "id": "eis_32616235803",
       "number": "32616235803",
       "title": "монтаж пожарной сигнализации и систем оповещения",
@@ -17154,18 +17139,7 @@
           "price": 1887980.45
         }
       ],
-      "documents": [
-        {
-          "id": "E7B16A1D1DC84FC8AB1F3BE3FE21FD9E",
-          "name": "ПРОЕКТ ДОГОВОРА.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=E7B16A1D1DC84FC8AB1F3BE3FE21FD9E"
-        },
-        {
-          "id": "C301DFAFC2494687B35FA0DD4159CD8D",
-          "name": "ТЗ Замятино.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C301DFAFC2494687B35FA0DD4159CD8D"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -17249,6 +17223,38 @@
           "name": "Оказание услуг по диагностике, техническому обслуживанию и ремонту автомобилей",
           "qty": "—",
           "price": 700000
+        }
+      ],
+      "documents": [],
+      "matches": {}
+    },
+    {
+      "id": "eis_0103200008426006159",
+      "number": "0103200008426006159",
+      "title": "Закупка расходный медицинский материал-3",
+      "customer": "КОМИТЕТ ПО ГОСУДАРСТВЕННЫМ ЗАКУПКАМ РЕСПУБЛИКИ ДАГЕСТАН",
+      "customerInn": "",
+      "law": "44-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 900000,
+      "stage": "active",
+      "endDate": "2026-07-28T23:59:00",
+      "beginDate": "2026-07-15T23:59:00",
+      "deadlineDays": 5,
+      "publishedDaysAgo": 9,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0103200008426006159",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Закупка расходный медицинский материал-3",
+          "qty": "—",
+          "price": 900000
         }
       ],
       "documents": [],
@@ -17411,28 +17417,7 @@
           "price": 78683.67
         }
       ],
-      "documents": [
-        {
-          "id": "2262CE92ADBD4B18B8BD7EF7FA990CE8",
-          "name": "Проект договора (Приложение № 4 к ДоЗ).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2262CE92ADBD4B18B8BD7EF7FA990CE8"
-        },
-        {
-          "id": "C0EB21C47DE04AB2AC1419A0B2FD58C4",
-          "name": "Техническое задание (Приложение №5 к ДоЗ).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C0EB21C47DE04AB2AC1419A0B2FD58C4"
-        },
-        {
-          "id": "1E5EF5BCD17F4CB4B11289DF388C89DE",
-          "name": "Извещение и документация 78 683,67.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1E5EF5BCD17F4CB4B11289DF388C89DE"
-        },
-        {
-          "id": "9599FD63B73B4A51B9FF8D3DB144FBB2",
-          "name": "Обоснование НМЦ (Приложение № 6 к ДоЗ).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9599FD63B73B4A51B9FF8D3DB144FBB2"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -17464,18 +17449,7 @@
           "price": 1300000
         }
       ],
-      "documents": [
-        {
-          "id": "AD122B08D7F24B53ABD4FB51273AD8D0",
-          "name": "Извещение.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AD122B08D7F24B53ABD4FB51273AD8D0"
-        },
-        {
-          "id": "E6B9A9C473E84DC794698020744B6F2D",
-          "name": "Предложение участника.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=E6B9A9C473E84DC794698020744B6F2D"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -17571,33 +17545,7 @@
           "price": 85063.5
         }
       ],
-      "documents": [
-        {
-          "id": "C08945EEAC664E86ADEB3737A28DD04F",
-          "name": "Проект договора Приложение № 4 к ДоЗ.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C08945EEAC664E86ADEB3737A28DD04F"
-        },
-        {
-          "id": "0C0FBCBB29094FAB9D6416F8AA3027F8",
-          "name": "Извещение и документация.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0C0FBCBB29094FAB9D6416F8AA3027F8"
-        },
-        {
-          "id": "5B334576F8604A0695FB74E60E76BAC7",
-          "name": "Техническое задание (Приложение №5 к ДоЗ).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5B334576F8604A0695FB74E60E76BAC7"
-        },
-        {
-          "id": "5B2545F7459E4250B3C9AF8A5615DF39",
-          "name": "Обоснование НМЦ (Приложение № 6 к ДоЗ).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5B2545F7459E4250B3C9AF8A5615DF39"
-        },
-        {
-          "id": "51733B82F2054C808125134486C55140",
-          "name": "Приложение № 2 к договору (локальный сметный расчет).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=51733B82F2054C808125134486C55140"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -17825,38 +17773,6 @@
       "matches": {}
     },
     {
-      "id": "eis_0373200266026000018",
-      "number": "0373200266026000018",
-      "title": "Поставка товаров (кашпо) для оснащения образовательных учреждений",
-      "customer": "ГОСУДАРСТВЕННОЕ БЮДЖЕТНОЕ ОБЩЕОБРАЗОВАТЕЛЬНОЕ УЧРЕЖДЕНИЕ ГОРОДА МОСКВЫ \"ШКОЛА ИМЕНИ Ф.М. ДОСТОЕВСКОГО\"",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 16522107.2,
-      "stage": "active",
-      "endDate": "2026-07-28T23:59:00",
-      "beginDate": "2026-07-20T23:59:00",
-      "deadlineDays": 5,
-      "publishedDaysAgo": 4,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0373200266026000018",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Поставка товаров (кашпо) для оснащения образовательных учреждений",
-          "qty": "—",
-          "price": 16522107.2
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
       "id": "pp_10257342",
       "number": "10257342",
       "title": "Поставка расходных материалов для обеспечения работы сервера ( Контроллер/ Батарея контроллера)",
@@ -17909,6 +17825,38 @@
           "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279798291"
         }
       ],
+      "matches": {}
+    },
+    {
+      "id": "eis_0103200008426006157",
+      "number": "0103200008426006157",
+      "title": "Закупка расходный медицинский материал-4",
+      "customer": "КОМИТЕТ ПО ГОСУДАРСТВЕННЫМ ЗАКУПКАМ РЕСПУБЛИКИ ДАГЕСТАН",
+      "customerInn": "",
+      "law": "44-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 900000,
+      "stage": "active",
+      "endDate": "2026-07-29T23:59:00",
+      "beginDate": "2026-07-15T23:59:00",
+      "deadlineDays": 6,
+      "publishedDaysAgo": 9,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0103200008426006157",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Закупка расходный медицинский материал-4",
+          "qty": "—",
+          "price": 900000
+        }
+      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -17972,48 +17920,7 @@
           "price": 684000
         }
       ],
-      "documents": [
-        {
-          "id": "1CA62608549C4A94BAF92C79DC11B120",
-          "name": "Форма заявки участника",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1CA62608549C4A94BAF92C79DC11B120"
-        },
-        {
-          "id": "E2B481B1F4984D78AF661C43ECE63905",
-          "name": "Техническое задание",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=E2B481B1F4984D78AF661C43ECE63905"
-        },
-        {
-          "id": "F5D8028FA1FF454D80C5F6849D84526B",
-          "name": "Проект договора",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F5D8028FA1FF454D80C5F6849D84526B"
-        },
-        {
-          "id": "8AFB5AE173C04C1F9B62E2A00FB672E3",
-          "name": "Извещение",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8AFB5AE173C04C1F9B62E2A00FB672E3"
-        },
-        {
-          "id": "958BDCE9E87846D19B272454A122D0AB",
-          "name": "Обоснование НМЦД",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=958BDCE9E87846D19B272454A122D0AB"
-        },
-        {
-          "id": "7E31EC6E1AC34DA799A7F3C56475C4D9",
-          "name": "Извещение _вер2",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7E31EC6E1AC34DA799A7F3C56475C4D9"
-        },
-        {
-          "id": "267814911F0F4EB1904EE7F30BC91420",
-          "name": "Извещение _вер3",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=267814911F0F4EB1904EE7F30BC91420"
-        },
-        {
-          "id": "BF0757C0E8A4493D91BF5F1120314FF2",
-          "name": "Извещение _вер4",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BF0757C0E8A4493D91BF5F1120314FF2"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18045,33 +17952,7 @@
           "price": 5312247.47
         }
       ],
-      "documents": [
-        {
-          "id": "DF95FD6DC2934617B9494424AD303D9A",
-          "name": "Раздел_1___Документация.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DF95FD6DC2934617B9494424AD303D9A"
-        },
-        {
-          "id": "F65E005B8EDC4CE99FEE7E66B4D7A049",
-          "name": "Закупочная_документация.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F65E005B8EDC4CE99FEE7E66B4D7A049"
-        },
-        {
-          "id": "EB095EADF9B548AFA7963A10CED69790",
-          "name": "Закупочная_документация_24.07.2026.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EB095EADF9B548AFA7963A10CED69790"
-        },
-        {
-          "id": "A7646CE1A7854131A59794CE9222161F",
-          "name": "Решение_о_внесении_изм_24.07.2026..doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A7646CE1A7854131A59794CE9222161F"
-        },
-        {
-          "id": "1581DB0C1AC84E3E83BA285A7BB527E7",
-          "name": "Ответ_ИКС_24.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1581DB0C1AC84E3E83BA285A7BB527E7"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18103,88 +17984,7 @@
           "price": 6997446
         }
       ],
-      "documents": [
-        {
-          "id": "156060298B8B4112A31E259D7E45E479",
-          "name": "Приложение № 5. Анкета участника.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=156060298B8B4112A31E259D7E45E479"
-        },
-        {
-          "id": "576F154C3B1849E0A7C9A4ECEEADAA63",
-          "name": "Приложение № 6. Декларация соответствия участника.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=576F154C3B1849E0A7C9A4ECEEADAA63"
-        },
-        {
-          "id": "BB8D848BA3CA4EA5A97E4EF6E7D39212",
-          "name": "Приложение № 7. Согласие - персональные данные (для ФЛ).doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BB8D848BA3CA4EA5A97E4EF6E7D39212"
-        },
-        {
-          "id": "90E6CB5530F04FE48B60A51127C978C0",
-          "name": "Приложение № 3. Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=90E6CB5530F04FE48B60A51127C978C0"
-        },
-        {
-          "id": "AAF1062082484F75BB52E50FB4F20340",
-          "name": "Приложение № 4. Форма первой части заявки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AAF1062082484F75BB52E50FB4F20340"
-        },
-        {
-          "id": "20EB786E1E8D4FD092204E5BCC9C6116",
-          "name": "Документация (аукцион).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=20EB786E1E8D4FD092204E5BCC9C6116"
-        },
-        {
-          "id": "0105988D054F44D3B14317C1DA5C64B8",
-          "name": "Приложение № 1. Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0105988D054F44D3B14317C1DA5C64B8"
-        },
-        {
-          "id": "A922AA8D8D334E22A3BEFE2082BA8F90",
-          "name": "Приложение № 2. Обоснование НМЦД.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A922AA8D8D334E22A3BEFE2082BA8F90"
-        },
-        {
-          "id": "55CEDF5B5D414B87AA9F6845AAF5D3B4",
-          "name": "Приложение № 3. Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=55CEDF5B5D414B87AA9F6845AAF5D3B4"
-        },
-        {
-          "id": "CF98286247064F64BCAC160218F6099B",
-          "name": "Приложение № 1. Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CF98286247064F64BCAC160218F6099B"
-        },
-        {
-          "id": "300DA09919D74F15BF9D844F5B3B3FC8",
-          "name": "Документация (аукцион).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=300DA09919D74F15BF9D844F5B3B3FC8"
-        },
-        {
-          "id": "FC428EC5308B464DA0E7CAD29DF97D41",
-          "name": "Приложение № 2. Обоснование НМЦД.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=FC428EC5308B464DA0E7CAD29DF97D41"
-        },
-        {
-          "id": "84610B81AF4A4759932DA21EB64D660C",
-          "name": "Приложение № 7. Согласие - персональные данные (для ФЛ).doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=84610B81AF4A4759932DA21EB64D660C"
-        },
-        {
-          "id": "35BCB511646546C192BF1537BA94B9E2",
-          "name": "Приложение № 4. Форма первой части заявки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=35BCB511646546C192BF1537BA94B9E2"
-        },
-        {
-          "id": "61F3AC01CDE742A1A150479161832DCF",
-          "name": "Приложение № 5. Анкета участника.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=61F3AC01CDE742A1A150479161832DCF"
-        },
-        {
-          "id": "7369CBF3AE164CD6A1D78968AE153FED",
-          "name": "Приложение № 6. Декларация соответствия участника.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7369CBF3AE164CD6A1D78968AE153FED"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18344,58 +18144,7 @@
           "price": 2570740.51
         }
       ],
-      "documents": [
-        {
-          "id": "D5FAAE10EBF44CF3ACBEC126C504FC7E",
-          "name": "Приложение № 1 к договору.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D5FAAE10EBF44CF3ACBEC126C504FC7E"
-        },
-        {
-          "id": "A6A9341A1A794F43A46184714CF3C464",
-          "name": "Техническое задание (Приложение №5 к ДоЗ).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A6A9341A1A794F43A46184714CF3C464"
-        },
-        {
-          "id": "06AE81605DED44E8B0356C07F97FF3F0",
-          "name": "Извещение и документация 2 570 740,51.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=06AE81605DED44E8B0356C07F97FF3F0"
-        },
-        {
-          "id": "7D42B9F73D20415EB7BFE6CFDCF83C46",
-          "name": "Проект договора (Приложение № 4 к ДоЗ).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7D42B9F73D20415EB7BFE6CFDCF83C46"
-        },
-        {
-          "id": "FA304FF792314F83BB0343C8A49D8977",
-          "name": "Обоснование НМЦ (Приложение № 6 к ДоЗ).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=FA304FF792314F83BB0343C8A49D8977"
-        },
-        {
-          "id": "AEDEC4F310914B6082166348BBC7CAFC",
-          "name": "Извещение и документация 2 570 740,51.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AEDEC4F310914B6082166348BBC7CAFC"
-        },
-        {
-          "id": "97F39CA0C6E4448E8329895432F35E5B",
-          "name": "Техническое задание (Приложение №5 к ДоЗ).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=97F39CA0C6E4448E8329895432F35E5B"
-        },
-        {
-          "id": "C45FD289438A4396B0E6BA857578E5FF",
-          "name": "Приложение № 1 к договору.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C45FD289438A4396B0E6BA857578E5FF"
-        },
-        {
-          "id": "45B4D69FB9A343249551EB5CDA1FC861",
-          "name": "Проект договора (Приложение № 4 к ДоЗ).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=45B4D69FB9A343249551EB5CDA1FC861"
-        },
-        {
-          "id": "AF8CA62180254433BD81435B30CC3051",
-          "name": "Обоснование НМЦ (Приложение № 6 к ДоЗ).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AF8CA62180254433BD81435B30CC3051"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18491,18 +18240,7 @@
           "price": 1200000
         }
       ],
-      "documents": [
-        {
-          "id": "5408106D89204C4CA46E53C1468B0C59",
-          "name": "ЗК_МСП_v5.6.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5408106D89204C4CA46E53C1468B0C59"
-        },
-        {
-          "id": "1B470BE146A9465E928B81DE7432A946",
-          "name": "ЗК_МСП_изм.1 вер.2.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1B470BE146A9465E928B81DE7432A946"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18534,13 +18272,7 @@
           "price": 3175200
         }
       ],
-      "documents": [
-        {
-          "id": "5DB50C10225C42F39B17505B7912D9E4",
-          "name": "Извещение_запроса_цен_218_26_ЗЦ.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5DB50C10225C42F39B17505B7912D9E4"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18604,68 +18336,7 @@
           "price": 107300
         }
       ],
-      "documents": [
-        {
-          "id": "5F648F672CA44BC39733AC3537E65835",
-          "name": "Раздел 3. Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5F648F672CA44BC39733AC3537E65835"
-        },
-        {
-          "id": "DBC94B87CA034BF59F83822ADD10FC78",
-          "name": "Раздел 4. Обоснование начальной (максимальной) цены договора.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DBC94B87CA034BF59F83822ADD10FC78"
-        },
-        {
-          "id": "9FB44C3568D842C28B8329B8A9F56C64",
-          "name": "Раздел 1. Информационная карта.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9FB44C3568D842C28B8329B8A9F56C64"
-        },
-        {
-          "id": "3E2E2B8AAB594A13B5E1FAC7965679DE",
-          "name": "Раздел 2. Описание предмета закупки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=3E2E2B8AAB594A13B5E1FAC7965679DE"
-        },
-        {
-          "id": "5DF5B177E5E34CFE89A2D778EA42B47D",
-          "name": "Раздел 7. Порядок предоставления обеспечения гарантийных обязательств, требования к такому обеспечению.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5DF5B177E5E34CFE89A2D778EA42B47D"
-        },
-        {
-          "id": "61CD6FECEA31490585ADB568C1F5A5C6",
-          "name": "Раздел 8. Требования к содержанию, форме, оформлению и составу заявки на участие в электронном аукционе.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=61CD6FECEA31490585ADB568C1F5A5C6"
-        },
-        {
-          "id": "572C913846E54E66B594E284C6569524",
-          "name": "Раздел 5. Порядок предоставления обеспечения заявки, требования к такому обеспечению.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=572C913846E54E66B594E284C6569524"
-        },
-        {
-          "id": "6A94BD1554C741588B7BF2BFF7064CE8",
-          "name": "Раздел 6. Порядок предоставления обеспечения исполнения договора, требования к такому обеспечению.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6A94BD1554C741588B7BF2BFF7064CE8"
-        },
-        {
-          "id": "7B6C7C492C1146F892B285D5AB2AED19",
-          "name": "Раздел 11. Порядок подведения итогов электронного аукциона.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7B6C7C492C1146F892B285D5AB2AED19"
-        },
-        {
-          "id": "063051A60B6D44268B270BA228B1D70B",
-          "name": "Раздел 12. Изменение условий договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=063051A60B6D44268B270BA228B1D70B"
-        },
-        {
-          "id": "99FD03F967DC47D0A042CC548C60318B",
-          "name": "Раздел 9. Порядок подачи заявок на участие в электронном аукционе.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=99FD03F967DC47D0A042CC548C60318B"
-        },
-        {
-          "id": "7590FDE72D1F463CAB0F915DE77CB255",
-          "name": "Раздел 10. Инструкция по заполнению заявки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7590FDE72D1F463CAB0F915DE77CB255"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18733,38 +18404,6 @@
       "matches": {}
     },
     {
-      "id": "eis_32616217337",
-      "number": "32616217337",
-      "title": "Второй этап закупки: конкурс в электронной форме на право заключения договора на поставку мебели, предметов интерьера",
-      "customer": "ФЕДЕРАЛЬНОЕ ГОСУДАРСТВЕННОЕ УНИТАРНОЕ ПРЕДПРИЯТИЕ \"ГЛАВНОЕ ПРОИЗВОДСТВЕННО-КОММЕРЧЕСКОЕ УПРАВЛЕНИЕ ПО ОБСЛУЖИВАНИЮ ДИПЛОМАТИЧЕСКОГО КОРПУСА ПРИ МИНИСТЕРСТВЕ ИНОСТРАННЫХ ДЕЛ РОССИЙСКОЙ ФЕДЕРАЦИИ\"",
-      "customerInn": "",
-      "law": "223-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 21897149.97,
-      "stage": "active",
-      "endDate": "2026-07-29T23:59:00",
-      "beginDate": "2026-07-17T23:59:00",
-      "deadlineDays": 6,
-      "publishedDaysAgo": 7,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616217337",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Второй этап закупки: конкурс в электронной форме на право заключения договора на поставку мебели, предметов интерьера",
-          "qty": "—",
-          "price": 21897149.97
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
       "id": "eis_32616216261",
       "number": "32616216261",
       "title": "Поставка строительных материалов для АБК АО «Коммунаровский рудник»",
@@ -18793,73 +18432,7 @@
           "price": 10203692
         }
       ],
-      "documents": [
-        {
-          "id": "559E3E331D9542BB81322E06BB900B3D",
-          "name": "НМЦД потолок.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=559E3E331D9542BB81322E06BB900B3D"
-        },
-        {
-          "id": "192AD6895229463291E803446F0FC106",
-          "name": "Договор потолок.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=192AD6895229463291E803446F0FC106"
-        },
-        {
-          "id": "EE4DD184ACC749B6AA6F5F4DE77F173A",
-          "name": "Извещение о проведении запроса котировок (1).doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EE4DD184ACC749B6AA6F5F4DE77F173A"
-        },
-        {
-          "id": "EF52E537F4CA403B8F4D37CC35F042B5",
-          "name": "Техзадание закуп материалов АБК ПОТОЛОК (1) (1) (1).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EF52E537F4CA403B8F4D37CC35F042B5"
-        },
-        {
-          "id": "182055923AA746A19B5A80D364EC8D6F",
-          "name": "перечень изменений.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=182055923AA746A19B5A80D364EC8D6F"
-        },
-        {
-          "id": "2B935F6E17F34D19B724C0522B44F83A",
-          "name": "Извещение о проведении запроса котировок (1).doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2B935F6E17F34D19B724C0522B44F83A"
-        },
-        {
-          "id": "CA9518BC31FC4F1D912B43C2B89EB474",
-          "name": "Договор потолок.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CA9518BC31FC4F1D912B43C2B89EB474"
-        },
-        {
-          "id": "E3983E0EC14B44C88CC6EF4CF2314094",
-          "name": "Техзадание закуп материалов АБК ПОТОЛОК (1) (1) (1).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=E3983E0EC14B44C88CC6EF4CF2314094"
-        },
-        {
-          "id": "D75E1E9B3C3E4BC89DBC275EF1DE3A2A",
-          "name": "НМЦД потолок.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D75E1E9B3C3E4BC89DBC275EF1DE3A2A"
-        },
-        {
-          "id": "5200BF4192A945B39B5B9E3B34E51F46",
-          "name": "Ответ на запрос от заказчика.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5200BF4192A945B39B5B9E3B34E51F46"
-        },
-        {
-          "id": "96CACECB9B1E4B2689EAE27F1A35C301",
-          "name": "Техзадание закуп материалов АБК ПОТОЛОК (1) (1) (1).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=96CACECB9B1E4B2689EAE27F1A35C301"
-        },
-        {
-          "id": "02463C411D244E93B18F2DFF8AC1BDB0",
-          "name": "Ответ на запрос от заказчика.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=02463C411D244E93B18F2DFF8AC1BDB0"
-        },
-        {
-          "id": "A6F6FC0BC95D4BD9B3E67B3321BEA43E",
-          "name": "АБК потолок реечный, грильято, армстронг.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A6F6FC0BC95D4BD9B3E67B3321BEA43E"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -18923,78 +18496,7 @@
           "price": 241000
         }
       ],
-      "documents": [
-        {
-          "id": "D4AC4F2AFDC0400282F05F4FC031619B",
-          "name": "Обоснование.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D4AC4F2AFDC0400282F05F4FC031619B"
-        },
-        {
-          "id": "32375BD145E24B408FFAB21A65A0DC9C",
-          "name": "Извещение ЗК на общих основаниях.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=32375BD145E24B408FFAB21A65A0DC9C"
-        },
-        {
-          "id": "7574F4DE71C54001B252C790C7FFEE0C",
-          "name": "Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7574F4DE71C54001B252C790C7FFEE0C"
-        },
-        {
-          "id": "0CC548E8C3554AA1A33B42B4043D07FF",
-          "name": "проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0CC548E8C3554AA1A33B42B4043D07FF"
-        },
-        {
-          "id": "DF4CD09292BB4BB4B519762B8D478668",
-          "name": "Извещение ЗК на общих основаниях.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DF4CD09292BB4BB4B519762B8D478668"
-        },
-        {
-          "id": "893E1B1A35FB44259A12152D4633E533",
-          "name": "Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=893E1B1A35FB44259A12152D4633E533"
-        },
-        {
-          "id": "F899021FD15045F08DB745E276144D63",
-          "name": "проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F899021FD15045F08DB745E276144D63"
-        },
-        {
-          "id": "2417223730D0407EBF663A81374464E5",
-          "name": "перечень изменений.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2417223730D0407EBF663A81374464E5"
-        },
-        {
-          "id": "1FF6D1F9F99D477B8D1A0F45B1014DF1",
-          "name": "Обоснование.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1FF6D1F9F99D477B8D1A0F45B1014DF1"
-        },
-        {
-          "id": "B76A006128F94EF6B3433154897A865D",
-          "name": "проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B76A006128F94EF6B3433154897A865D"
-        },
-        {
-          "id": "5675DB8CB1D14A3D874B04CEC846F731",
-          "name": "Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5675DB8CB1D14A3D874B04CEC846F731"
-        },
-        {
-          "id": "C8927815936B4E5194A05EAF473386D8",
-          "name": "Извещение ЗК на общих основаниях.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C8927815936B4E5194A05EAF473386D8"
-        },
-        {
-          "id": "9C74C162EBD34C46A97D22735ADD8048",
-          "name": "Обоснование.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9C74C162EBD34C46A97D22735ADD8048"
-        },
-        {
-          "id": "9DE5F8885191473295C45FA15DE4C9D5",
-          "name": "перечень изменений.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9DE5F8885191473295C45FA15DE4C9D5"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19026,43 +18528,7 @@
           "price": 1165750
         }
       ],
-      "documents": [
-        {
-          "id": "26FCBA324FD441A8A5E64DD4F0FD09F9",
-          "name": "Проект_договора.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=26FCBA324FD441A8A5E64DD4F0FD09F9"
-        },
-        {
-          "id": "762A9E4F6BD0442DA905B95C46C69346",
-          "name": "Аукционная_документация.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=762A9E4F6BD0442DA905B95C46C69346"
-        },
-        {
-          "id": "EE41694A252244DA88319895EEA9755F",
-          "name": "Приложение_№4.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EE41694A252244DA88319895EEA9755F"
-        },
-        {
-          "id": "1FDC4C429DD24D4492074573473B8293",
-          "name": "Перечень_внесенных_изменений.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1FDC4C429DD24D4492074573473B8293"
-        },
-        {
-          "id": "52A3FA075A2E4E03A0887D3FC2AED01C",
-          "name": "Аукционная_документация_2.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=52A3FA075A2E4E03A0887D3FC2AED01C"
-        },
-        {
-          "id": "80A966BD446A4D81A760F885D19EDE51",
-          "name": "Приложение_№4.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=80A966BD446A4D81A760F885D19EDE51"
-        },
-        {
-          "id": "A2F1DEB1A08346FD8CEF9DDD1135A510",
-          "name": "Проект_договора_2.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A2F1DEB1A08346FD8CEF9DDD1135A510"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19094,18 +18560,7 @@
           "price": 1298166.67
         }
       ],
-      "documents": [
-        {
-          "id": "66AD0CACEED94907BBCFFAF7DF0292CC",
-          "name": "Раздел_1___Документация__слияние_.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=66AD0CACEED94907BBCFFAF7DF0292CC"
-        },
-        {
-          "id": "8F800160899042698C896771475EE150",
-          "name": "Закупочная_документация.7z",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8F800160899042698C896771475EE150"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19169,18 +18624,7 @@
           "price": 23186389.45
         }
       ],
-      "documents": [
-        {
-          "id": "DB0E9C0092C043008AC96A9BA7B259F2",
-          "name": "Маркетинговые исследования",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DB0E9C0092C043008AC96A9BA7B259F2"
-        },
-        {
-          "id": "CBBFEDAA54674E20901D9A7526600D8D",
-          "name": "Маркетинговые исследования",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CBBFEDAA54674E20901D9A7526600D8D"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19212,33 +18656,7 @@
           "price": 11132950
         }
       ],
-      "documents": [
-        {
-          "id": "6ADAB7CAAEB3497D8CC75458CAF8B461",
-          "name": "Аукционная_документация_ЛИС_4кв.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6ADAB7CAAEB3497D8CC75458CAF8B461"
-        },
-        {
-          "id": "6C6F61AB1B0940638922A36E73643B74",
-          "name": "Извещение_о_проведении_электронного_аукциона_ЛИС_4кв.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6C6F61AB1B0940638922A36E73643B74"
-        },
-        {
-          "id": "ABE1636B2BD64C0D9BDC97E9E96E8E1C",
-          "name": "Аукционная_документация_ЛИС_4кв.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=ABE1636B2BD64C0D9BDC97E9E96E8E1C"
-        },
-        {
-          "id": "B297EA0EDA2548B9983B271A2882B1CB",
-          "name": "Извещение_о_проведении_электронного_аукциона_ЛИС_4кв.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B297EA0EDA2548B9983B271A2882B1CB"
-        },
-        {
-          "id": "5E27799466064B818ED35F162798F8BF",
-          "name": "ответ_на_Запрос_на_разъяснение_положений_Смоленск_Сопровождение_4_кв_26_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5E27799466064B818ED35F162798F8BF"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19270,68 +18688,7 @@
           "price": 3014259.6
         }
       ],
-      "documents": [
-        {
-          "id": "1CEA23FF0A1B498FB971BCB0D1E965EF",
-          "name": "Документация об аукционе в электронной форме.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1CEA23FF0A1B498FB971BCB0D1E965EF"
-        },
-        {
-          "id": "48EB6E36DBAD41E9A6B0C473324DAC61",
-          "name": "Раздел 4. Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=48EB6E36DBAD41E9A6B0C473324DAC61"
-        },
-        {
-          "id": "D0E8323A7A3745F48C5680DF478B3299",
-          "name": "Раздел 5. Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D0E8323A7A3745F48C5680DF478B3299"
-        },
-        {
-          "id": "BDBC878A82F344E9B588BCCE0DFAC3FD",
-          "name": "Раздел 5. Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BDBC878A82F344E9B588BCCE0DFAC3FD"
-        },
-        {
-          "id": "309DD64C112546FD8E1DAD5FC41BAD19",
-          "name": "Решение о внесении изменений.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=309DD64C112546FD8E1DAD5FC41BAD19"
-        },
-        {
-          "id": "7643A26638AD4AB6A2C1D3DD347A7F52",
-          "name": "Документация об аукционе в электронной форме.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7643A26638AD4AB6A2C1D3DD347A7F52"
-        },
-        {
-          "id": "44015172DF8A491AA57763E8CDAF7CC2",
-          "name": "Раздел 4. Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=44015172DF8A491AA57763E8CDAF7CC2"
-        },
-        {
-          "id": "6C64B2D6EB33456086AEEFD29683231C",
-          "name": "Разъяснение.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6C64B2D6EB33456086AEEFD29683231C"
-        },
-        {
-          "id": "7AE73859C04A423E80CAD26E399651F1",
-          "name": "Разъяснение.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7AE73859C04A423E80CAD26E399651F1"
-        },
-        {
-          "id": "BA67B2C6730E421E9BD4AF215354CAFC",
-          "name": "запрос.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BA67B2C6730E421E9BD4AF215354CAFC"
-        },
-        {
-          "id": "64ABE2E191A74B73A950B1A403FBC3D7",
-          "name": "ЗАПРОС РАЗЪЯСНЕНИЙ_22.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=64ABE2E191A74B73A950B1A403FBC3D7"
-        },
-        {
-          "id": "436BF1020F0B4349AD4BA65B8E69E077",
-          "name": "Разъяснение.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=436BF1020F0B4349AD4BA65B8E69E077"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19395,63 +18752,7 @@
           "price": 142622.95
         }
       ],
-      "documents": [
-        {
-          "id": "29DCC0DEB132420082E806D59562E3EA",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=29DCC0DEB132420082E806D59562E3EA"
-        },
-        {
-          "id": "EFC1590D640540C9A9D459993420F690",
-          "name": "Приложение_№9._Проект_договора__оказания_услуг_09.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EFC1590D640540C9A9D459993420F690"
-        },
-        {
-          "id": "315F875F160F44EAAFE17830DCBBF153",
-          "name": "Приложение_№10._Обоснование_НМЦД.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=315F875F160F44EAAFE17830DCBBF153"
-        },
-        {
-          "id": "0B8D254D1B2A408D851EA95E7628C9A9",
-          "name": "Приложение_№8._Техническое_задание_09.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0B8D254D1B2A408D851EA95E7628C9A9"
-        },
-        {
-          "id": "0384D2091E3A4EDDA08495D00795D9B9",
-          "name": "Приложение_№7._Коммерческое_предложение_09.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0384D2091E3A4EDDA08495D00795D9B9"
-        },
-        {
-          "id": "52F9951B85DF4E7BA998A13B92EEA3F9",
-          "name": "Приложение_№7._Коммерческое_предложение_09.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=52F9951B85DF4E7BA998A13B92EEA3F9"
-        },
-        {
-          "id": "0DD639FAF19F488794DA10BEE2D7E758",
-          "name": "Приложение_№8._Техническое_задание_09.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0DD639FAF19F488794DA10BEE2D7E758"
-        },
-        {
-          "id": "955B0C71C0644DCCB96052D4F7E56E3D",
-          "name": "Приложение_№9._Проект_договора__оказания_услуг_09.07.2026.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=955B0C71C0644DCCB96052D4F7E56E3D"
-        },
-        {
-          "id": "684EBF7A79A34B9DB4901CE02933D6B3",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=684EBF7A79A34B9DB4901CE02933D6B3"
-        },
-        {
-          "id": "F1C0844D82B84F77822A52273224C8D3",
-          "name": "Приложение_№10._Обоснование_НМЦД.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F1C0844D82B84F77822A52273224C8D3"
-        },
-        {
-          "id": "715324725AF543839DB25F8D820E9C2A",
-          "name": "Уведомление__о_продлении_срока_приема_заявок.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=715324725AF543839DB25F8D820E9C2A"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19547,23 +18848,7 @@
           "price": 10475958.66
         }
       ],
-      "documents": [
-        {
-          "id": "ED8761FCA6FC47E5BF37FA754CA6A9CC",
-          "name": "Документация.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=ED8761FCA6FC47E5BF37FA754CA6A9CC"
-        },
-        {
-          "id": "AF081EB452174CB1B42BFC7985C2E315",
-          "name": "Документация изм..docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AF081EB452174CB1B42BFC7985C2E315"
-        },
-        {
-          "id": "8E27C2B24F96470AA05F1B76D52713AB",
-          "name": "Изменения.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8E27C2B24F96470AA05F1B76D52713AB"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19595,33 +18880,39 @@
           "price": 21749
         }
       ],
-      "documents": [
+      "documents": [],
+      "matches": {}
+    },
+    {
+      "id": "eis_32616232961",
+      "number": "32616232961",
+      "title": "Открытый запрос котировок в электронной форме на право заключения договора поставки котельного оборудования",
+      "customer": "ГОСУДАРСТВЕННОЕ УНИТАРНОЕ ПРЕДПРИЯТИЕ РЕСПУБЛИКИ КАРЕЛИЯ \"КАРЕЛКОММУНЭНЕРГО\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 3023075.7,
+      "stage": "active",
+      "endDate": "2026-07-31T23:59:00",
+      "beginDate": "2026-07-23T23:59:00",
+      "deadlineDays": 8,
+      "publishedDaysAgo": 1,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616232961",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
         {
-          "id": "3C868B7C0ACA42BCAC258965613522B1",
-          "name": "Проект договора МБЛ",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=3C868B7C0ACA42BCAC258965613522B1"
-        },
-        {
-          "id": "81A74EC36C6B4F1BBDA1C7014258A71A",
-          "name": "Образец котировочной заявки_НОВЫЙ",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=81A74EC36C6B4F1BBDA1C7014258A71A"
-        },
-        {
-          "id": "D7D90BFE49A144BFAA60B922306C70E6",
-          "name": "Техническое задание",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D7D90BFE49A144BFAA60B922306C70E6"
-        },
-        {
-          "id": "EE0A8245989D429EB98B2A9A827C4BEF",
-          "name": "Форма Акт приема-передачи товара - приложение к договору",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EE0A8245989D429EB98B2A9A827C4BEF"
-        },
-        {
-          "id": "A347D75CB5744B56868CA4228B0F1189",
-          "name": "Техническое задание (6)",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A347D75CB5744B56868CA4228B0F1189"
+          "name": "Открытый запрос котировок в электронной форме на право заключения договора поставки котельного оборудования",
+          "qty": "—",
+          "price": 3023075.7
         }
       ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19653,33 +18944,7 @@
           "price": 1399009.25
         }
       ],
-      "documents": [
-        {
-          "id": "1F2911C45211476F934699AA881EDC63",
-          "name": "Извещение о запросе цен",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1F2911C45211476F934699AA881EDC63"
-        },
-        {
-          "id": "AC609FFA5574442088439349A21E65E1",
-          "name": "Обоснование нач.макс.цены контракта",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AC609FFA5574442088439349A21E65E1"
-        },
-        {
-          "id": "85B6731796EA4F0596492317CEDBC0E6",
-          "name": "Проект договора",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=85B6731796EA4F0596492317CEDBC0E6"
-        },
-        {
-          "id": "721793D4548E40F6B299DED892C72AF5",
-          "name": "Документация по запросу цен",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=721793D4548E40F6B299DED892C72AF5"
-        },
-        {
-          "id": "09887985234E4C62BAB9858D51F6F2B1",
-          "name": "Проект договора",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=09887985234E4C62BAB9858D51F6F2B1"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19711,18 +18976,7 @@
           "price": 83256.67
         }
       ],
-      "documents": [
-        {
-          "id": "283B315F096949FEB184631330962FAF",
-          "name": "Обоснование НМЦК.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=283B315F096949FEB184631330962FAF"
-        },
-        {
-          "id": "80B5701FFA754ED98F7ADBC5569791CF",
-          "name": "Извещение_Оказание услуг по проведению профилактических испытаний и измерений на электроустановках.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=80B5701FFA754ED98F7ADBC5569791CF"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19754,18 +19008,7 @@
           "price": 1194403.72
         }
       ],
-      "documents": [
-        {
-          "id": "1CEF1539CAB640FCA37CC2DA832F527D",
-          "name": "Приложение к Части II. Извещения.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1CEF1539CAB640FCA37CC2DA832F527D"
-        },
-        {
-          "id": "DB2A9C7638454525B046389F045E66D3",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DB2A9C7638454525B046389F045E66D3"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19797,38 +19040,7 @@
           "price": 1481342
         }
       ],
-      "documents": [
-        {
-          "id": "829817DAC1D544D38EB0C97C880061A0",
-          "name": "приложение_к_разделу_8_Справка_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=829817DAC1D544D38EB0C97C880061A0"
-        },
-        {
-          "id": "9ADE505A7F85456BA940C1DC14CA346D",
-          "name": "Раздел_6._Обоснование_начальной__максимальной__цены_договора__1_сад.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9ADE505A7F85456BA940C1DC14CA346D"
-        },
-        {
-          "id": "DBB4E196EE6B4A9DBE463DEAE996E7C2",
-          "name": "Раздел_5._Описание_объекта_закупки_МОЛОКО__2_.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DBB4E196EE6B4A9DBE463DEAE996E7C2"
-        },
-        {
-          "id": "26456752BC0D4A4DBFCB0CC5D35508B5",
-          "name": "Раздел_1_Извещение_молочка.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=26456752BC0D4A4DBFCB0CC5D35508B5"
-        },
-        {
-          "id": "D28DC3B1D4DD4593B7E77ABDB79F6947",
-          "name": "Раздел_7._Проект_договора_молочка..docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D28DC3B1D4DD4593B7E77ABDB79F6947"
-        },
-        {
-          "id": "692D066C26A84F4A802059E69D5FABC6",
-          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=692D066C26A84F4A802059E69D5FABC6"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19860,38 +19072,7 @@
           "price": 596070
         }
       ],
-      "documents": [
-        {
-          "id": "D08E7C11266044768F404EFDB3B0761A",
-          "name": "Раздел_6._НМЦК.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D08E7C11266044768F404EFDB3B0761A"
-        },
-        {
-          "id": "EE9F6DEBC9D144BF9585B2AF4DA69712",
-          "name": "Раздел_7._Проект_договора_молочка..docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EE9F6DEBC9D144BF9585B2AF4DA69712"
-        },
-        {
-          "id": "AA952D0089984D2098DBF50DF3EAB99D",
-          "name": "Раздел_5._Описание_объекта_закупки_МОЛОКО.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AA952D0089984D2098DBF50DF3EAB99D"
-        },
-        {
-          "id": "245E6BF1CF7C4044AF4B9543001D9342",
-          "name": "приложение_к_разделу_8_Справка_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=245E6BF1CF7C4044AF4B9543001D9342"
-        },
-        {
-          "id": "52A771B677C64F769FC628888CB1C991",
-          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=52A771B677C64F769FC628888CB1C991"
-        },
-        {
-          "id": "3C96B21100DB475CBC5CDAEC371424BB",
-          "name": "Раздел_1_Извещение_молочка.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=3C96B21100DB475CBC5CDAEC371424BB"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19923,33 +19104,7 @@
           "price": 1806602.33
         }
       ],
-      "documents": [
-        {
-          "id": "44E006144ABA4A478F9CD364248D57FC",
-          "name": "Приложение_2_Форма_заявки_участника__1___3___1_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=44E006144ABA4A478F9CD364248D57FC"
-        },
-        {
-          "id": "DBD688D93C3642B38CE1608DD6F2C5FA",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DBD688D93C3642B38CE1608DD6F2C5FA"
-        },
-        {
-          "id": "5A5AC1CB397C4E6CB3CBAF7B3CA57559",
-          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5A5AC1CB397C4E6CB3CBAF7B3CA57559"
-        },
-        {
-          "id": "4E40AA12D14F4764AE8854A18E469947",
-          "name": "Приложение_1_Описание_объекта_закупки.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=4E40AA12D14F4764AE8854A18E469947"
-        },
-        {
-          "id": "8F65989C02DC4617AC4249DCDF7EEEBF",
-          "name": "Приложение_3_Обоснование_начальной__максимальной__цены_договора__1_сад__1_.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8F65989C02DC4617AC4249DCDF7EEEBF"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -19981,33 +19136,7 @@
           "price": 1518534.17
         }
       ],
-      "documents": [
-        {
-          "id": "BBDE45C498EB4043B7C1527F8143D567",
-          "name": "Приложение_1_Описание_объекта_закупки.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BBDE45C498EB4043B7C1527F8143D567"
-        },
-        {
-          "id": "B2377172548E475D81A74EA880E6A418",
-          "name": "Приложение_3_Обоснование_начальной__максимальной__цены_договора__1_сад__1_.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B2377172548E475D81A74EA880E6A418"
-        },
-        {
-          "id": "A5BD747F7B8943EA8C0A6BABF574F31C",
-          "name": "Приложение_2_Форма_заявки_участника__1___3___1_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A5BD747F7B8943EA8C0A6BABF574F31C"
-        },
-        {
-          "id": "CE1544E3D3204FDABAF2E10709FF9C79",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CE1544E3D3204FDABAF2E10709FF9C79"
-        },
-        {
-          "id": "6AE290BD96E84621A3BB41C1AE4ACC33",
-          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6AE290BD96E84621A3BB41C1AE4ACC33"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20039,33 +19168,7 @@
           "price": 1071666.67
         }
       ],
-      "documents": [
-        {
-          "id": "8E6AD160B81B41FF9A78C2F9C04C2668",
-          "name": "Аукционная документация.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8E6AD160B81B41FF9A78C2F9C04C2668"
-        },
-        {
-          "id": "5C7701C5B2794477A7A25B3B26A60D92",
-          "name": "Техническое_задание_17216198-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5C7701C5B2794477A7A25B3B26A60D92"
-        },
-        {
-          "id": "DC1760A6D4D643CF8D67CD3C023AF7BE",
-          "name": "Протокол.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DC1760A6D4D643CF8D67CD3C023AF7BE"
-        },
-        {
-          "id": "71FE3CACF9EE4B8D8D87B1044C519584",
-          "name": "Проект_контракта_17210244-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=71FE3CACF9EE4B8D8D87B1044C519584"
-        },
-        {
-          "id": "7A2E83A9912B47F3909747B568344421",
-          "name": "Расчет НМЦК.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7A2E83A9912B47F3909747B568344421"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20097,33 +19200,7 @@
           "price": 338556
         }
       ],
-      "documents": [
-        {
-          "id": "78A076D4D54446E99210E0DEBB8AE2D3",
-          "name": "Приложение_3_Обоснование_начальной__максимальной__цены_договора__1_сад__1_.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=78A076D4D54446E99210E0DEBB8AE2D3"
-        },
-        {
-          "id": "5686287C5F6E4B40834FD09B83376278",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5686287C5F6E4B40834FD09B83376278"
-        },
-        {
-          "id": "BC15EC1E54504F159B27329C93068847",
-          "name": "Приложение_2_Форма_заявки_участника__1___3___1_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BC15EC1E54504F159B27329C93068847"
-        },
-        {
-          "id": "6C4B1CC57F0E49F8ABEE0A6AA0F2EBC4",
-          "name": "Приложение_1_Описание_объекта_закупки.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6C4B1CC57F0E49F8ABEE0A6AA0F2EBC4"
-        },
-        {
-          "id": "29A1E5E8D1AE4FC9A4F514AF65C1EE52",
-          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=29A1E5E8D1AE4FC9A4F514AF65C1EE52"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20187,58 +19264,7 @@
           "price": 246150.5
         }
       ],
-      "documents": [
-        {
-          "id": "A18F79403D2342EBA6AC3CB64576215F",
-          "name": "Приложение_1_Описание_объекта_закупки.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A18F79403D2342EBA6AC3CB64576215F"
-        },
-        {
-          "id": "BD8030932AE945FC86D31CCAF3E236BF",
-          "name": "Приложение_1_Описание_объекта_закупки.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BD8030932AE945FC86D31CCAF3E236BF"
-        },
-        {
-          "id": "E3976AF15FC14464ABACEA333280BE8E",
-          "name": "Приложение_2_Форма_заявки_участника__1___3___1_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=E3976AF15FC14464ABACEA333280BE8E"
-        },
-        {
-          "id": "35AA4E0BEAC4441BAB9E975A21282987",
-          "name": "Приложение_2_Форма_заявки_участника__1___3___1_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=35AA4E0BEAC4441BAB9E975A21282987"
-        },
-        {
-          "id": "DAB75ED44F2046AABEA4DBFC3CD313B4",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DAB75ED44F2046AABEA4DBFC3CD313B4"
-        },
-        {
-          "id": "CF37F1DE1D7E4729A56FA9E1AB17CD7A",
-          "name": "Извещение.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CF37F1DE1D7E4729A56FA9E1AB17CD7A"
-        },
-        {
-          "id": "B8040EB43E9F4525BE9D51FD8228ECB6",
-          "name": "Приложение_3_Обоснование_начальной__максимальной__цены_договора__1_сад__1_.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B8040EB43E9F4525BE9D51FD8228ECB6"
-        },
-        {
-          "id": "71770A88E4FD496C997B644D417D6D1B",
-          "name": "Приложение_3_Обоснование_начальной__максимальной__цены_договора__1_сад__1_.xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=71770A88E4FD496C997B644D417D6D1B"
-        },
-        {
-          "id": "486ABAA70BDD46428333785CBA65E277",
-          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=486ABAA70BDD46428333785CBA65E277"
-        },
-        {
-          "id": "2512FB469D0E4FC7A638A66712B2BFA0",
-          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2512FB469D0E4FC7A638A66712B2BFA0"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20302,38 +19328,7 @@
           "price": 3133879.78
         }
       ],
-      "documents": [
-        {
-          "id": "8C4B36BD9AD24064B475952BF47C687D",
-          "name": "ЗД_.zip",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8C4B36BD9AD24064B475952BF47C687D"
-        },
-        {
-          "id": "41761A0E54934C9FAAE9FAD7A70875CE",
-          "name": "__3_Приложение___2___Проект_договора_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=41761A0E54934C9FAAE9FAD7A70875CE"
-        },
-        {
-          "id": "3A3A3EB952244AF0AF34D51B8AA59E81",
-          "name": "__3_Приложение___2___Проект_договора_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=3A3A3EB952244AF0AF34D51B8AA59E81"
-        },
-        {
-          "id": "D2065BBA773D4AA08AC65F8B8BF0DF7F",
-          "name": "ЗД_.zip",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D2065BBA773D4AA08AC65F8B8BF0DF7F"
-        },
-        {
-          "id": "6EE0762DF2C34F21A5DA16972CF1766E",
-          "name": "ЗД_.zip",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6EE0762DF2C34F21A5DA16972CF1766E"
-        },
-        {
-          "id": "01690535E6384762BC58DD328376410F",
-          "name": "__3_Приложение___2___Проект_договора_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=01690535E6384762BC58DD328376410F"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20365,18 +19360,7 @@
           "price": 2804500
         }
       ],
-      "documents": [
-        {
-          "id": "544FB7AA6C7547388B6C7E2B686EBEDE",
-          "name": "Извещение ЗК ЭФ.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=544FB7AA6C7547388B6C7E2B686EBEDE"
-        },
-        {
-          "id": "5DAB76FB8CBC41FDA695994B70E509C0",
-          "name": "Извещение ЗК ЭФ ред.1.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5DAB76FB8CBC41FDA695994B70E509C0"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20440,33 +19424,7 @@
           "price": 228543.3
         }
       ],
-      "documents": [
-        {
-          "id": "42654A566630442AA1078AE224191933",
-          "name": "РАЗДЕЛ 5. ПРОТОКОЛ ОБОСНОВАНИЯ НМЦД (ремонт колодцев - ЛСР по Методике 2020 (РИМ).XLSX",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=42654A566630442AA1078AE224191933"
-        },
-        {
-          "id": "6327D9E86DA64A16A2F636B522C13F25",
-          "name": "РАЗДЕЛ 3. ПРОЕКТ ДОГОВОРА (ремонт колодцев).DOCX",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6327D9E86DA64A16A2F636B522C13F25"
-        },
-        {
-          "id": "14983AEAB8C640FDA56DED695265FB46",
-          "name": "РАЗДЕЛ 4. РЕКОМЕНДУЕМЫЕ ФОРМЫ (ремонт колодцев).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=14983AEAB8C640FDA56DED695265FB46"
-        },
-        {
-          "id": "4958392C95564848B8BF93CD8718F1CD",
-          "name": "Извещение о проведении ЗК среди СМП (ремонт колодцев).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=4958392C95564848B8BF93CD8718F1CD"
-        },
-        {
-          "id": "BD0BA912BA904208BB900B4C41F9DA69",
-          "name": "РАЗДЕЛ 2. ОПИСАНИЕ ПРЕДМЕТА ЗАКУПКИ (ремонт колодцев).DOCX",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BD0BA912BA904208BB900B4C41F9DA69"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20530,18 +19488,7 @@
           "price": 160727
         }
       ],
-      "documents": [
-        {
-          "id": "8FC23DD2AAF248DC9DF175798D818E30",
-          "name": "Извещение_на_запрос_котировок_в_электронной_форме.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8FC23DD2AAF248DC9DF175798D818E30"
-        },
-        {
-          "id": "E3E7E5710AE04A928A3E856EA5472B47",
-          "name": "Извещение_на_запрос_котировок_в_электронной_форме.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=E3E7E5710AE04A928A3E856EA5472B47"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20669,38 +19616,7 @@
           "price": 17161
         }
       ],
-      "documents": [
-        {
-          "id": "6923B4CBF1964C9780BB4F50660D3461",
-          "name": "Расчет НМЦД. (3).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6923B4CBF1964C9780BB4F50660D3461"
-        },
-        {
-          "id": "F6D6A9373FE74F0C8A3B4FCC9B6C4B6C",
-          "name": "Эскиз (50).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F6D6A9373FE74F0C8A3B4FCC9B6C4B6C"
-        },
-        {
-          "id": "9CB668439575480C8A9F818993A80EC4",
-          "name": "Аукционная документация Центр МТО Поставка тележек для посуды в ГБУ «Мой социальный помощник».docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9CB668439575480C8A9F818993A80EC4"
-        },
-        {
-          "id": "F521F44D742F4FABBEEDDF4417C2797A",
-          "name": "Проект_контракта_17206075-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F521F44D742F4FABBEEDDF4417C2797A"
-        },
-        {
-          "id": "A0618E40C2B44FF2B903070AF92761C9",
-          "name": "Протокол.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A0618E40C2B44FF2B903070AF92761C9"
-        },
-        {
-          "id": "52F3EB0D01384D0F9D90CA7E65719E3F",
-          "name": "Техническое_задание_17206075-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=52F3EB0D01384D0F9D90CA7E65719E3F"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20796,38 +19712,7 @@
           "price": 235550
         }
       ],
-      "documents": [
-        {
-          "id": "9AC32477754F4F2EA4558BDD9D59A32A",
-          "name": "Приложение__4_Инструкция_по_заполнению_заявки_на_участие_в_запросе_котировок.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9AC32477754F4F2EA4558BDD9D59A32A"
-        },
-        {
-          "id": "CFB3FCA32F7240CAB675C30EEC108CE4",
-          "name": "Приложение__2_Обоснование_начальной__максимальной__цены_договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CFB3FCA32F7240CAB675C30EEC108CE4"
-        },
-        {
-          "id": "5380AD4D640B4A31A56F6ECD291705AB",
-          "name": "Приложение__1_Проект_договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5380AD4D640B4A31A56F6ECD291705AB"
-        },
-        {
-          "id": "44AF957E80664EFEABA02D8630A8AAD2",
-          "name": "Приложение__3_Техническое_задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=44AF957E80664EFEABA02D8630A8AAD2"
-        },
-        {
-          "id": "1BAB1BE081764D9F929DCC454D2FC688",
-          "name": "Приложение__5_Форма_котировочной_заявки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1BAB1BE081764D9F929DCC454D2FC688"
-        },
-        {
-          "id": "0747D971C8884716B59BB5211297CE29",
-          "name": "Извещение__10__Средства_дезинфицирующие_.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0747D971C8884716B59BB5211297CE29"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20891,33 +19776,7 @@
           "price": 299200
         }
       ],
-      "documents": [
-        {
-          "id": "7964801557074297B298A3F0E78AABE1",
-          "name": "Приложение № 2 к изв. Форма заявки на участие в запросе котировок.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7964801557074297B298A3F0E78AABE1"
-        },
-        {
-          "id": "FDD57CA5A0A34FD4878E6015FC1D4D53",
-          "name": "Приложение №3 к изв. Проект Договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=FDD57CA5A0A34FD4878E6015FC1D4D53"
-        },
-        {
-          "id": "4C75894CE2C24671BC6CCB539083D0FD",
-          "name": "Приложение №1 к изв. Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=4C75894CE2C24671BC6CCB539083D0FD"
-        },
-        {
-          "id": "37121D58A9594F0FBB01136F7EDB1E69",
-          "name": "Приложение№4 к изв. Обоснование(расчёт) НМЦД.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=37121D58A9594F0FBB01136F7EDB1E69"
-        },
-        {
-          "id": "922410AA72934D4CBC69B4C8FA6B5614",
-          "name": "Информация о закупке 318-01 02 26 223 ЭЗК.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=922410AA72934D4CBC69B4C8FA6B5614"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -20949,38 +19808,7 @@
           "price": 973713.28
         }
       ],
-      "documents": [
-        {
-          "id": "9773E766A88D4B53B8D6D187CBE432D5",
-          "name": "Приложение 3. Обоснование НМЦД.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9773E766A88D4B53B8D6D187CBE432D5"
-        },
-        {
-          "id": "29D1D70BB6E64191AA134E9133E25593",
-          "name": "Приложение 2. Техническое задание.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=29D1D70BB6E64191AA134E9133E25593"
-        },
-        {
-          "id": "22641B02CB1540B3AF1F4521293800F6",
-          "name": "Приложение 4. Форма заявки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=22641B02CB1540B3AF1F4521293800F6"
-        },
-        {
-          "id": "55F547B3ECA3481ABFA8E2088E7E2183",
-          "name": "Приложение 1. Информационная карта.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=55F547B3ECA3481ABFA8E2088E7E2183"
-        },
-        {
-          "id": "EA6C6652AFF047A89E78C0CF45A86645",
-          "name": "Приложение 5. Инструкция по заполнению заявки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EA6C6652AFF047A89E78C0CF45A86645"
-        },
-        {
-          "id": "AD00C0A9F947448FA6D75B71A9835B33",
-          "name": "Приложение 6. Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=AD00C0A9F947448FA6D75B71A9835B33"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21044,13 +19872,7 @@
           "price": 212546.96
         }
       ],
-      "documents": [
-        {
-          "id": "9BC42DAFDB1F480CB768570373B5FBA6",
-          "name": "Котировочная документация.zip",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9BC42DAFDB1F480CB768570373B5FBA6"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21210,38 +20032,7 @@
           "price": 554240.12
         }
       ],
-      "documents": [
-        {
-          "id": "52D64A7C5D584B61BBD47A79CB5AF15C",
-          "name": "Форма котировочной заявки.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=52D64A7C5D584B61BBD47A79CB5AF15C"
-        },
-        {
-          "id": "CBA694D07BFF4B0496452912E4A76A07",
-          "name": "Описание объекта закупки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CBA694D07BFF4B0496452912E4A76A07"
-        },
-        {
-          "id": "B68916C5749F4D96B45E5E49ED5B3009",
-          "name": "Приложение_№2_Проект_ГПД.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B68916C5749F4D96B45E5E49ED5B3009"
-        },
-        {
-          "id": "645A3B540A7445BBA67E5E8BB02B69A6",
-          "name": "Приложение 1. Расчет и обоснование НМЦД (медицина).xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=645A3B540A7445BBA67E5E8BB02B69A6"
-        },
-        {
-          "id": "A085C74C5AE142729715BB90A5DBFB13",
-          "name": "Информационная карта ЗК.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A085C74C5AE142729715BB90A5DBFB13"
-        },
-        {
-          "id": "1F5F99E8A09C4B09A2CDDD15155FF8AD",
-          "name": "Инструкция по заполнению заявки на участие в ЗК.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1F5F99E8A09C4B09A2CDDD15155FF8AD"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21561,28 +20352,7 @@
           "price": 2583202.63
         }
       ],
-      "documents": [
-        {
-          "id": "8AC1AB49C23B4C1FAC892B9F264A8FB0",
-          "name": "Приложение № 3 к Извещению_Техническое задание.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8AC1AB49C23B4C1FAC892B9F264A8FB0"
-        },
-        {
-          "id": "213D8EC25DF64F49890647DFEAA006A8",
-          "name": "Приложение № 4 к Извещению_Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=213D8EC25DF64F49890647DFEAA006A8"
-        },
-        {
-          "id": "81B2B99BD4604E7EA6A117E27FB9D4E8",
-          "name": "Приложение № 5 к Извещению_Обоснование НМЦД.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=81B2B99BD4604E7EA6A117E27FB9D4E8"
-        },
-        {
-          "id": "0D01C52F592244DAB045EC0997066C30",
-          "name": "Извещение о проведении запроса котировок.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0D01C52F592244DAB045EC0997066C30"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21614,23 +20384,7 @@
           "price": 5000000
         }
       ],
-      "documents": [
-        {
-          "id": "7FB007C1B3EE4A55B970C86D19C25A6D",
-          "name": "Смета_ПСД_2.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7FB007C1B3EE4A55B970C86D19C25A6D"
-        },
-        {
-          "id": "876BEBD0308E4E4CA0F1435F87C836BE",
-          "name": "НМЦК_ПСД_2.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=876BEBD0308E4E4CA0F1435F87C836BE"
-        },
-        {
-          "id": "7B8C1A90BB0447FEB9576E463036F79F",
-          "name": "Извещение_ПСД_2.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7B8C1A90BB0447FEB9576E463036F79F"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21662,23 +20416,7 @@
           "price": 5000000
         }
       ],
-      "documents": [
-        {
-          "id": "B15B3A632753400F8EB0642BBAFBE464",
-          "name": "НМЦК_ПСД_1.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B15B3A632753400F8EB0642BBAFBE464"
-        },
-        {
-          "id": "BBDF68812B9848F89B0606BB93918CFF",
-          "name": "Извещение_ПСД_1.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BBDF68812B9848F89B0606BB93918CFF"
-        },
-        {
-          "id": "D142B609C8874E25A518CE52B4855B23",
-          "name": "Смета_ПСД_1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D142B609C8874E25A518CE52B4855B23"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21710,18 +20448,7 @@
           "price": 116514
         }
       ],
-      "documents": [
-        {
-          "id": "8E8A586360824B41AC0EAD80931D3E1D",
-          "name": "Приложение 3 Обоснование говядина.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8E8A586360824B41AC0EAD80931D3E1D"
-        },
-        {
-          "id": "7A516D74436B4556A39A96C0933808C4",
-          "name": "Извещение говядина июль огр.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=7A516D74436B4556A39A96C0933808C4"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21785,108 +20512,7 @@
           "price": 10577282613.87
         }
       ],
-      "documents": [
-        {
-          "id": "EAED3D3D31B343EEB69C8BAF4347E7BD",
-          "name": "Сметы.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EAED3D3D31B343EEB69C8BAF4347E7BD"
-        },
-        {
-          "id": "F4701709AAC64ADCB66A59FE0FD6736B",
-          "name": "Проект Договора.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F4701709AAC64ADCB66A59FE0FD6736B"
-        },
-        {
-          "id": "B5B9428275CE434AAA440C1D3EAD9181",
-          "name": "ЗП Закупочная документация.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B5B9428275CE434AAA440C1D3EAD9181"
-        },
-        {
-          "id": "2B20EFA8462540E2AA26A1C7854DC3AE",
-          "name": "Форма коммерческого предложения.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2B20EFA8462540E2AA26A1C7854DC3AE"
-        },
-        {
-          "id": "0999C9979111410A8A7AE9471E5D9F1F",
-          "name": "Формирование стоимости лота.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0999C9979111410A8A7AE9471E5D9F1F"
-        },
-        {
-          "id": "121D1955E5B9400ABA43192B86A053D0",
-          "name": "Проект Договора.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=121D1955E5B9400ABA43192B86A053D0"
-        },
-        {
-          "id": "67EF49D31CDC4CAB8FD4EC9882C5BF5A",
-          "name": "Сметы.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=67EF49D31CDC4CAB8FD4EC9882C5BF5A"
-        },
-        {
-          "id": "FAB66FE98DE144A3B4FF3B733141069C",
-          "name": "Форма коммерческого предложения.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=FAB66FE98DE144A3B4FF3B733141069C"
-        },
-        {
-          "id": "278FD89611C74ADAA067F94D78A815A6",
-          "name": "Формирование стоимости лота.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=278FD89611C74ADAA067F94D78A815A6"
-        },
-        {
-          "id": "270C73CEC48C4905910EA6D5BE1DD6AF",
-          "name": "ЗП Закупочная документация.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=270C73CEC48C4905910EA6D5BE1DD6AF"
-        },
-        {
-          "id": "9E6966F4B69B485FABDBC53BD35BD684",
-          "name": "ДТП этапы.part33.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9E6966F4B69B485FABDBC53BD35BD684"
-        },
-        {
-          "id": "119DD19C586A428F8E116CA9AA588C3D",
-          "name": "ДТП этапы.part34.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=119DD19C586A428F8E116CA9AA588C3D"
-        },
-        {
-          "id": "09F3E3CDEE104157AAF92F7EF301F1AB",
-          "name": "ДТП этапы.part35.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=09F3E3CDEE104157AAF92F7EF301F1AB"
-        },
-        {
-          "id": "8D8CA64C502249818589AEF8072D62AD",
-          "name": "ДТП этапы.part36.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8D8CA64C502249818589AEF8072D62AD"
-        },
-        {
-          "id": "6788CB12F4FA4DA6BF0DA6A548B7B7C7",
-          "name": "ДТП этапы.part29.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6788CB12F4FA4DA6BF0DA6A548B7B7C7"
-        },
-        {
-          "id": "C07AF04D9A384921B81145727BABB471",
-          "name": "ДТП этапы.part30.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C07AF04D9A384921B81145727BABB471"
-        },
-        {
-          "id": "2D8C935A3D034EC2B229DC3DBE8DEE1D",
-          "name": "ДТП этапы.part31.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2D8C935A3D034EC2B229DC3DBE8DEE1D"
-        },
-        {
-          "id": "6A479155A61C4EA8862AD4F8E469E3C8",
-          "name": "ДТП этапы.part32.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6A479155A61C4EA8862AD4F8E469E3C8"
-        },
-        {
-          "id": "997E11B2DFDC4697BB98C4E9491511A7",
-          "name": "ДТП этапы.part25.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=997E11B2DFDC4697BB98C4E9491511A7"
-        },
-        {
-          "id": "5EE38BE9FBAC40A6A32AC0B6D0881F56",
-          "name": "ДТП этапы.part26.rar",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5EE38BE9FBAC40A6A32AC0B6D0881F56"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -21918,13 +20544,7 @@
           "price": 3544604.68
         }
       ],
-      "documents": [
-        {
-          "id": "77019D6303FF49BD9CF6A775DB0D1E23",
-          "name": "Извещение верхняя одежда и трикотажные изделия.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=77019D6303FF49BD9CF6A775DB0D1E23"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22052,18 +20672,7 @@
           "price": 550000
         }
       ],
-      "documents": [
-        {
-          "id": "B817AC4E84534B4CAD0A581EB8290E64",
-          "name": "Смета_трубопровода_наружного_отопления.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B817AC4E84534B4CAD0A581EB8290E64"
-        },
-        {
-          "id": "56A9E1B4C0FE49C5947F772697F0FA6A",
-          "name": "Документация_об_открытом_аукционе_в_электронной_форме.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=56A9E1B4C0FE49C5947F772697F0FA6A"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22127,28 +20736,7 @@
           "price": 14949760.06
         }
       ],
-      "documents": [
-        {
-          "id": "42C9C6FF1B8C4D57907A45E9B08A5117",
-          "name": "Документация ИИ 2000 пм",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=42C9C6FF1B8C4D57907A45E9B08A5117"
-        },
-        {
-          "id": "61D1E01FB4204B88BF4C22D342CE603A",
-          "name": "Документация ИИ 2000 пм",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=61D1E01FB4204B88BF4C22D342CE603A"
-        },
-        {
-          "id": "4D42C6D829F146F1A85AF5FD9890F757",
-          "name": "Разъяснения положений документации ЕИС",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=4D42C6D829F146F1A85AF5FD9890F757"
-        },
-        {
-          "id": "58519BB3162A4BF595B6028A9D6F9517",
-          "name": "Разъяснения положений документации ЕИС",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=58519BB3162A4BF595B6028A9D6F9517"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22180,43 +20768,7 @@
           "price": 1715869.59
         }
       ],
-      "documents": [
-        {
-          "id": "9C2E9C90544A4947895C76350C1082C1",
-          "name": "Обоснование стульев.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9C2E9C90544A4947895C76350C1082C1"
-        },
-        {
-          "id": "73B01559E72A4EC9810CC23DEB284097",
-          "name": "НМЦ Стулья 1 (1).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=73B01559E72A4EC9810CC23DEB284097"
-        },
-        {
-          "id": "853E188A772549E0AE98BDF4EB2FE337",
-          "name": "Проект_контракта_17175301-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=853E188A772549E0AE98BDF4EB2FE337"
-        },
-        {
-          "id": "F71D11D19A6E40DA91365980103375ED",
-          "name": "Протокол стулья.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F71D11D19A6E40DA91365980103375ED"
-        },
-        {
-          "id": "BF7AAFD0B01B40D2A75C58BCD1BC8138",
-          "name": "Приложение №3 Эскиз Стулья.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BF7AAFD0B01B40D2A75C58BCD1BC8138"
-        },
-        {
-          "id": "F3E36BACA9F14395B22E7E54D2C347DA",
-          "name": "Техническое_задание_17175301-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F3E36BACA9F14395B22E7E54D2C347DA"
-        },
-        {
-          "id": "10BE56A1CBF54DCA88E1933B183D9094",
-          "name": "Документация.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=10BE56A1CBF54DCA88E1933B183D9094"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22248,28 +20800,7 @@
           "price": 324000
         }
       ],
-      "documents": [
-        {
-          "id": "0E1FD56DF028482C8C20368CEFE48B66",
-          "name": "Приложение №3. Описание предмета закупки.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0E1FD56DF028482C8C20368CEFE48B66"
-        },
-        {
-          "id": "D83DC72589E341B29EBA9A8BEB3875E8",
-          "name": "Приложение №4. НМЦД.xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D83DC72589E341B29EBA9A8BEB3875E8"
-        },
-        {
-          "id": "C6A5A9020F4B40CDBA547D36A488FE6D",
-          "name": "ИЗВЕЩЕНИЕ ЗК, Прил 1,2_ЕИС.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C6A5A9020F4B40CDBA547D36A488FE6D"
-        },
-        {
-          "id": "6873AA569F6F4B758967C14DC48973B8",
-          "name": "Приложение №5. Проект договора.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6873AA569F6F4B758967C14DC48973B8"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22301,28 +20832,7 @@
           "price": 1508530.18
         }
       ],
-      "documents": [
-        {
-          "id": "EE922D0FFE9D43D1ADBFA4CEBA6DE47A",
-          "name": "ТЗ укладка плитки+++",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EE922D0FFE9D43D1ADBFA4CEBA6DE47A"
-        },
-        {
-          "id": "63A8AB695B2349EF88312CF3A922F379",
-          "name": "ЛСР №02-01-01 +++ Изм 1",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=63A8AB695B2349EF88312CF3A922F379"
-        },
-        {
-          "id": "F614BEAC496D4FE084289524B6DA2DEE",
-          "name": "Извещение кварц+++",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F614BEAC496D4FE084289524B6DA2DEE"
-        },
-        {
-          "id": "112A354BE5DC49E1BE4CE79A549179CF",
-          "name": "ДОГОВОР проект укладка плитки+++ Изм 1",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=112A354BE5DC49E1BE4CE79A549179CF"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22834,18 +21344,7 @@
           "price": 292000
         }
       ],
-      "documents": [
-        {
-          "id": "9D4B4E0E2FC64858BBC27DB77B9B4978",
-          "name": "На размещение",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9D4B4E0E2FC64858BBC27DB77B9B4978"
-        },
-        {
-          "id": "1115D6C319FB4CF68D9F542C898BDEA0",
-          "name": "На размещение",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1115D6C319FB4CF68D9F542C898BDEA0"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22909,23 +21408,7 @@
           "price": 7000000
         }
       ],
-      "documents": [
-        {
-          "id": "D5A7307E3BB7403E97A48653E744E1D7",
-          "name": "1. Запрос Котировок ЭФ СМСП",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D5A7307E3BB7403E97A48653E744E1D7"
-        },
-        {
-          "id": "B8C5F20086534D30A76FDF8E6BAA4D6C",
-          "name": "2. Договор",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B8C5F20086534D30A76FDF8E6BAA4D6C"
-        },
-        {
-          "id": "8B98231B11F14616923D9103E50D28CD",
-          "name": "3. Приложение № 3 НМЦД",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8B98231B11F14616923D9103E50D28CD"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -22989,38 +21472,7 @@
           "price": 691372.87
         }
       ],
-      "documents": [
-        {
-          "id": "B89F96097ECB4C25A5AD114673912D0C",
-          "name": "Проект_контракта_17200992-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B89F96097ECB4C25A5AD114673912D0C"
-        },
-        {
-          "id": "1F686260F2F046198B61A6E9EA5335C7",
-          "name": "Выполнение работ по очистке кровли от снега и наледи для нужд ГАУЗ СП №11 ДЗМ (в ценах на 01.07.2026 г)).xlsx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1F686260F2F046198B61A6E9EA5335C7"
-        },
-        {
-          "id": "CF0A79CED5944185A0AA5F5A63C34936",
-          "name": "Аукционная документация 223-фз (14).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CF0A79CED5944185A0AA5F5A63C34936"
-        },
-        {
-          "id": "66D1E8282F8845D0BBC933D541449F0B",
-          "name": "Техническое_задание_17200992-1.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=66D1E8282F8845D0BBC933D541449F0B"
-        },
-        {
-          "id": "034379EED6934F1499F1973EA04A68AE",
-          "name": "Обоснование определения НМЦК.docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=034379EED6934F1499F1973EA04A68AE"
-        },
-        {
-          "id": "6A868185DF35427E88FDD635760A1F80",
-          "name": "Протокол_НМЦК.pdf",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6A868185DF35427E88FDD635760A1F80"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -23148,33 +21600,7 @@
           "price": 846527.47
         }
       ],
-      "documents": [
-        {
-          "id": "008BCBBDE40C4A58A5E69D67609CE656",
-          "name": "Обоснование начальной (максимальной) цены договора",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=008BCBBDE40C4A58A5E69D67609CE656"
-        },
-        {
-          "id": "28FFB0B5F9434586A40166BE9264A092",
-          "name": "Приложение к документации о закупке",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=28FFB0B5F9434586A40166BE9264A092"
-        },
-        {
-          "id": "045F143A9D8945878BC86FEDAAFE81B5",
-          "name": "Приложение к извещению",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=045F143A9D8945878BC86FEDAAFE81B5"
-        },
-        {
-          "id": "566619FD71304F9A9023A329AEFA29F6",
-          "name": "Техническое задание",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=566619FD71304F9A9023A329AEFA29F6"
-        },
-        {
-          "id": "1AC0C9E602814553AE15D92B97E71603",
-          "name": "Проект договора",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1AC0C9E602814553AE15D92B97E71603"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -23526,38 +21952,7 @@
           "price": 801599.4
         }
       ],
-      "documents": [
-        {
-          "id": "824C9424BC6145E190BC7F645BC091EC",
-          "name": "Приложение № 1 к извещению (Техническое задание).doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=824C9424BC6145E190BC7F645BC091EC"
-        },
-        {
-          "id": "9BD0E04B5BAE4E63A069492D0409F686",
-          "name": "Приложение № 4 к извещению (Обоснование начальной (максимальной) цены договора).xls",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9BD0E04B5BAE4E63A069492D0409F686"
-        },
-        {
-          "id": "B60D4CD39D3045C783D87D26ACA86FED",
-          "name": "Приложение № 3 к извещению (Проект договора).doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B60D4CD39D3045C783D87D26ACA86FED"
-        },
-        {
-          "id": "03BC1816E6ED49419D5611123F6D8446",
-          "name": "Извещение о закупке.doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=03BC1816E6ED49419D5611123F6D8446"
-        },
-        {
-          "id": "022462B78E5B4E8A8EDFB44C748FDE3A",
-          "name": "Приложение к техническому заданию (спецификация).docx",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=022462B78E5B4E8A8EDFB44C748FDE3A"
-        },
-        {
-          "id": "F452B01B73B845298412BA2A0CE0E2D6",
-          "name": "Приложение № 2 к извещению (Форма заявки на участие в закупке).doc",
-          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F452B01B73B845298412BA2A0CE0E2D6"
-        }
-      ],
+      "documents": [],
       "matches": {}
     },
     {
@@ -24163,70 +22558,6 @@
           "name": "Оказание услуг по ремонту и обслуживанию кондиционеров сельскохозяйственной техники",
           "qty": "—",
           "price": 600000
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_0187500000426000186",
-      "number": "0187500000426000186",
-      "title": "Оказание услуг по опубликованию нормативных правовых актов и информационных материалов",
-      "customer": "ДЕПАРТАМЕНТ АДМИНИСТРАТИВНОГО ОБЕСПЕЧЕНИЯ ХАНТЫ-МАНСИЙСКОГО АВТОНОМНОГО ОКРУГА - ЮГРЫ",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 1000000,
-      "stage": "active",
-      "endDate": "2026-07-31T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 8,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0187500000426000186",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Оказание услуг по опубликованию нормативных правовых актов и информационных материалов",
-          "qty": "—",
-          "price": 1000000
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_32616234088",
-      "number": "32616234088",
-      "title": "Оказание транспортных услуг (аренда самосвалов), согласно технического задания, для нужд АО \"Порт Ванино\" (1274535)",
-      "customer": "АКЦИОНЕРНОЕ ОБЩЕСТВО \"ВАНИНСКИЙ МОРСКОЙ ТОРГОВЫЙ ПОРТ\"",
-      "customerInn": "",
-      "law": "223-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 5800000,
-      "stage": "active",
-      "endDate": "2026-07-31T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 8,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616234088",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Оказание транспортных услуг (аренда самосвалов), согласно технического задания, для нужд АО \"Порт Ванино\" (1274535)",
-          "qty": "—",
-          "price": 5800000
         }
       ],
       "documents": [],
@@ -32521,102 +30852,6 @@
       "matches": {}
     },
     {
-      "id": "eis_0816500000626012123",
-      "number": "0816500000626012123",
-      "title": "Поставка лекарственного препарата для медицинского применения РУКСОЛИТИНИБ (Онкогематология) в целях социального обеспечения",
-      "customer": "ГОСУДАРСТВЕННОЕ КАЗЕННОЕ УЧРЕЖДЕНИЕ РЕСПУБЛИКИ САХА (ЯКУТИЯ) \"ЦЕНТР ЗАКУПОК РЕСПУБЛИКИ САХА (ЯКУТИЯ)\"",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 3929074.8,
-      "stage": "active",
-      "endDate": "2026-08-03T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 11,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0816500000626012123",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Поставка лекарственного препарата для медицинского применения РУКСОЛИТИНИБ (Онкогематология) в целях социального обеспечения",
-          "qty": "—",
-          "price": 3929074.8
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_0167200003426006080",
-      "number": "0167200003426006080",
-      "title": "выполнение работ по текущему ремонту оборудования котельной ГБУЗ ТО \"Областной клинический фтизиопульмонологический центр\"",
-      "customer": "УПРАВЛЕНИЕ ГОСУДАРСТВЕННЫХ ЗАКУПОК ТЮМЕНСКОЙ ОБЛАСТИ",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 892833.69,
-      "stage": "active",
-      "endDate": "2026-08-03T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 11,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0167200003426006080",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "выполнение работ по текущему ремонту оборудования котельной ГБУЗ ТО \"Областной клинический фтизиопульмонологический центр\"",
-          "qty": "—",
-          "price": 892833.69
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_0356500001426006453",
-      "number": "0356500001426006453",
-      "title": "Текущий ремонт кровли жилого дома по адресу: с. Уинское ул. 8 Марта д. 58 кв. 1",
-      "customer": "ГОСУДАРСТВЕННОЕ КАЗЕННОЕ УЧРЕЖДЕНИЕ ПЕРМСКОГО КРАЯ \"ЦЕНТР ОРГАНИЗАЦИИ ЗАКУПОК\"",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 315510.18,
-      "stage": "active",
-      "endDate": "2026-08-03T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 11,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0356500001426006453",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Текущий ремонт кровли жилого дома по адресу: с. Уинское ул. 8 Марта д. 58 кв. 1",
-          "qty": "—",
-          "price": 315510.18
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
       "id": "eis_32616237127",
       "number": "32616237127",
       "title": "Выполнение работ по объекту «Ремонт здания иловой насосной станции № 1 по ул. Комбинатская, 50 инв. № 2030064А Иловая НС N1,№2-1эт73.4кв.м ОСК/Совет р-н/» для нужд АО \"ОмскВодоканал\"",
@@ -35401,6 +33636,70 @@
       "matches": {}
     },
     {
+      "id": "eis_32616237130",
+      "number": "32616237130",
+      "title": "Открытый аукцион в электронной форме на право заключения договора поставки поставку дров из прочих пород и смесей пород деревьев на котельные Суоярвского муниципального округа",
+      "customer": "ГОСУДАРСТВЕННОЕ УНИТАРНОЕ ПРЕДПРИЯТИЕ РЕСПУБЛИКИ КАРЕЛИЯ \"КАРЕЛКОММУНЭНЕРГО\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 110224996,
+      "stage": "active",
+      "endDate": "2026-08-10T23:59:00",
+      "beginDate": "2026-07-24T23:59:00",
+      "deadlineDays": 18,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237130",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Открытый аукцион в электронной форме на право заключения договора поставки поставку дров из прочих пород и смесей пород деревьев на котельные Суоярвского муниципального округа",
+          "qty": "—",
+          "price": 110224996
+        }
+      ],
+      "documents": [],
+      "matches": {}
+    },
+    {
+      "id": "eis_32616237128",
+      "number": "32616237128",
+      "title": "Открытый аукцион в электронной форме на право заключения договора поставки древесины топливной прочей на котельные Калевальского национального района Республики Карелия",
+      "customer": "ГОСУДАРСТВЕННОЕ УНИТАРНОЕ ПРЕДПРИЯТИЕ РЕСПУБЛИКИ КАРЕЛИЯ \"КАРЕЛКОММУНЭНЕРГО\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 46000000,
+      "stage": "active",
+      "endDate": "2026-08-10T23:59:00",
+      "beginDate": "2026-07-24T23:59:00",
+      "deadlineDays": 18,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237128",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Открытый аукцион в электронной форме на право заключения договора поставки древесины топливной прочей на котельные Калевальского национального района Республики Карелия",
+          "qty": "—",
+          "price": 46000000
+        }
+      ],
+      "documents": [],
+      "matches": {}
+    },
+    {
       "id": "eis_32616237125",
       "number": "32616237125",
       "title": "Поставка продуктов питания (молочная продукция)",
@@ -36963,38 +35262,6 @@
           "name": "Аукцион в электронной форме на оказание услуг по определению рыночной стоимости ежемесячной арендной платы Экскаватора погрузчика TEREX 860",
           "qty": "—",
           "price": 9000
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_0132300001726000578",
-      "number": "0132300001726000578",
-      "title": "Услуги по обеспечению организации горячего питания для отдельных категорий учащихся (№607-ОКЭФ-26-АС)",
-      "customer": "АДМИНИСТРАЦИЯ Г.ДЗЕРЖИНСКА НИЖЕГОРОДСКОЙ ОБЛАСТИ",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 6857660.46,
-      "stage": "active",
-      "endDate": "2026-08-10T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 18,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0132300001726000578",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Услуги по обеспечению организации горячего питания для отдельных категорий учащихся (№607-ОКЭФ-26-АС)",
-          "qty": "—",
-          "price": 6857660.46
         }
       ],
       "documents": [],
