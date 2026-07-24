@@ -138,13 +138,33 @@ def _specs_ok(specs: list) -> bool:
     return numeric / len(keys) < 0.5
 
 
+def _expand_variants(d):
+    """Товар с типоразмерами (`variants`) → по отдельному кандидату на размер. Каждый вариант
+    перекрывает одноимённые общие атрибуты (напр. размеры/длина/высота, разные по размеру), чтобы
+    позиция ТЗ на конкретный размер (длина 130 = размер 3) матчилась с этим размером, а не со всей
+    карточкой сразу. Товар без `variants` → один кандидат как есть."""
+    variants = d.get("variants")
+    if not variants:
+        return [(d, Product(id=d["id"], name=d["name"],
+                            attributes=[Attribute(**a) for a in d["attributes"]]))]
+    out = []
+    for v in variants:
+        attrs = {a["key"]: dict(a) for a in d["attributes"]}
+        for k, val in v.items():
+            attrs[k] = {"key": k, "value": val, "status": "declared"}
+        vid = d["id"] + "#" + "/".join(str(x) for x in (v.get("размеры") or [v.get("размер", "?")]))
+        vd = {**d, "id": vid}
+        out.append((vd, Product(id=vid, name=d["name"],
+                                attributes=[Attribute(**a) for a in attrs.values()])))
+    return out
+
+
 def load_catalog(path):
     files = [path] if path.endswith(".json") else glob.glob(os.path.join(path, "*.json"))
     cat = []
     for fp in files:
         d = json.load(open(fp, encoding="utf-8"))
-        cat.append((d, Product(id=d["id"], name=d["name"],
-                                attributes=[Attribute(**a) for a in d["attributes"]])))
+        cat.extend(_expand_variants(d))
     return cat
 
 

@@ -51,6 +51,25 @@ def test_category_match_counts_as_coverage():
     assert tech >= 1, "категорийное совпадение по напряжению должно считаться покрытием"
 
 
+def test_expand_variants_one_candidate_per_size():
+    # товар с типоразмерами разворачивается в кандидата на размер; вариант перекрывает общие поля
+    d = {"id": "blade", "name": "blade", "ktru": ["k"],
+         "attributes": [{"key": "тип_клинка", "value": "макинтош"}, {"key": "размеры", "value": ["0"]}],
+         "variants": [{"размеры": ["3"], "длина_клинка_мм": 130},
+                      {"размеры": ["4"], "длина_клинка_мм": 155}]}
+    cards = lc._expand_variants(d)
+    assert len(cards) == 2
+    p3 = next(p for _, p in cards if "3" in p.id)
+    assert p3.get("длина_клинка_мм").value == 130
+    assert p3.get("размеры").value == ["3"]          # общий размер перекрыт вариантом
+    assert p3.get("тип_клинка").value == "макинтош"   # общий атрибут сохранён
+
+
+def test_expand_variants_noop_without_variants():
+    d = {"id": "x", "name": "x", "ktru": [], "attributes": [{"key": "a", "value": 1}]}
+    assert len(lc._expand_variants(d)) == 1
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
