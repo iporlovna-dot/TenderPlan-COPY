@@ -49,7 +49,13 @@ def _keyword_hits(text: str, keywords: List[str]) -> int:
 
 
 def score_purchase(purchase: Purchase, profile: dict) -> float:
-    """Оценка релевантности закупки профилю категории. 0 — не релевантна."""
+    """Оценка релевантности закупки профилю категории. 0 — не релевантна.
+
+    profile.stop_keywords — стоп-слова: если встретилось хоть одно, закупка НЕ релевантна
+    (0), даже при совпадении кода/ключей. Нужно для омонимов discovery: «амбу»∈«амбулаторный»,
+    «искусственной вентиляции» ловит дыхательные контуры/влагообменники (не мешок Амбу)."""
+    if _keyword_hits(purchase.subject, profile.get("stop_keywords", [])):
+        return 0.0
     profile_codes = profile.get("okpd2_ktru", [])
     code_match = _code_prefix_match(purchase.okpd2 + purchase.ktru, profile_codes)
     hits = _keyword_hits(purchase.subject, profile.get("keywords", []))
