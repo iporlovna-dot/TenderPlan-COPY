@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-25T02:15:50.910Z",
+  "generatedAt": "2026-07-25T05:15:49.275Z",
   "source": "Портал поставщиков + ЕИС (zakupki.gov.ru) — активные закупки",
   "total": 828,
   "purchases": [
@@ -67,7 +67,7 @@
       "stage": "active",
       "endDate": "2026-07-27T06:24:05",
       "beginDate": "2026-07-24T06:24:05",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -116,7 +116,7 @@
       "stage": "active",
       "endDate": "2026-07-27T07:00:01",
       "beginDate": "2026-07-24T07:00:01",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -225,7 +225,7 @@
       "stage": "active",
       "endDate": "2026-07-27T07:05:53",
       "beginDate": "2026-07-24T07:05:53",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -274,7 +274,7 @@
       "stage": "active",
       "endDate": "2026-07-27T07:07:25",
       "beginDate": "2026-07-24T07:07:25",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -329,7 +329,7 @@
       "stage": "active",
       "endDate": "2026-07-27T07:08:03",
       "beginDate": "2026-07-24T07:08:03",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -396,7 +396,7 @@
       "stage": "active",
       "endDate": "2026-07-27T07:44:21",
       "beginDate": "2026-07-24T07:44:21",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -440,7 +440,7 @@
       "stage": "active",
       "endDate": "2026-07-27T07:49:30",
       "beginDate": "2026-07-24T07:49:30",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -489,7 +489,7 @@
       "stage": "active",
       "endDate": "2026-07-27T07:54:22",
       "beginDate": "2026-07-24T07:54:22",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -533,7 +533,7 @@
       "stage": "active",
       "endDate": "2026-07-27T08:00:00",
       "beginDate": "2026-07-22T09:10:00",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 3,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -9728,55 +9728,6 @@
       "matches": {}
     },
     {
-      "id": "pp_10257332",
-      "number": "10257332",
-      "title": "Услуги связи по предоставлению каналов связи",
-      "customer": "Государственное бюджетное общеобразовательное учреждение города Москвы «Школа № 1352»",
-      "customerInn": "7718197885",
-      "law": "44-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Услуги по передаче данных по проводным телекоммуникационным сетям прочие",
-      "price": 34440,
-      "stage": "active",
-      "endDate": "2026-07-27T15:00:00",
-      "beginDate": "2026-07-27T09:00:00",
-      "deadlineDays": 3,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10257332",
-      "deliveryDays": 371,
-      "deliveryPlace": "г г Москва, Город Москва, улица Новосибирская, дом 8А",
-      "lots": [
-        {
-          "name": "Услуги связи по предоставлению каналов связи",
-          "qty": "12",
-          "price": 2870,
-          "okpd": "Услуги по передаче данных по проводным телекоммуникационным сетям прочие"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279797555",
-          "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797555"
-        },
-        {
-          "id": "279797556",
-          "name": "Техническое_задание_ОСПИ_канал_связи (1).docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797556"
-        },
-        {
-          "id": "279801053",
-          "name": "Краткое описание КС 10257332.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801053"
-        }
-      ],
-      "matches": {}
-    },
-    {
       "id": "pp_10257438",
       "number": "10257438",
       "title": "Услуги по разработке программы энергосбережения и повышения энергетической эффективности",
@@ -9821,6 +9772,55 @@
           "id": "279812932",
           "name": "Краткое описание КС 10257438.docx",
           "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279812932"
+        }
+      ],
+      "matches": {}
+    },
+    {
+      "id": "pp_10257332",
+      "number": "10257332",
+      "title": "Услуги связи по предоставлению каналов связи",
+      "customer": "Государственное бюджетное общеобразовательное учреждение города Москвы «Школа № 1352»",
+      "customerInn": "7718197885",
+      "law": "44-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "г. Москва",
+      "okpd": "Услуги по передаче данных по проводным телекоммуникационным сетям прочие",
+      "price": 34440,
+      "stage": "active",
+      "endDate": "2026-07-27T15:00:00",
+      "beginDate": "2026-07-27T09:00:00",
+      "deadlineDays": 3,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10257332",
+      "deliveryDays": 371,
+      "deliveryPlace": "г г Москва, Город Москва, улица Новосибирская, дом 8А",
+      "lots": [
+        {
+          "name": "Услуги связи по предоставлению каналов связи",
+          "qty": "12",
+          "price": 2870,
+          "okpd": "Услуги по передаче данных по проводным телекоммуникационным сетям прочие"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279797555",
+          "name": "Проект контракта.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797555"
+        },
+        {
+          "id": "279797556",
+          "name": "Техническое_задание_ОСПИ_канал_связи (1).docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797556"
+        },
+        {
+          "id": "279801053",
+          "name": "Краткое описание КС 10257332.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801053"
         }
       ],
       "matches": {}
@@ -15796,7 +15796,7 @@
       "endDate": "2026-07-27T17:25:02",
       "beginDate": "2026-07-24T17:25:02",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -15845,7 +15845,7 @@
       "endDate": "2026-07-27T17:37:15",
       "beginDate": "2026-07-24T17:37:15",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -16116,7 +16116,7 @@
       "endDate": "2026-07-27T18:00:00",
       "beginDate": "2026-07-24T18:00:00",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -16165,7 +16165,7 @@
       "endDate": "2026-07-27T18:01:01",
       "beginDate": "2026-07-24T18:01:01",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -16304,7 +16304,7 @@
       "endDate": "2026-07-27T18:01:02",
       "beginDate": "2026-07-24T18:01:02",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -16485,7 +16485,7 @@
       "endDate": "2026-07-27T18:23:26",
       "beginDate": "2026-07-24T18:23:26",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -16666,7 +16666,7 @@
       "endDate": "2026-07-27T18:30:00",
       "beginDate": "2026-07-24T18:30:00",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -16823,7 +16823,7 @@
       "endDate": "2026-07-27T18:40:11",
       "beginDate": "2026-07-24T18:40:11",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -16872,7 +16872,7 @@
       "endDate": "2026-07-27T19:51:00",
       "beginDate": "2026-07-24T19:51:00",
       "deadlineDays": 3,
-      "publishedDaysAgo": 0,
+      "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
       "prepayment": 0,
@@ -24038,38 +24038,6 @@
       "matches": {}
     },
     {
-      "id": "eis_0848300047226000450",
-      "number": "0848300047226000450",
-      "title": "Выполнение работ по ремонту асфальтового покрытия",
-      "customer": "МУНИЦИПАЛЬНОЕ КАЗЕННОЕ УЧРЕЖДЕНИЕ \"КРАСНОГОРСКИЙ ЦЕНТР ТОРГОВ\"",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 398790.99,
-      "stage": "active",
-      "endDate": "2026-07-31T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 7,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0848300047226000450",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Выполнение работ по ремонту асфальтового покрытия",
-          "qty": "—",
-          "price": 398790.99
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
       "id": "eis_32616234729",
       "number": "32616234729",
       "title": "Поставка изделий медицинского назначения (Регистрирующая бумага для ЭКГ)",
@@ -24128,6 +24096,70 @@
           "name": "Поставка радиочастотного циркулятора для нужд ВНИХИ – филиал ФГБНУ «ФНЦ пищевых систем им. В.М. Горбатова» РАН",
           "qty": "—",
           "price": 90567
+        }
+      ],
+      "documents": [],
+      "matches": {}
+    },
+    {
+      "id": "eis_32616237138",
+      "number": "32616237138",
+      "title": "Поставка щебеночно-песчаной смеси",
+      "customer": "АКЦИОНЕРНОЕ ОБЩЕСТВО \"ДОРОЖНОЕ РЕМОНТНО-СТРОИТЕЛЬНОЕ УПРАВЛЕНИЕ № 3\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 3497000,
+      "stage": "active",
+      "endDate": "2026-08-03T23:59:00",
+      "beginDate": "2026-07-25T23:59:00",
+      "deadlineDays": 10,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237138",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Поставка щебеночно-песчаной смеси",
+          "qty": "—",
+          "price": 3497000
+        }
+      ],
+      "documents": [],
+      "matches": {}
+    },
+    {
+      "id": "eis_32616237137",
+      "number": "32616237137",
+      "title": "Поставка щебня",
+      "customer": "АКЦИОНЕРНОЕ ОБЩЕСТВО \"ДОРОЖНОЕ РЕМОНТНО-СТРОИТЕЛЬНОЕ УПРАВЛЕНИЕ № 3\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 6902000,
+      "stage": "active",
+      "endDate": "2026-08-03T23:59:00",
+      "beginDate": "2026-07-25T23:59:00",
+      "deadlineDays": 10,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237137",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Поставка щебня",
+          "qty": "—",
+          "price": 6902000
         }
       ],
       "documents": [],
@@ -34048,38 +34080,6 @@
           "name": "Поставка системы эндоскопической визуализации",
           "qty": "—",
           "price": 4726666.67
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_32616235377",
-      "number": "32616235377",
-      "title": "Оказание услуг по санитарной очистке мест общего пользования, ручной уборке придомовой территории, обслуживанию мусоросборника МКД, расположенных по адресам: г. Норильск, ул. Лауреатов, д. 56, г. Норильск, ул. Лауреатов, д. 58, г. Норильск, ул. Пушкина, д. 10, г. Норильск, ул. 50 лет Октября, д. 2Б, г. Норильск, ул. 50 лет Октября, д. 2Б корпус 1",
-      "customer": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ \"УПРАВЛЯЮЩАЯ КОМПАНИЯ \"ГОРОД\"",
-      "customerInn": "",
-      "law": "223-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 2547024.83,
-      "stage": "active",
-      "endDate": "2026-08-04T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 11,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616235377",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Оказание услуг по санитарной очистке мест общего пользования, ручной уборке придомовой территории, обслуживанию мусоросборника МКД, расположенных по адресам: г. Норильск, ул. Лауреатов, д. 56, г. Норильск, ул. Лауреатов, д. 58, г. Норильск, ул. Пушкина, д. 10, г. Норильск, ул. 50 лет Октября, д. 2Б, г. Норильск, ул. 50 лет Октября, д. 2Б корпус 1",
-          "qty": "—",
-          "price": 2547024.83
         }
       ],
       "documents": [],
