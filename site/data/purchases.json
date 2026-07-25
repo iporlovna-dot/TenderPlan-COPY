@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-25T06:18:29.472Z",
+  "generatedAt": "2026-07-25T08:15:53.281Z",
   "source": "Портал поставщиков + ЕИС (zakupki.gov.ru) — активные закупки",
   "total": 829,
   "purchases": [
@@ -975,7 +975,7 @@
       "stage": "active",
       "endDate": "2026-07-27T09:23:05",
       "beginDate": "2026-07-24T09:23:05",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1029,7 +1029,7 @@
       "stage": "active",
       "endDate": "2026-07-27T09:26:46",
       "beginDate": "2026-07-24T09:26:46",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1089,7 +1089,7 @@
       "stage": "active",
       "endDate": "2026-07-27T09:28:53",
       "beginDate": "2026-07-24T09:28:53",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1133,7 +1133,7 @@
       "stage": "active",
       "endDate": "2026-07-27T09:31:56",
       "beginDate": "2026-07-24T09:31:56",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1212,7 +1212,7 @@
       "stage": "active",
       "endDate": "2026-07-27T09:44:29",
       "beginDate": "2026-07-24T09:44:29",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1256,7 +1256,7 @@
       "stage": "active",
       "endDate": "2026-07-27T09:47:34",
       "beginDate": "2026-07-24T09:47:34",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1300,7 +1300,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:00:00",
       "beginDate": "2026-07-24T10:00:00",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1349,7 +1349,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:14:38",
       "beginDate": "2026-07-24T08:14:38",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1398,7 +1398,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:18:27",
       "beginDate": "2026-07-24T10:18:27",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1442,7 +1442,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:21:05",
       "beginDate": "2026-07-24T07:21:05",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1516,7 +1516,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:26:54",
       "beginDate": "2026-07-24T08:26:54",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1589,7 +1589,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:34:11",
       "beginDate": "2026-07-24T10:34:11",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1649,7 +1649,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:38:47",
       "beginDate": "2026-07-24T10:38:47",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1693,7 +1693,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:39:22",
       "beginDate": "2026-07-24T10:39:22",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1742,7 +1742,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:40:00",
       "beginDate": "2026-07-24T10:40:00",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1803,7 +1803,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:50:35",
       "beginDate": "2026-07-24T10:50:35",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1852,7 +1852,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:51:33",
       "beginDate": "2026-07-24T10:51:33",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1896,7 +1896,7 @@
       "stage": "active",
       "endDate": "2026-07-27T10:57:01",
       "beginDate": "2026-07-24T10:57:01",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1945,7 +1945,7 @@
       "stage": "active",
       "endDate": "2026-07-27T11:01:16",
       "beginDate": "2026-07-24T11:01:16",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -1994,7 +1994,7 @@
       "stage": "active",
       "endDate": "2026-07-27T11:06:34",
       "beginDate": "2026-07-24T11:06:34",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -2055,7 +2055,7 @@
       "stage": "active",
       "endDate": "2026-07-27T11:07:23",
       "beginDate": "2026-07-24T11:07:23",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -2104,7 +2104,7 @@
       "stage": "active",
       "endDate": "2026-07-27T11:10:34",
       "beginDate": "2026-07-24T11:10:34",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -2159,7 +2159,7 @@
       "stage": "active",
       "endDate": "2026-07-27T11:13:44",
       "beginDate": "2026-07-24T11:13:44",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -2352,7 +2352,7 @@
       "stage": "active",
       "endDate": "2026-07-27T11:14:41",
       "beginDate": "2026-07-24T11:14:41",
-      "deadlineDays": 3,
+      "deadlineDays": 2,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -6261,55 +6261,6 @@
       "matches": {}
     },
     {
-      "id": "pp_10257403",
-      "number": "10257403",
-      "title": "Прибор для светотерапии Bioptron Pro 1 с напольной стойкой (PAG-991)",
-      "customer": "Государственное бюджетное учреждение здравоохранения города Москвы «Психиатрическая клиническая больница № 4 им. П.Б. Ганнушкина Департамента здравоохранения города Москвы»",
-      "customerInn": "7718084948",
-      "law": "44-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Аппараты, основанные на использовании ультрафиолетового или инфракрасного излучения, применяемые в медицинских целях, стоматологического или ветеринарного применения",
-      "price": 369000,
-      "stage": "active",
-      "endDate": "2026-07-27T13:00:00",
-      "beginDate": "2026-07-24T13:00:00",
-      "deadlineDays": 3,
-      "publishedDaysAgo": 1,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10257403",
-      "deliveryDays": 10,
-      "deliveryPlace": "г г Москва, Город Москва, улица Потешная, дом 3",
-      "lots": [
-        {
-          "name": "Прибор для светотерапии Bioptron Pro 1 с напольной стойкой (PAG-991)",
-          "qty": "1",
-          "price": 369000,
-          "okpd": "Аппараты, основанные на использовании ультрафиолетового или инфракрасного излучения, применяемые в медицинских целях, стоматологического или ветеринарного применения"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279804579",
-          "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279804579"
-        },
-        {
-          "id": "279804580",
-          "name": "Приложение № 1 к Контракту Техническое задание.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279804580"
-        },
-        {
-          "id": "279807678",
-          "name": "Краткое описание КС 10257403.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279807678"
-        }
-      ],
-      "matches": {}
-    },
-    {
       "id": "pp_10257405",
       "number": "10257405",
       "title": "Покрытие «Nova Nop» Грязезащитное ворсовое покрытие «Nova Nop»",
@@ -8384,6 +8335,55 @@
       "matches": {}
     },
     {
+      "id": "pp_10257403",
+      "number": "10257403",
+      "title": "Прибор для светотерапии Bioptron Pro 1 с напольной стойкой (PAG-991)",
+      "customer": "Государственное бюджетное учреждение здравоохранения города Москвы «Психиатрическая клиническая больница № 4 им. П.Б. Ганнушкина Департамента здравоохранения города Москвы»",
+      "customerInn": "7718084948",
+      "law": "44-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "г. Москва",
+      "okpd": "Аппараты, основанные на использовании ультрафиолетового или инфракрасного излучения, применяемые в медицинских целях, стоматологического или ветеринарного применения",
+      "price": 369000,
+      "stage": "active",
+      "endDate": "2026-07-27T14:00:00",
+      "beginDate": "2026-07-24T13:00:00",
+      "deadlineDays": 3,
+      "publishedDaysAgo": 1,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10257403",
+      "deliveryDays": 10,
+      "deliveryPlace": "г г Москва, Город Москва, улица Потешная, дом 3",
+      "lots": [
+        {
+          "name": "Прибор для светотерапии Bioptron Pro 1 с напольной стойкой (PAG-991)",
+          "qty": "1",
+          "price": 369000,
+          "okpd": "Аппараты, основанные на использовании ультрафиолетового или инфракрасного излучения, применяемые в медицинских целях, стоматологического или ветеринарного применения"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279804579",
+          "name": "Проект контракта.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279804579"
+        },
+        {
+          "id": "279804580",
+          "name": "Приложение № 1 к Контракту Техническое задание.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279804580"
+        },
+        {
+          "id": "279807678",
+          "name": "Краткое описание КС 10257403.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279807678"
+        }
+      ],
+      "matches": {}
+    },
+    {
       "id": "pp_10257439",
       "number": "10257439",
       "title": "ТОВАРЫ ХОЗЯЙСТВЕННЫЕ, ТЕХНИКА БЫТОВАЯ",
@@ -9508,6 +9508,73 @@
       "matches": {}
     },
     {
+      "id": "pp_10257343",
+      "number": "10257343",
+      "title": "ТОВАРЫ ХОЗЯЙСТВЕННЫЕ, ТЕХНИКА БЫТОВАЯ",
+      "customer": "управа Пресненского района города Москвы",
+      "customerInn": "7703364188",
+      "law": "44-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "г. Москва",
+      "okpd": "Бумага туалетная из бумажной массы, бумаги, целлюлозной ваты и целлюлозных волокон и полотна из целлюлозных волокон",
+      "price": 12004.2,
+      "stage": "active",
+      "endDate": "2026-07-27T15:00:00",
+      "beginDate": "2026-07-27T09:00:00",
+      "deadlineDays": 3,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10257343",
+      "deliveryDays": 5,
+      "deliveryPlace": "г г Москва, Город Москва, проезд Шмитовский, дом 2, строение 1",
+      "lots": [
+        {
+          "name": "Бумага туалетная Veiro Домашняя 2-слойная белая (8 рулонов в упаковке)",
+          "qty": "18",
+          "price": 197.6,
+          "okpd": "Бумага туалетная из бумажной массы, бумаги, целлюлозной ваты и целлюлозных волокон и полотна из целлюлозных волокон"
+        },
+        {
+          "name": "Лента клейкая КОМУС упаковочная прозрачная 50 мм x 100 м толщина 50 мкм",
+          "qty": "18",
+          "price": 197,
+          "okpd": "Плиты, листы, пленка, лента и прочие плоские полимерные самоклеящиеся формы, в рулонах шириной не более 20 см"
+        },
+        {
+          "name": "Клейкая лента бумажная (малярная) \"Союзпак\" 48х50",
+          "qty": "18",
+          "price": 175.5,
+          "okpd": "Плиты, листы, пленка, лента и прочие плоские полимерные самоклеящиеся формы, в рулонах шириной не более 20 см"
+        },
+        {
+          "name": "Мешок для мусора на 120л черные Комус (ПВД, 40 мкм, в рулоне 10 штук, 66х104 см)",
+          "qty": "18",
+          "price": 96.8,
+          "okpd": "Изделия пластмассовые упаковочные"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279798545",
+          "name": "Проект контракта.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279798545"
+        },
+        {
+          "id": "279798548",
+          "name": "Прил.1 - Техническое задание (КС хоз тов).docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279798548"
+        },
+        {
+          "id": "279801081",
+          "name": "Краткое описание КС 10257343.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801081"
+        }
+      ],
+      "matches": {}
+    },
+    {
       "id": "pp_10257346",
       "number": "10257346",
       "title": "РАСХОДНЫЕ МАТЕРИАЛЫ УПАКОВОЧНЫЕ ДЛЯ СТЕРИЛИЗАЦИИ",
@@ -9661,73 +9728,6 @@
       "matches": {}
     },
     {
-      "id": "pp_10257343",
-      "number": "10257343",
-      "title": "ТОВАРЫ ХОЗЯЙСТВЕННЫЕ, ТЕХНИКА БЫТОВАЯ",
-      "customer": "управа Пресненского района города Москвы",
-      "customerInn": "7703364188",
-      "law": "44-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Бумага туалетная из бумажной массы, бумаги, целлюлозной ваты и целлюлозных волокон и полотна из целлюлозных волокон",
-      "price": 12004.2,
-      "stage": "active",
-      "endDate": "2026-07-27T15:00:00",
-      "beginDate": "2026-07-27T09:00:00",
-      "deadlineDays": 3,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10257343",
-      "deliveryDays": 5,
-      "deliveryPlace": "г г Москва, Город Москва, проезд Шмитовский, дом 2, строение 1",
-      "lots": [
-        {
-          "name": "Бумага туалетная Veiro Домашняя 2-слойная белая (8 рулонов в упаковке)",
-          "qty": "18",
-          "price": 197.6,
-          "okpd": "Бумага туалетная из бумажной массы, бумаги, целлюлозной ваты и целлюлозных волокон и полотна из целлюлозных волокон"
-        },
-        {
-          "name": "Лента клейкая КОМУС упаковочная прозрачная 50 мм x 100 м толщина 50 мкм",
-          "qty": "18",
-          "price": 197,
-          "okpd": "Плиты, листы, пленка, лента и прочие плоские полимерные самоклеящиеся формы, в рулонах шириной не более 20 см"
-        },
-        {
-          "name": "Клейкая лента бумажная (малярная) \"Союзпак\" 48х50",
-          "qty": "18",
-          "price": 175.5,
-          "okpd": "Плиты, листы, пленка, лента и прочие плоские полимерные самоклеящиеся формы, в рулонах шириной не более 20 см"
-        },
-        {
-          "name": "Мешок для мусора на 120л черные Комус (ПВД, 40 мкм, в рулоне 10 штук, 66х104 см)",
-          "qty": "18",
-          "price": 96.8,
-          "okpd": "Изделия пластмассовые упаковочные"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279798545",
-          "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279798545"
-        },
-        {
-          "id": "279798548",
-          "name": "Прил.1 - Техническое задание (КС хоз тов).docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279798548"
-        },
-        {
-          "id": "279801081",
-          "name": "Краткое описание КС 10257343.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801081"
-        }
-      ],
-      "matches": {}
-    },
-    {
       "id": "pp_10257438",
       "number": "10257438",
       "title": "Услуги по разработке программы энергосбережения и повышения энергетической эффективности",
@@ -9821,6 +9821,73 @@
           "id": "279801053",
           "name": "Краткое описание КС 10257332.docx",
           "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801053"
+        }
+      ],
+      "matches": {}
+    },
+    {
+      "id": "pp_10257333",
+      "number": "10257333",
+      "title": "ТОВАРЫ СТРОИТЕЛЬНЫЕ",
+      "customer": "Государственное бюджетное общеобразовательное учреждение города Москвы «Школа № 1517»",
+      "customerInn": "7734132109",
+      "law": "44-ФЗ",
+      "source": "Портал поставщиков (mos.ru)",
+      "region": "г. Москва",
+      "okpd": "Кабели силовые с медной жилой на напряжение до 1 кВ",
+      "price": 291720,
+      "stage": "active",
+      "endDate": "2026-07-27T15:00:00",
+      "beginDate": "2026-07-27T09:00:00",
+      "deadlineDays": 3,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.mos.ru/auction/10257333",
+      "deliveryDays": 5,
+      "deliveryPlace": "г г Москва, Город Москва, улица Живописная, дом 11, корпус 1",
+      "lots": [
+        {
+          "name": "Кабель силовой ВВГнг(А) 3х2,5",
+          "qty": "1000",
+          "price": 201.57,
+          "okpd": "Кабели силовые с медной жилой на напряжение до 1 кВ"
+        },
+        {
+          "name": "Автомат дифференциальный АВДТ 32 C16 30мА тип А ИЭК (дифавтомат, АВДТ)",
+          "qty": "10",
+          "price": 1400,
+          "okpd": "Части электрической распределительной или регулирующей аппаратуры"
+        },
+        {
+          "name": "ВАГО Соед.клемма с рычажком 222-413 3-х пров.(0,08-2,5кв.мм), 400В, 32А, б/пасты, IP20 (уп.50шт)",
+          "qty": "20",
+          "price": 1807.5,
+          "okpd": "Соединители электрические, зажимы контактные, наборы зажимов"
+        },
+        {
+          "name": " Кабель профессиональный универсальный резистивный греющий ,  для систем антиобледенения и снеготаяния IQWATT IQ OUTDOOR CW - 94м(90м греющий) (2.7 кВт/ч) 907",
+          "qty": "1",
+          "price": 40000,
+          "okpd": "Провода и кабели нагревательные"
+        }
+      ],
+      "documents": [
+        {
+          "id": "279797693",
+          "name": "Проект контракта.pdf",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797693"
+        },
+        {
+          "id": "279797695",
+          "name": "ТЕХ.ЗАДАНИЕ (поставка ).docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797695"
+        },
+        {
+          "id": "279801055",
+          "name": "Краткое описание КС 10257333.docx",
+          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801055"
         }
       ],
       "matches": {}
@@ -10110,73 +10177,6 @@
           "id": "279801109",
           "name": "Краткое описание КС 10257352.docx",
           "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801109"
-        }
-      ],
-      "matches": {}
-    },
-    {
-      "id": "pp_10257333",
-      "number": "10257333",
-      "title": "ТОВАРЫ СТРОИТЕЛЬНЫЕ",
-      "customer": "Государственное бюджетное общеобразовательное учреждение города Москвы «Школа № 1517»",
-      "customerInn": "7734132109",
-      "law": "44-ФЗ",
-      "source": "Портал поставщиков (mos.ru)",
-      "region": "г. Москва",
-      "okpd": "Кабели силовые с медной жилой на напряжение до 1 кВ",
-      "price": 291720,
-      "stage": "active",
-      "endDate": "2026-07-27T15:00:00",
-      "beginDate": "2026-07-27T09:00:00",
-      "deadlineDays": 3,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.mos.ru/auction/10257333",
-      "deliveryDays": 5,
-      "deliveryPlace": "г г Москва, Город Москва, улица Живописная, дом 11, корпус 1",
-      "lots": [
-        {
-          "name": "Кабель силовой ВВГнг(А) 3х2,5",
-          "qty": "1000",
-          "price": 201.57,
-          "okpd": "Кабели силовые с медной жилой на напряжение до 1 кВ"
-        },
-        {
-          "name": "Автомат дифференциальный АВДТ 32 C16 30мА тип А ИЭК (дифавтомат, АВДТ)",
-          "qty": "10",
-          "price": 1400,
-          "okpd": "Части электрической распределительной или регулирующей аппаратуры"
-        },
-        {
-          "name": "ВАГО Соед.клемма с рычажком 222-413 3-х пров.(0,08-2,5кв.мм), 400В, 32А, б/пасты, IP20 (уп.50шт)",
-          "qty": "20",
-          "price": 1807.5,
-          "okpd": "Соединители электрические, зажимы контактные, наборы зажимов"
-        },
-        {
-          "name": " Кабель профессиональный универсальный резистивный греющий ,  для систем антиобледенения и снеготаяния IQWATT IQ OUTDOOR CW - 94м(90м греющий) (2.7 кВт/ч) 907",
-          "qty": "1",
-          "price": 40000,
-          "okpd": "Провода и кабели нагревательные"
-        }
-      ],
-      "documents": [
-        {
-          "id": "279797693",
-          "name": "Проект контракта.pdf",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797693"
-        },
-        {
-          "id": "279797695",
-          "name": "ТЕХ.ЗАДАНИЕ (поставка ).docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279797695"
-        },
-        {
-          "id": "279801055",
-          "name": "Краткое описание КС 10257333.docx",
-          "url": "https://zakupki.mos.ru/newapi/api/FileStorage/Download?id=279801055"
         }
       ],
       "matches": {}
@@ -17071,7 +17071,7 @@
       "stage": "active",
       "endDate": "2026-07-28T11:00:00",
       "beginDate": "2026-07-24T16:15:00",
-      "deadlineDays": 4,
+      "deadlineDays": 3,
       "publishedDaysAgo": 1,
       "guaranteeApp": 0,
       "guaranteeContract": 0,
@@ -19546,6 +19546,49 @@
       "matches": {}
     },
     {
+      "id": "eis_32616237142",
+      "number": "32616237142",
+      "title": "Право заключения договора на поставку контейнеров для криоконсервация и хранения стволовых клеток для нужд ФГБОУ ВО Казанский ГМУ Минздрава России",
+      "customer": "ФЕДЕРАЛЬНОЕ ГОСУДАРСТВЕННОЕ БЮДЖЕТНОЕ ОБРАЗОВАТЕЛЬНОЕ УЧРЕЖДЕНИЕ ВЫСШЕГО ОБРАЗОВАНИЯ \"КАЗАНСКИЙ ГОСУДАРСТВЕННЫЙ МЕДИЦИНСКИЙ УНИВЕРСИТЕТ\" МИНИСТЕРСТВА ЗДРАВООХРАНЕНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 109946.6,
+      "stage": "active",
+      "endDate": "2026-07-31T23:59:00",
+      "beginDate": "2026-07-25T23:59:00",
+      "deadlineDays": 7,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237142",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Право заключения договора на поставку контейнеров для криоконсервация и хранения стволовых клеток для нужд ФГБОУ ВО Казанский ГМУ Минздрава России",
+          "qty": "—",
+          "price": 109946.6
+        }
+      ],
+      "documents": [
+        {
+          "id": "153F09E7C2554F738CB096587237532B",
+          "name": "Документация контейнер",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=153F09E7C2554F738CB096587237532B"
+        },
+        {
+          "id": "D1FEDE26EAB84090918808CB8C62A393",
+          "name": "ОНМЦ контейнеры",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D1FEDE26EAB84090918808CB8C62A393"
+        }
+      ],
+      "matches": {}
+    },
+    {
       "id": "eis_32616232961",
       "number": "32616232961",
       "title": "Открытый запрос котировок в электронной форме на право заключения договора поставки котельного оборудования",
@@ -20183,7 +20226,58 @@
           "price": 246150.5
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "A18F79403D2342EBA6AC3CB64576215F",
+          "name": "Приложение_1_Описание_объекта_закупки.xlsx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A18F79403D2342EBA6AC3CB64576215F"
+        },
+        {
+          "id": "BD8030932AE945FC86D31CCAF3E236BF",
+          "name": "Приложение_1_Описание_объекта_закупки.xlsx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=BD8030932AE945FC86D31CCAF3E236BF"
+        },
+        {
+          "id": "E3976AF15FC14464ABACEA333280BE8E",
+          "name": "Приложение_2_Форма_заявки_участника__1___3___1_.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=E3976AF15FC14464ABACEA333280BE8E"
+        },
+        {
+          "id": "35AA4E0BEAC4441BAB9E975A21282987",
+          "name": "Приложение_2_Форма_заявки_участника__1___3___1_.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=35AA4E0BEAC4441BAB9E975A21282987"
+        },
+        {
+          "id": "DAB75ED44F2046AABEA4DBFC3CD313B4",
+          "name": "Извещение.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=DAB75ED44F2046AABEA4DBFC3CD313B4"
+        },
+        {
+          "id": "CF37F1DE1D7E4729A56FA9E1AB17CD7A",
+          "name": "Извещение.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CF37F1DE1D7E4729A56FA9E1AB17CD7A"
+        },
+        {
+          "id": "B8040EB43E9F4525BE9D51FD8228ECB6",
+          "name": "Приложение_3_Обоснование_начальной__максимальной__цены_договора__1_сад__1_.xls",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B8040EB43E9F4525BE9D51FD8228ECB6"
+        },
+        {
+          "id": "71770A88E4FD496C997B644D417D6D1B",
+          "name": "Приложение_3_Обоснование_начальной__максимальной__цены_договора__1_сад__1_.xls",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=71770A88E4FD496C997B644D417D6D1B"
+        },
+        {
+          "id": "486ABAA70BDD46428333785CBA65E277",
+          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=486ABAA70BDD46428333785CBA65E277"
+        },
+        {
+          "id": "2512FB469D0E4FC7A638A66712B2BFA0",
+          "name": "Раздел_8._Критерии_и_порядок_оценки.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2512FB469D0E4FC7A638A66712B2BFA0"
+        }
+      ],
       "matches": {}
     },
     {
@@ -20614,7 +20708,38 @@
           "price": 17161
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "6923B4CBF1964C9780BB4F50660D3461",
+          "name": "Расчет НМЦД. (3).xlsx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6923B4CBF1964C9780BB4F50660D3461"
+        },
+        {
+          "id": "F6D6A9373FE74F0C8A3B4FCC9B6C4B6C",
+          "name": "Эскиз (50).docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F6D6A9373FE74F0C8A3B4FCC9B6C4B6C"
+        },
+        {
+          "id": "9CB668439575480C8A9F818993A80EC4",
+          "name": "Аукционная документация Центр МТО Поставка тележек для посуды в ГБУ «Мой социальный помощник».docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9CB668439575480C8A9F818993A80EC4"
+        },
+        {
+          "id": "F521F44D742F4FABBEEDDF4417C2797A",
+          "name": "Проект_контракта_17206075-1.pdf",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F521F44D742F4FABBEEDDF4417C2797A"
+        },
+        {
+          "id": "A0618E40C2B44FF2B903070AF92761C9",
+          "name": "Протокол.pdf",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A0618E40C2B44FF2B903070AF92761C9"
+        },
+        {
+          "id": "52F3EB0D01384D0F9D90CA7E65719E3F",
+          "name": "Техническое_задание_17206075-1.pdf",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=52F3EB0D01384D0F9D90CA7E65719E3F"
+        }
+      ],
       "matches": {}
     },
     {
@@ -21124,7 +21249,38 @@
           "price": 554240.12
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "52D64A7C5D584B61BBD47A79CB5AF15C",
+          "name": "Форма котировочной заявки.doc",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=52D64A7C5D584B61BBD47A79CB5AF15C"
+        },
+        {
+          "id": "CBA694D07BFF4B0496452912E4A76A07",
+          "name": "Описание объекта закупки.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CBA694D07BFF4B0496452912E4A76A07"
+        },
+        {
+          "id": "B68916C5749F4D96B45E5E49ED5B3009",
+          "name": "Приложение_№2_Проект_ГПД.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B68916C5749F4D96B45E5E49ED5B3009"
+        },
+        {
+          "id": "645A3B540A7445BBA67E5E8BB02B69A6",
+          "name": "Приложение 1. Расчет и обоснование НМЦД (медицина).xls",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=645A3B540A7445BBA67E5E8BB02B69A6"
+        },
+        {
+          "id": "A085C74C5AE142729715BB90A5DBFB13",
+          "name": "Информационная карта ЗК.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A085C74C5AE142729715BB90A5DBFB13"
+        },
+        {
+          "id": "1F5F99E8A09C4B09A2CDDD15155FF8AD",
+          "name": "Инструкция по заполнению заявки на участие в ЗК.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1F5F99E8A09C4B09A2CDDD15155FF8AD"
+        }
+      ],
       "matches": {}
     },
     {
@@ -21668,7 +21824,108 @@
           "price": 10577282613.87
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "EAED3D3D31B343EEB69C8BAF4347E7BD",
+          "name": "Сметы.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EAED3D3D31B343EEB69C8BAF4347E7BD"
+        },
+        {
+          "id": "F4701709AAC64ADCB66A59FE0FD6736B",
+          "name": "Проект Договора.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F4701709AAC64ADCB66A59FE0FD6736B"
+        },
+        {
+          "id": "B5B9428275CE434AAA440C1D3EAD9181",
+          "name": "ЗП Закупочная документация.doc",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B5B9428275CE434AAA440C1D3EAD9181"
+        },
+        {
+          "id": "2B20EFA8462540E2AA26A1C7854DC3AE",
+          "name": "Форма коммерческого предложения.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2B20EFA8462540E2AA26A1C7854DC3AE"
+        },
+        {
+          "id": "0999C9979111410A8A7AE9471E5D9F1F",
+          "name": "Формирование стоимости лота.xlsx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0999C9979111410A8A7AE9471E5D9F1F"
+        },
+        {
+          "id": "121D1955E5B9400ABA43192B86A053D0",
+          "name": "Проект Договора.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=121D1955E5B9400ABA43192B86A053D0"
+        },
+        {
+          "id": "67EF49D31CDC4CAB8FD4EC9882C5BF5A",
+          "name": "Сметы.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=67EF49D31CDC4CAB8FD4EC9882C5BF5A"
+        },
+        {
+          "id": "FAB66FE98DE144A3B4FF3B733141069C",
+          "name": "Форма коммерческого предложения.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=FAB66FE98DE144A3B4FF3B733141069C"
+        },
+        {
+          "id": "278FD89611C74ADAA067F94D78A815A6",
+          "name": "Формирование стоимости лота.xlsx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=278FD89611C74ADAA067F94D78A815A6"
+        },
+        {
+          "id": "270C73CEC48C4905910EA6D5BE1DD6AF",
+          "name": "ЗП Закупочная документация.doc",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=270C73CEC48C4905910EA6D5BE1DD6AF"
+        },
+        {
+          "id": "9E6966F4B69B485FABDBC53BD35BD684",
+          "name": "ДТП этапы.part33.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=9E6966F4B69B485FABDBC53BD35BD684"
+        },
+        {
+          "id": "119DD19C586A428F8E116CA9AA588C3D",
+          "name": "ДТП этапы.part34.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=119DD19C586A428F8E116CA9AA588C3D"
+        },
+        {
+          "id": "09F3E3CDEE104157AAF92F7EF301F1AB",
+          "name": "ДТП этапы.part35.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=09F3E3CDEE104157AAF92F7EF301F1AB"
+        },
+        {
+          "id": "8D8CA64C502249818589AEF8072D62AD",
+          "name": "ДТП этапы.part36.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8D8CA64C502249818589AEF8072D62AD"
+        },
+        {
+          "id": "6788CB12F4FA4DA6BF0DA6A548B7B7C7",
+          "name": "ДТП этапы.part29.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6788CB12F4FA4DA6BF0DA6A548B7B7C7"
+        },
+        {
+          "id": "C07AF04D9A384921B81145727BABB471",
+          "name": "ДТП этапы.part30.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C07AF04D9A384921B81145727BABB471"
+        },
+        {
+          "id": "2D8C935A3D034EC2B229DC3DBE8DEE1D",
+          "name": "ДТП этапы.part31.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=2D8C935A3D034EC2B229DC3DBE8DEE1D"
+        },
+        {
+          "id": "6A479155A61C4EA8862AD4F8E469E3C8",
+          "name": "ДТП этапы.part32.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6A479155A61C4EA8862AD4F8E469E3C8"
+        },
+        {
+          "id": "997E11B2DFDC4697BB98C4E9491511A7",
+          "name": "ДТП этапы.part25.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=997E11B2DFDC4697BB98C4E9491511A7"
+        },
+        {
+          "id": "5EE38BE9FBAC40A6A32AC0B6D0881F56",
+          "name": "ДТП этапы.part26.rar",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=5EE38BE9FBAC40A6A32AC0B6D0881F56"
+        }
+      ],
       "matches": {}
     },
     {
@@ -21834,7 +22091,18 @@
           "price": 550000
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "B817AC4E84534B4CAD0A581EB8290E64",
+          "name": "Смета_трубопровода_наружного_отопления.pdf",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B817AC4E84534B4CAD0A581EB8290E64"
+        },
+        {
+          "id": "56A9E1B4C0FE49C5947F772697F0FA6A",
+          "name": "Документация_об_открытом_аукционе_в_электронной_форме.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=56A9E1B4C0FE49C5947F772697F0FA6A"
+        }
+      ],
       "matches": {}
     },
     {
@@ -21898,7 +22166,28 @@
           "price": 14949760.06
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "42C9C6FF1B8C4D57907A45E9B08A5117",
+          "name": "Документация ИИ 2000 пм",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=42C9C6FF1B8C4D57907A45E9B08A5117"
+        },
+        {
+          "id": "61D1E01FB4204B88BF4C22D342CE603A",
+          "name": "Документация ИИ 2000 пм",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=61D1E01FB4204B88BF4C22D342CE603A"
+        },
+        {
+          "id": "4D42C6D829F146F1A85AF5FD9890F757",
+          "name": "Разъяснения положений документации ЕИС",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=4D42C6D829F146F1A85AF5FD9890F757"
+        },
+        {
+          "id": "58519BB3162A4BF595B6028A9D6F9517",
+          "name": "Разъяснения положений документации ЕИС",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=58519BB3162A4BF595B6028A9D6F9517"
+        }
+      ],
       "matches": {}
     },
     {
@@ -21998,7 +22287,28 @@
           "price": 324000
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "0E1FD56DF028482C8C20368CEFE48B66",
+          "name": "Приложение №3. Описание предмета закупки.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=0E1FD56DF028482C8C20368CEFE48B66"
+        },
+        {
+          "id": "D83DC72589E341B29EBA9A8BEB3875E8",
+          "name": "Приложение №4. НМЦД.xlsx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D83DC72589E341B29EBA9A8BEB3875E8"
+        },
+        {
+          "id": "C6A5A9020F4B40CDBA547D36A488FE6D",
+          "name": "ИЗВЕЩЕНИЕ ЗК, Прил 1,2_ЕИС.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=C6A5A9020F4B40CDBA547D36A488FE6D"
+        },
+        {
+          "id": "6873AA569F6F4B758967C14DC48973B8",
+          "name": "Приложение №5. Проект договора.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6873AA569F6F4B758967C14DC48973B8"
+        }
+      ],
       "matches": {}
     },
     {
@@ -22030,7 +22340,28 @@
           "price": 1508530.18
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "EE922D0FFE9D43D1ADBFA4CEBA6DE47A",
+          "name": "ТЗ укладка плитки+++",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=EE922D0FFE9D43D1ADBFA4CEBA6DE47A"
+        },
+        {
+          "id": "63A8AB695B2349EF88312CF3A922F379",
+          "name": "ЛСР №02-01-01 +++ Изм 1",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=63A8AB695B2349EF88312CF3A922F379"
+        },
+        {
+          "id": "F614BEAC496D4FE084289524B6DA2DEE",
+          "name": "Извещение кварц+++",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=F614BEAC496D4FE084289524B6DA2DEE"
+        },
+        {
+          "id": "112A354BE5DC49E1BE4CE79A549179CF",
+          "name": "ДОГОВОР проект укладка плитки+++ Изм 1",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=112A354BE5DC49E1BE4CE79A549179CF"
+        }
+      ],
       "matches": {}
     },
     {
@@ -22617,7 +22948,23 @@
           "price": 7000000
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "D5A7307E3BB7403E97A48653E744E1D7",
+          "name": "1. Запрос Котировок ЭФ СМСП",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=D5A7307E3BB7403E97A48653E744E1D7"
+        },
+        {
+          "id": "B8C5F20086534D30A76FDF8E6BAA4D6C",
+          "name": "2. Договор",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B8C5F20086534D30A76FDF8E6BAA4D6C"
+        },
+        {
+          "id": "8B98231B11F14616923D9103E50D28CD",
+          "name": "3. Приложение № 3 НМЦД",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=8B98231B11F14616923D9103E50D28CD"
+        }
+      ],
       "matches": {}
     },
     {
@@ -22681,7 +23028,38 @@
           "price": 691372.87
         }
       ],
-      "documents": [],
+      "documents": [
+        {
+          "id": "B89F96097ECB4C25A5AD114673912D0C",
+          "name": "Проект_контракта_17200992-1.pdf",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=B89F96097ECB4C25A5AD114673912D0C"
+        },
+        {
+          "id": "1F686260F2F046198B61A6E9EA5335C7",
+          "name": "Выполнение работ по очистке кровли от снега и наледи для нужд ГАУЗ СП №11 ДЗМ (в ценах на 01.07.2026 г)).xlsx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=1F686260F2F046198B61A6E9EA5335C7"
+        },
+        {
+          "id": "CF0A79CED5944185A0AA5F5A63C34936",
+          "name": "Аукционная документация 223-фз (14).docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=CF0A79CED5944185A0AA5F5A63C34936"
+        },
+        {
+          "id": "66D1E8282F8845D0BBC933D541449F0B",
+          "name": "Техническое_задание_17200992-1.pdf",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=66D1E8282F8845D0BBC933D541449F0B"
+        },
+        {
+          "id": "034379EED6934F1499F1973EA04A68AE",
+          "name": "Обоснование определения НМЦК.docx",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=034379EED6934F1499F1973EA04A68AE"
+        },
+        {
+          "id": "6A868185DF35427E88FDD635760A1F80",
+          "name": "Протокол_НМЦК.pdf",
+          "url": "https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=6A868185DF35427E88FDD635760A1F80"
+        }
+      ],
       "matches": {}
     },
     {
@@ -23857,6 +24235,38 @@
           "name": "Поставка щебня",
           "qty": "—",
           "price": 6902000
+        }
+      ],
+      "documents": [],
+      "matches": {}
+    },
+    {
+      "id": "eis_32616237141",
+      "number": "32616237141",
+      "title": "Поставка шлангов воздушных для обустройства мест разрытий после аварийных работ",
+      "customer": "ГОСУДАРСТВЕННОЕ БЮДЖЕТНОЕ УЧРЕЖДЕНИЕ ГОРОДА МОСКВЫ \"АВТОМОБИЛЬНЫЕ ДОРОГИ СЕВЕРНОГО АДМИНИСТРАТИВНОГО ОКРУГА\"",
+      "customerInn": "",
+      "law": "223-ФЗ",
+      "source": "ЕИС (zakupki.gov.ru)",
+      "region": "",
+      "okpd": "",
+      "price": 550000,
+      "stage": "active",
+      "endDate": "2026-08-03T23:59:00",
+      "beginDate": "2026-07-25T23:59:00",
+      "deadlineDays": 10,
+      "publishedDaysAgo": 0,
+      "guaranteeApp": 0,
+      "guaranteeContract": 0,
+      "prepayment": 0,
+      "href": "https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616237141",
+      "deliveryDays": null,
+      "deliveryPlace": "",
+      "lots": [
+        {
+          "name": "Поставка шлангов воздушных для обустройства мест разрытий после аварийных работ",
+          "qty": "—",
+          "price": 550000
         }
       ],
       "documents": [],
@@ -31953,70 +32363,6 @@
           "name": "Оказание услуг по обеспечению охраны объектов (территорий) образовательных учреждений Волосовского муниципального района Ленинградской области",
           "qty": "—",
           "price": 844740
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_0372100005226000150",
-      "number": "0372100005226000150",
-      "title": "поставка лекарственных препаратов для медицинского применения (код ОКПД2 - 21.20.10.194, МНН - Кобицистат + Тенофовир алафенамид + Элвитегравир + Эмтрицитабин)",
-      "customer": "ФЕДЕРАЛЬНОЕ КАЗЕННОЕ УЧРЕЖДЕНИЕ \"РЕСПУБЛИКАНСКАЯ КЛИНИЧЕСКАЯ ИНФЕКЦИОННАЯ БОЛЬНИЦА\" МИНИСТЕРСТВА ЗДРАВООХРАНЕНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 259542,
-      "stage": "active",
-      "endDate": "2026-08-03T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 10,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0372100005226000150",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "поставка лекарственных препаратов для медицинского применения (код ОКПД2 - 21.20.10.194, МНН - Кобицистат + Тенофовир алафенамид + Элвитегравир + Эмтрицитабин)",
-          "qty": "—",
-          "price": 259542
-        }
-      ],
-      "documents": [],
-      "matches": {}
-    },
-    {
-      "id": "eis_0373200615926000007",
-      "number": "0373200615926000007",
-      "title": "Оказание услуг по обслуживанию инженерных систем зданий образовательных организаций для нужд ГБОУ Школа № 2090",
-      "customer": "ГОСУДАРСТВЕННОЕ БЮДЖЕТНОЕ ОБЩЕОБРАЗОВАТЕЛЬНОЕ УЧРЕЖДЕНИЕ ГОРОДА МОСКВЫ \"ШКОЛА № 2090 ИМЕНИ ГЕРОЯ СОВЕТСКОГО СОЮЗА Л.Х. ПАПЕРНИКА\"",
-      "customerInn": "",
-      "law": "44-ФЗ",
-      "source": "ЕИС (zakupki.gov.ru)",
-      "region": "",
-      "okpd": "",
-      "price": 616021.12,
-      "stage": "active",
-      "endDate": "2026-08-03T23:59:00",
-      "beginDate": "2026-07-24T23:59:00",
-      "deadlineDays": 10,
-      "publishedDaysAgo": 0,
-      "guaranteeApp": 0,
-      "guaranteeContract": 0,
-      "prepayment": 0,
-      "href": "https://zakupki.gov.ru/epz/order/notice/printForm/listModal.html?regNumber=0373200615926000007",
-      "deliveryDays": null,
-      "deliveryPlace": "",
-      "lots": [
-        {
-          "name": "Оказание услуг по обслуживанию инженерных систем зданий образовательных организаций для нужд ГБОУ Школа № 2090",
-          "qty": "—",
-          "price": 616021.12
         }
       ],
       "documents": [],
