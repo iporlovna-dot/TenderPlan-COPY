@@ -194,14 +194,24 @@ def main():
 
         # Шаг 7-8: сопоставить с каждым товаром (требования — уже по его позиции).
         for product in products:
-            raw_reqs = reqs_for(product.id)
-            req_fields = {r["key"]: r.get("value") for r in raw_reqs}
-            # Семантический слой (Haiku, keymatch.py): маппинг имён ключей, затем сверка значений.
-            mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes},
-                                 key_synonyms=profile.get("key_synonyms"))
-            aligned = align_values(apply_mapping(raw_reqs, mapping, profile.get("critical_attributes")), product)
-            reqs = to_requirements(aligned)
-            res = match(product, reqs, purchase.id, profile.get("synonyms"))
+            try:
+                raw_reqs = reqs_for(product.id)
+                req_fields = {r["key"]: r.get("value") for r in raw_reqs}
+                # Семантический слой (Haiku, keymatch.py): маппинг имён ключей + сверка значений.
+                mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes},
+                                     key_synonyms=profile.get("key_synonyms"))
+                aligned = align_values(apply_mapping(raw_reqs, mapping, profile.get("critical_attributes")), product)
+                reqs = to_requirements(aligned)
+                res = match(product, reqs, purchase.id, profile.get("synonyms"))
+            except Exception as e:                       # устойчивость к сбою LLM (§резильентность)
+                msg = str(e).lower()
+                if "usage limit" in msg or "rate limit" in msg or "429" in msg or "quota" in msg:
+                    print("    ▶ достигнут лимит API Anthropic — останавливаю прогон "
+                          "(собранные вердикты сохранены)")
+                    source.close()
+                    return
+                print("    ⚠ %s пропущен: %s" % (product.id, type(e).__name__))
+                continue
             # Сборный лот: где именно в нём товар и что ещё в лоте (§11.4).
             lot = lot_placement(product.id, codes_by_id, positions)
             lot_str = ("  [позиция %d из %d]" % (lot["position"], lot["total"])) if lot else ""
