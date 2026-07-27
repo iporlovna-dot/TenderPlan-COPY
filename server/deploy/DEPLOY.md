@@ -78,6 +78,23 @@ crontab -e
 */30 * * * * cd /opt/lekalo/server && .venv/bin/python scripts/refresh_snapshot.py >> /var/log/lekalo-snapshot.log 2>&1
 ```
 
+## 7. HTTPS (Let's Encrypt через nip.io — без покупки домена)
+
+Голый IP сертификат от LE не получит. Обходим через `nip.io`: `186.246.30.213.nip.io`
+сам резолвится в этот IP, а LE выдаёт cert по HTTP-01. Один скрипт делает всё
+(ставит certbot, правит `server_name`, открывает 80/443, выпускает cert, включает
+редирект HTTP→HTTPS, проверяет автопродление):
+```bash
+cd /opt/lekalo/server/deploy
+bash enable-https.sh
+# → https://186.246.30.213.nip.io/
+```
+Свой домен позже (сперва A-запись → 186.246.30.213):
+```bash
+LK_DOMAIN=lekalo.ru LK_LE_EMAIL=me@mail.ru bash enable-https.sh
+```
+Идемпотентно — можно гонять повторно. Продление автоматическое (systemd-timer certbot).
+
 ## Откат к Nexara
 
 ```bash
