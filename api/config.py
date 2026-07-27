@@ -1,0 +1,29 @@
+"""Конфиг бэкенда — из окружения (secure by design: секреты не в коде)."""
+from __future__ import annotations
+
+import secrets
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="SPECMATCH_", env_file=".env", extra="ignore")
+
+    # JWT: в проде ОБЯЗАТЕЛЬНО задать SPECMATCH_SECRET_KEY (стабильный секрет). Для локальной
+    # разработки — эфемерный (токены инвалидируются при рестарте, что безопасно по умолчанию).
+    secret_key: str = secrets.token_urlsafe(48)
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_min: int = 60
+
+    database_url: str = "sqlite:///./data/app.db"
+
+    # Rate-limit логина (защита от перебора): лимит неудач на (IP+email), затем временная
+    # блокировка (НЕ вечная), экспоненциальная задержка. Prod: вынести счётчик в общий стор (redis).
+    login_max_fails: int = 5
+    login_lockout_sec: int = 900          # ~15 минут
+
+    # Каталог, куда CLI-конвейер (run_auto --out) пишет вердикты для ingest в ленту.
+    results_dir: str = "data/results"
+
+
+settings = Settings()

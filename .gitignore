@@ -11,3 +11,5 @@ certs/
 # Скачанные ТЗ поставщиков/заказчиков — могут содержать ПДн (см. CLAUDE.md)
 data/samples/
 data/requirements/
+data/app.db
+data/results/
