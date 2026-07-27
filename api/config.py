@@ -1,17 +1,33 @@
 """Конфиг бэкенда — из окружения (secure by design: секреты не в коде)."""
 from __future__ import annotations
 
+import os
 import secrets
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _dev_secret() -> str:
+    """Локальный dev-секрет: генерируем ОДИН раз и сохраняем в data/.dev_secret, чтобы токены
+    переживали перезапуск сервера (иначе на каждом рестарте всех разлогинивает). В проде
+    секрет задаётся через SPECMATCH_SECRET_KEY и этот путь не используется."""
+    path = os.path.join(os.path.dirname(__file__), "..", "data", ".dev_secret")
+    try:
+        if os.path.exists(path):
+            return open(path).read().strip()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        val = secrets.token_urlsafe(48)
+        open(path, "w").write(val)
+        return val
+    except Exception:
+        return secrets.token_urlsafe(48)  # не смогли записать — эфемерный
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SPECMATCH_", env_file=".env", extra="ignore")
 
-    # JWT: в проде ОБЯЗАТЕЛЬНО задать SPECMATCH_SECRET_KEY (стабильный секрет). Для локальной
-    # разработки — эфемерный (токены инвалидируются при рестарте, что безопасно по умолчанию).
-    secret_key: str = secrets.token_urlsafe(48)
+    # JWT: в проде задаётся SPECMATCH_SECRET_KEY. Локально — стабильный секрет из data/.dev_secret.
+    secret_key: str = _dev_secret()
     jwt_algorithm: str = "HS256"
     access_token_ttl_min: int = 60
 

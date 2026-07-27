@@ -13,3 +13,4 @@ data/samples/
 data/requirements/
 data/app.db
 data/results/
+data/.dev_secret

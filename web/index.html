@@ -218,7 +218,10 @@ function setMode(m){ mode=m;
 async function api(path,opts={}){
   opts.headers=Object.assign({"Content-Type":"application/json"},opts.headers||{});
   if(token) opts.headers["Authorization"]="Bearer "+token;
-  const r=await fetch(API+path,opts); let body=null; try{body=await r.json();}catch(e){}
+  let r;
+  try{ r=await fetch(API+path,opts); }
+  catch(e){ return {ok:false,status:0,body:null}; }   // сервер недоступен — не «мёртвая» кнопка
+  let body=null; try{body=await r.json();}catch(e){}
   return {ok:r.ok,status:r.status,body};
 }
 const fmtPrice=p=>p==null?"НМЦК —":Math.round(p).toLocaleString("ru-RU")+" ₽";
@@ -229,18 +232,25 @@ function dl(d){ if(d==null) return {t:"срок —",u:""}; if(d<0) return {t:"�
 function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 
 async function submitAuth(){
-  authErr.textContent=""; const email=email_.value.trim(), password=password_.value;
-  if(mode==="register"){
-    const r=await api("/auth/register",{method:"POST",body:JSON.stringify({email,password,company_name:company.value.trim()||"Моя компания"})});
-    if(!r.ok){ authErr.textContent=r.status===409?"Такой email уже зарегистрирован — войди.":"Проверь поля (пароль ≥8 символов)."; return; }
-    token=r.body.access_token;
-  }else{
-    const r=await api("/auth/login",{method:"POST",body:JSON.stringify({email,password})});
-    if(!r.ok){ authErr.textContent=r.status===429?"Слишком много попыток, подожди минуту.":"Неверный логин или пароль."; return; }
-    token=r.body.access_token;
-  }
-  localStorage.setItem("sm_token",token); enterApp(email);
+  authErr.textContent=""; authBtn.disabled=true;
+  const email=email_.value.trim(), password=password_.value;
+  try{
+    if(mode==="register"){
+      const r=await api("/auth/register",{method:"POST",body:JSON.stringify({email,password,company_name:company.value.trim()||"Моя компания"})});
+      if(r.status===0){ authErr.textContent="Сервер недоступен. Проверь, что бэкенд запущен (uvicorn)."; return; }
+      if(!r.ok){ authErr.textContent=r.status===409?"Такой email уже зарегистрирован — войди.":"Проверь поля (пароль ≥8 символов)."; return; }
+      token=r.body.access_token;
+    }else{
+      const r=await api("/auth/login",{method:"POST",body:JSON.stringify({email,password})});
+      if(r.status===0){ authErr.textContent="Сервер недоступен. Проверь, что бэкенд запущен (uvicorn)."; return; }
+      if(!r.ok){ authErr.textContent=r.status===429?"Слишком много попыток, подожди минуту.":"Неверный логин или пароль."; return; }
+      token=r.body.access_token;
+    }
+    localStorage.setItem("sm_token",token); enterApp(email);
+  } finally { authBtn.disabled=false; }
 }
+// вход по Enter в полях
+["email","password"].forEach(id=>document.getElementById(id).addEventListener("keydown",e=>{ if(e.key==="Enter") submitAuth(); }));
 function enterApp(email){ authScreen.classList.add("hidden"); appScreen.classList.remove("hidden");
   who.textContent=email||""; loadProducts(); }
 function logout(){ token=""; localStorage.removeItem("sm_token"); currentProduct=null;
