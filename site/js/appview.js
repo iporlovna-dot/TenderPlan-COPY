@@ -29,6 +29,7 @@
     query: "",
     minus: "",
     searchId: null,          // id сохранённого поиска или null (свободный / «Все закупки»)
+    view: "all",             // all | saved («Мои конкурсы»)
     filters: DEFAULT_FILTERS(),
     sort: "fresh",
     matchEnabled: false,
@@ -87,6 +88,10 @@
     e.preventDefault();
     selectAllPurchases();
   });
+  document.querySelector('[data-quick="saved"]').addEventListener("click", (e) => {
+    e.preventDefault();
+    selectSaved();
+  });
 
   // ---------- загрузка поиска в состояние ----------
 
@@ -94,6 +99,7 @@
     const s = LK.getSearches().find(x => x.id === id);
     if (!s) return;
     state.searchId = id;
+    state.view = "all";
     state.query = s.query || "";
     state.minus = s.minus || "";
     const f = s.filters || {};
@@ -116,12 +122,30 @@
 
   function selectAllPurchases() {
     state.searchId = null;
+    state.view = "all";
     state.query = "";
     state.minus = "";
     state.filters = { ...DEFAULT_FILTERS(), stage: "all" };
     syncControlsFromState();
     renderSidebar();
     renderFeed();
+  }
+
+  function selectSaved() {
+    state.searchId = null;
+    state.view = "saved";
+    state.query = "";
+    state.minus = "";
+    state.filters = { ...DEFAULT_FILTERS(), stage: "all" };
+    syncControlsFromState();
+    renderSidebar();
+    renderFeed();
+  }
+
+  function updateSavedCount() {
+    const n = LK.getSaved().length;
+    const el = document.getElementById("saved-count");
+    if (el) { el.textContent = n; el.style.display = n ? "inline-flex" : "none"; }
   }
 
   function syncControlsFromState() {
@@ -156,7 +180,7 @@
 
   document.getElementById("search-input").addEventListener("input", (e) => {
     state.query = e.target.value.trim();
-    state.searchId = null;          // свободный ввод «отвязывает» от шаблона
+    state.searchId = null;          // свободный ввод «отвязывает» от шаблона (вид сохраняем)
     renderSidebar();
     renderFeed();
   });
@@ -364,7 +388,7 @@
           ${p.href
             ? `<a class="btn btn-primary btn-sm" href="${lkEscape(p.href)}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
             : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:not-allowed;" title="Ссылка на площадку недоступна">Ссылка недоступна</span>`}
-          <a class="btn btn-ghost btn-sm" href="#" onclick="return false;">Скрыть</a>
+          <a class="btn btn-ghost btn-sm" data-tz="${p.id}" href="#">Сверить своё ТЗ</a>
         </div>
       </div>`;
   }
@@ -387,6 +411,8 @@
             <span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>
             <span class="badge badge-source">${lkEscape(p.source)}</span>
             ${fresh}${lot}
+            <button class="save-btn ${LK.isSaved(p.id) ? "is-saved" : ""}" data-save="${p.id}"
+              title="${LK.isSaved(p.id) ? "В «Моих конкурсах»" : "Сохранить конкурс"}">★</button>
           </div>
           <h3 class="tender-title">${highlight(p.title)}</h3>
           <div class="tender-meta">
@@ -418,10 +444,14 @@
     const count = document.getElementById("feed-count");
 
     const current = state.searchId ? LK.getSearches().find(s => s.id === state.searchId) : null;
-    title.textContent = current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
+    const savedView = state.view === "saved";
+    title.textContent = savedView ? "★ Мои конкурсы"
+      : current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
 
-    // просроченные (дедлайн подачи прошёл) убираем автоматически
-    let list = LK.allPurchases().filter(p => !isExpired(p)).filter(passesSearch).filter(passesFilters);
+    // «Мои конкурсы» — сохранённые (просроченные не прячем); иначе — лента без просроченных
+    let list = savedView
+      ? LK.getSaved().filter(passesSearch)
+      : LK.allPurchases().filter(p => !isExpired(p)).filter(passesSearch).filter(passesFilters);
 
     const sortFn = {
       fresh: (a, b) => a.publishedDaysAgo - b.publishedDaysAgo,
@@ -436,10 +466,12 @@
     list.sort(sortFn);
 
     if (!list.length) {
-      count.textContent = "ничего не найдено";
+      count.textContent = savedView ? "" : "ничего не найдено";
       feed.innerHTML = `<div class="empty-state">
-        <h3>Ничего не найдено</h3>
-        <p>Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап.</p>
+        <h3>${savedView ? "Пока нет сохранённых конкурсов" : "Ничего не найдено"}</h3>
+        <p>${savedView
+          ? "Нажмите ★ на карточке закупки, чтобы сохранить её сюда."
+          : "Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап."}</p>
       </div>`;
       return;
     }
@@ -449,15 +481,39 @@
       `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}` +
       (shown < list.length ? ` · показаны ${shown}` : "");
 
-    let html = list.slice(0, shown).map(cardHtml).join("");
+    const shownList = list.slice(0, shown);
+    let html = shownList.map(cardHtml).join("");
     if (shown < list.length) {
       html += `<button class="btn btn-ghost btn-block load-more" id="load-more">
         Показать ещё ${Math.min(PAGE, list.length - shown)} из ${list.length - shown}</button>`;
     }
     feed.innerHTML = html;
 
+    const byId = {};
+    shownList.forEach(p => { byId[p.id] = p; });
+
     feed.querySelectorAll(".tender-card__main").forEach(el => {
       el.addEventListener("click", () => el.closest(".tender-card").classList.toggle("is-open"));
+    });
+    // ★ сохранить/убрать
+    feed.querySelectorAll("[data-save]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const p = byId[btn.dataset.save];
+        if (!p) return;
+        const added = LK.toggleSaved(p);
+        btn.classList.toggle("is-saved", added);
+        btn.title = added ? "В «Моих конкурсах»" : "Сохранить конкурс";
+        updateSavedCount();
+        if (savedView && !added) renderFeed(false);
+      });
+    });
+    // сверить своё ТЗ
+    feed.querySelectorAll("[data-tz]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        openTzModal(byId[btn.dataset.tz]);
+      });
     });
     const more = document.getElementById("load-more");
     if (more) more.addEventListener("click", () => { shownCount += PAGE; renderFeed(false); });
@@ -537,12 +593,65 @@
     loadSearch(id);
   });
 
+  // ---------- модалка: сверка своего ТЗ с ТЗ закупки ----------
+
+  const tzModal = document.getElementById("tz-modal");
+  function tenderText(p) {
+    return [p.title, ...(p.lots || []).map(l => `${l.name} ${l.okpd || ""}`), p.okpd].filter(Boolean).join("\n");
+  }
+  function openTzModal(p) {
+    if (!p) return;
+    document.getElementById("tz-modal-sub").textContent = `Закупка №${p.number} — ${p.title}`.slice(0, 170);
+    document.getElementById("tz-my-file").value = "";
+    document.getElementById("tz-my-text").value = "";
+    document.getElementById("tz-p-file").value = "";
+    document.getElementById("tz-p-text").value = tenderText(p);
+    document.getElementById("tz-result").innerHTML = "";
+    tzModal.classList.add("is-open");
+  }
+  function closeTzModal() { tzModal.classList.remove("is-open"); }
+  document.getElementById("tz-cancel").addEventListener("click", closeTzModal);
+  tzModal.addEventListener("click", (e) => { if (e.target === tzModal) closeTzModal(); });
+
+  async function readSide(fileId, textId) {
+    const f = document.getElementById(fileId).files[0];
+    if (f) return await LKTZ.extractText(f);
+    return document.getElementById(textId).value.trim();
+  }
+  document.getElementById("tz-run").addEventListener("click", async () => {
+    const res = document.getElementById("tz-result");
+    res.innerHTML = `<div class="tz-hint">Читаю файлы и сравниваю…</div>`;
+    let myText, pText;
+    try { myText = await readSide("tz-my-file", "tz-my-text"); }
+    catch (e) { res.innerHTML = `<div class="tz-hint tz-err">Ваше ТЗ: ${lkEscape(e.message)}</div>`; return; }
+    try { pText = await readSide("tz-p-file", "tz-p-text"); }
+    catch (e) { res.innerHTML = `<div class="tz-hint tz-err">ТЗ закупки: ${lkEscape(e.message)}</div>`; return; }
+    if (document.getElementById("tz-my-file").files[0]) document.getElementById("tz-my-text").value = myText;
+    if (document.getElementById("tz-p-file").files[0]) document.getElementById("tz-p-text").value = pText;
+    if (!myText || myText.length < 5) { res.innerHTML = `<div class="tz-hint tz-err">Добавьте своё ТЗ (файл .txt/.docx или текст).</div>`; return; }
+    if (!pText || pText.length < 5) { res.innerHTML = `<div class="tz-hint tz-err">Добавьте ТЗ закупки.</div>`; return; }
+
+    const m = LKTZ.compare(pText, myText);
+    const checks = m.checks.map(c => `
+      <div class="check-row"><span>${lkEscape(c.req)}${c.note ? ` — <span class="check-note">${lkEscape(c.note)}</span>` : ""}</span>
+      <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span></div>`).join("");
+    res.innerHTML = `
+      <div class="tz-verdict">
+        <div class="tz-score ${verdictClass(m.verdict)}">${m.score}<span>%</span></div>
+        <div style="flex:1;">${verdictBadge(m.verdict)}
+          <div class="explanation" style="margin-top:8px;">${lkEscape(m.explanation)}</div></div>
+      </div>
+      <div class="detail-block" style="margin-top:12px;">${checks || "<div class='tz-hint'>Требования из текста не выделены.</div>"}</div>`;
+  });
+
   // ---------- init ----------
 
   renderMatchProducts();
   renderSidebar();
 
   document.getElementById("feed-count").textContent = "загружаем закупки…";
+
+  updateSavedCount();
 
   LK.loadPurchases().then(() => {
     populateFacets();  // регион/площадка из реальных данных

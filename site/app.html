@@ -33,6 +33,10 @@
         <a href="#" class="saved-search" data-quick="all">
           <span class="saved-search__name">Все закупки</span>
         </a>
+        <a href="#" class="saved-search" data-quick="saved">
+          <span class="saved-search__name">★ Мои конкурсы</span>
+          <span class="saved-search__count" id="saved-count" style="display:none;"></span>
+        </a>
       </nav>
     </div>
 
@@ -190,7 +194,36 @@
   </div>
 </div>
 
+<!-- ---------- модалка: сверка своего ТЗ с ТЗ закупки ---------- -->
+<div class="modal-backdrop" id="tz-modal">
+  <div class="modal-box">
+    <h2>Сверка ТЗ</h2>
+    <p style="color:var(--ink-faint);font-size:0.9rem;" id="tz-modal-sub">Загрузите своё ТЗ и ТЗ закупки — сравним по требованиям.</p>
+
+    <div class="tz-cols">
+      <div class="tz-col">
+        <label>Ваше ТЗ / описание товара</label>
+        <input type="file" id="tz-my-file" accept=".txt,.docx">
+        <textarea id="tz-my-text" placeholder="…или вставьте текст сюда"></textarea>
+      </div>
+      <div class="tz-col">
+        <label>ТЗ закупки</label>
+        <input type="file" id="tz-p-file" accept=".txt,.docx">
+        <textarea id="tz-p-text" placeholder="Скачайте документ закупки (кнопка «Документы» в карточке) и загрузите/вставьте сюда"></textarea>
+      </div>
+    </div>
+
+    <div id="tz-result"></div>
+
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button type="button" class="btn btn-ghost btn-block" id="tz-cancel">Закрыть</button>
+      <button type="button" class="btn btn-primary btn-block" id="tz-run">Сравнить</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/config.js"></script>
+<script src="js/tzmatch.js"></script>
 <script src="js/app.js"></script>
 <script src="js/appview.js"></script>
 </body>

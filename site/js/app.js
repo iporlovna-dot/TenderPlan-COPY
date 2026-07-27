@@ -21,11 +21,27 @@ const LK = (() => {
     try { return JSON.parse(localStorage.getItem(KEY_COMPANY)); } catch { return null; }
   }
   function setCompany(c) { localStorage.setItem(KEY_COMPANY, JSON.stringify(c)); }
+  const KEY_SAVED = "lekalo_saved";
   function clearSession() {
     localStorage.removeItem(KEY_COMPANY);
     localStorage.removeItem(KEY_PRODUCTS);
     localStorage.removeItem(KEY_SEARCHES);
     localStorage.removeItem(KEY_CURRENT_SEARCH);
+    localStorage.removeItem(KEY_SAVED);
+  }
+
+  // ---------- сохранённые конкурсы (избранное) ----------
+
+  function getSaved() {
+    try { return JSON.parse(localStorage.getItem(KEY_SAVED)) || []; } catch { return []; }
+  }
+  function isSaved(id) { return getSaved().some(p => p.id === id); }
+  function toggleSaved(p) {
+    const list = getSaved();
+    const i = list.findIndex(x => x.id === p.id);
+    if (i >= 0) list.splice(i, 1); else list.unshift(p);
+    localStorage.setItem(KEY_SAVED, JSON.stringify(list));
+    return i < 0;  // true = добавили в избранное
   }
   function isLoggedIn() { return !!getCompany(); }
 
@@ -457,6 +473,7 @@ const LK = (() => {
     getProducts, setProducts, addProduct,
     getSearches, setSearches, addSearch, updateSearch, deleteSearch,
     getCurrentSearchId, setCurrentSearchId,
+    getSaved, isSaved, toggleSaved,
     seedDemo, allPurchases, loadPurchases
   };
 })();
