@@ -46,6 +46,7 @@ def to_requirements(raw_reqs):
             key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
             unit=r.get("unit"), hardness=Hardness(r.get("hardness", "soft")),
             type=ReqType(r.get("type", "technical")), raw=r.get("raw", ""),
+            remapped=r.get("remapped", False), remap_locked=r.get("remap_locked", False),
         ))
     return reqs
 
@@ -81,7 +82,9 @@ def main():
                          {a.key: a.value for a in product.attributes})
     if mapping:
         print("  маппинг ключей: %s" % ", ".join("%s→%s" % kv for kv in mapping.items()))
-    aligned = align_values(apply_mapping(raw_reqs, mapping), product)  # семантика значений
+    aligned = align_values(apply_mapping(raw_reqs, mapping,
+                                         profile.get("critical_attributes") if profile else None),
+                           product)  # семантика значений
     reqs = to_requirements(aligned)
     purchase_id = os.path.splitext(os.path.basename(args.tz))[0]
     res = match(product, reqs, purchase_id, profile.get("synonyms") if profile else None)

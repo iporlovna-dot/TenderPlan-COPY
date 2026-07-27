@@ -69,6 +69,18 @@ class ChecksLLM(RecordingClient):
         ]})
 
 
+class MappingLLM(RecordingClient):
+    """Для keymatch.align_keys: возвращает фиксированный mapping [{tz_key, card_key}].
+    Позволяет проверить пост-фильтры align_keys (тип значения, card_key ∈ карточка)."""
+
+    def __init__(self, mapping):
+        super().__init__()
+        self._mapping = mapping  # список {"tz_key":..., "card_key":...}
+
+    def respond(self, request):
+        return json.dumps({"mapping": self._mapping}, ensure_ascii=False)
+
+
 class ReqsLLM(RecordingClient):
     """Для extractor.extract_requirements: фиксированный requirements[]."""
 

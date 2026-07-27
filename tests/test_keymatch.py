@@ -7,7 +7,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from _llm_mock import ChecksLLM as FakeLLM  # общий мок anthropic-клиента (tests/_llm_mock.py)
-from keymatch import apply_mapping, align_values
+from _llm_mock import MappingLLM
+from keymatch import align_keys, apply_mapping, align_values
 from schema import Attribute, Product
 
 
@@ -31,6 +32,54 @@ def test_apply_mapping():
     r.append(check("значения сохранены", out[0]["value"] == "фиброоптический"))
     r.append(check("исходный список не мутирован", reqs[0]["key"] == "тип_оптики"))
     r.append(check("пустой маппинг возвращает вход", apply_mapping(reqs, {}) is reqs))
+    return r
+
+
+def test_apply_mapping_remapped_flags():
+    """apply_mapping метит переименованные ключи флагами remapped/remap_locked (plan §3.6в)."""
+    reqs = [
+        {"key": "конструкция", "operator": "eq", "value": "На рукоятке"},   # не critical → смягчаемо
+        {"key": "источник_света", "operator": "eq", "value": "галоген"},    # critical → заперто
+        {"key": "тип", "operator": "eq", "value": "прямой"},                 # без маппинга
+    ]
+    mapping = {"конструкция": "материал_рукояти", "источник_света": "тип_освещения"}
+    out = apply_mapping(reqs, mapping, critical=["источник_света", "количество_апертур"])
+    r = []
+    r.append(check("remapped=True у переименованного", out[0].get("remapped") is True))
+    r.append(check("не-critical ключ НЕ заперт", out[0].get("remap_locked") is False))
+    r.append(check("critical ключ заперт (remap_locked=True)", out[1].get("remap_locked") is True))
+    r.append(check("непереименованный без флага remapped", out[2].get("remapped") is None))
+    r.append(check("исходный список не мутирован", "remapped" not in reqs[0]))
+    return r
+
+
+def test_align_keys_type_guard():
+    """align_keys отсекает маппинг с расхождением ТИПА значения: enum «Да» ↔ число 6
+    (ложный сменные_апертуры→количество_апертур), но пропускает текст↔текст и число↔число."""
+    req_fields = {
+        "сменные_апертуры": "Да",          # текст-enum
+        "конструкция": "На рукоятке",       # текст
+        "напряжение": "3,5 В",              # число (с цифрой)
+        "размер": "№3",                     # число
+    }
+    product_fields = {
+        "количество_апертур": 6,            # число  → тип≠ у «Да» → ДОЛЖЕН отсеяться
+        "материал_рукояти": "металл",       # текст  → совместимо
+        "рабочее_напряжение": "3.5",        # число  → совместимо
+        "размеры": ["0", "1", "3", "4"],    # список → тип не проверяем → совместимо
+    }
+    llm = MappingLLM([
+        {"tz_key": "сменные_апертуры", "card_key": "количество_апертур"},  # тип-конфликт
+        {"tz_key": "конструкция", "card_key": "материал_рукояти"},         # ок
+        {"tz_key": "напряжение", "card_key": "рабочее_напряжение"},        # ок
+        {"tz_key": "размер", "card_key": "размеры"},                       # список — ок
+    ])
+    mp = align_keys(req_fields, product_fields, client=llm)
+    r = []
+    r.append(check("тип-конфликт (Да↔6) отсечён", "сменные_апертуры" not in mp))
+    r.append(check("текст↔текст пропущен", mp.get("конструкция") == "материал_рукояти"))
+    r.append(check("число↔число пропущено", mp.get("напряжение") == "рабочее_напряжение"))
+    r.append(check("скаляр↔список пропущен (тип не проверяем)", mp.get("размер") == "размеры"))
     return r
 
 
@@ -72,7 +121,8 @@ def test_align_values():
 
 
 def main():
-    r = test_apply_mapping() + test_align_values()
+    r = (test_apply_mapping() + test_apply_mapping_remapped_flags()
+         + test_align_keys_type_guard() + test_align_values())
     passed = sum(r)
     print("\n%d/%d passed" % (passed, len(r)))
     sys.exit(0 if passed == len(r) else 1)

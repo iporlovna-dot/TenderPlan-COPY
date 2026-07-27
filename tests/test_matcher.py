@@ -195,6 +195,142 @@ def test_supply_fields_do_not_win_score_alone():
     assert res.score < 60                     # одни бумаги не тянут на «покрыто»
 
 
+def test_resolution_gte_not_false_unit_violation():
+    # разрешение «640 x 480 (RGB)» vs ТЗ «не менее 640x480»: «x» — знак умножения, не единица,
+    # раньше читался единицей → ложная несовместимость «x»≠«пиксель» → ложная дисквалификация
+    p = _product(разрешение_дисплея="640 x 480 (RGB)")
+    r = [_req("разрешение_дисплея", "gte", "640x480", unit="пиксель")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+    assert res.verdict != Verdict.DISQUALIFIED
+
+
+def test_unit_scale_mah_vs_ah_range_passes():
+    # 1350 мАч попадает в диапазон [1.35, 3.5] А·ч (одно семейство, разный масштаб)
+    p = _product(ёмкость_аккумулятора="1350 мАч")
+    r = [_req("ёмкость_аккумулятора", "range", [1.35, 3.5], unit="Ампер-час")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_unit_scale_mm_vs_cm_gte():
+    # 130 мм ≥ 12 см (=120 мм)
+    p = _product(длина="130 мм")
+    r = [_req("длина", "gte", 12, unit="см")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_unit_scale_eq_mah_ah():
+    p = _product(ёмкость="1.35 А·ч")
+    r = [_req("ёмкость", "eq", 1350, unit="мАч")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_unit_scale_different_family_still_violation():
+    # разные семейства (заряд vs длина) не примиряются
+    p = _product(x="5 мм")
+    r = [_req("x", "gte", 2, unit="А·ч")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
+def test_dimension_value_no_spurious_unit():
+    from matcher import _num_unit
+    assert _num_unit("640 x 480")[1] == ""       # «x» не единица
+    assert _num_unit("87 х 20 х 62")[1] == ""     # кириллическая «х» тоже
+    assert _num_unit("2,5 В")[1] == "b"           # настоящая единица цела
+
+
+def test_resolution_pixelcount_gte_passes():
+    # ТЗ задаёт разрешение числом пикселей (1280*720=921600), карточка размерами
+    p = _product(разрешение_камеры="1280 x 720")
+    r = [_req("разрешение_камеры", "gte", 921600)]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_resolution_pixelcount_eq_passes():
+    p = _product(разрешение_дисплея="640 x 480 (RGB)")
+    r = [_req("разрешение_дисплея", "eq", 307200)]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_three_dim_not_treated_as_pixel_product():
+    # габариты «87 x 20 x 62» (3 числа) НЕ дают произведение → gte 100 не проходит по первому числу
+    p = _product(габариты="87 x 20 x 62")
+    r = [_req("габариты", "gte", 100)]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
+def test_blade_set_coverage_pass_and_gap():
+    p = _product(типы_клинков=["макинтош", "миллер", "d-blade"])
+    # покрыто → pass
+    ok = match(p, [_req("типы_клинков", "eq", ["макинтош", "миллер"])], "t")
+    assert ok.checks[0].status == Status.PASS
+    # непокрыто → GAP, не VIOLATION (набор не дисквалифицирует)
+    miss = match(p, [_req("типы_клинков", "eq", ["макинтош", "ксенон"])], "t")
+    assert miss.checks[0].status == Status.GAP
+    assert miss.verdict != Verdict.DISQUALIFIED
+
+
+def test_eq_boolean_true_is_present_not_literal():
+    # требование «наличие» пришло булевым true → карточка с осмысленным значением проходит,
+    # не должно сравниваться строкой «новый…» == «true» (это давало ложное нарушение)
+    p = _product(новизна_товара="новый, не бывший в употреблении")
+    r = [_req("новизна_товара", "eq", True)]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+    assert res.verdict != Verdict.DISQUALIFIED
+
+
+def test_eq_boolean_true_negation_value_violation():
+    # если карточка явно отрицает («нет») — булево-true требование не проходит
+    p = _product(функция="нет")
+    r = [_req("функция", "eq", True)]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
+def _remapped_req(key, op, value, locked=False, hardness="hard"):
+    r = _req(key, op, value, hardness=hardness)
+    r.remapped = True
+    r.remap_locked = locked
+    return r
+
+
+def test_remapped_violation_downgrades_to_gap():
+    # ключ пришёл из семантического маппинга (align_keys), значение не сошлось и НЕ critical
+    # → ложный маппинг не должен дисквалифицировать: violation деградирует в gap (plan §3.6в)
+    p = _product(материал_рукояти="металл")
+    r = [_remapped_req("материал_рукояти", "eq", "На рукоятке")]  # ложно легло из «конструкция»
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.GAP
+    assert res.verdict != Verdict.DISQUALIFIED
+
+
+def test_remapped_locked_still_disqualifies():
+    # маппинг на critical_attribute заперт (remap_locked): реальное расхождение источника света
+    # остаётся нарушением и дисквалифицирует
+    p = _product(тип_освещения="светодиодный")
+    r = [_remapped_req("тип_освещения", "eq", "галоген", locked=True)]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+    assert res.verdict == Verdict.DISQUALIFIED
+
+
+def test_non_remapped_violation_stays_violation():
+    # дословный (не remapped) ключ с расхождением — по-прежнему нарушение (поведение не изменилось)
+    p = _product(материал="полиамид")
+    r = [_req("материал", "eq", "нержавеющая сталь")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+    assert res.verdict == Verdict.DISQUALIFIED
+
+
 if __name__ == "__main__":
     import traceback
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

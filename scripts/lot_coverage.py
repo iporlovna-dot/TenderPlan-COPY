@@ -189,12 +189,14 @@ def best_card(position_reqs, pos_code, catalog, synonyms, critical):
         if pos_code and codes and ktru_relation(codes, [pos_code]) == "none":
             continue  # чужая категория — не тратим align
         mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
-        aligned = align_values(apply_mapping(position_reqs, mapping), product)
+        aligned = align_values(apply_mapping(position_reqs, mapping, critical), product)
         # тип требования — из спеки (field_kind); поставочные поля идут как DOCUMENTARY
         reqs = [Requirement(key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
                             unit=r.get("unit"), type=ReqType(r.get("type", "technical")),
                             hardness=(Hardness.HARD if r["key"] in crit else Hardness.SOFT),
-                            raw=r.get("raw", "")) for r in aligned]
+                            raw=r.get("raw", ""),
+                            remapped=r.get("remapped", False),
+                            remap_locked=r.get("remap_locked", False)) for r in aligned]
         res = match(product, reqs, "cov", synonyms)
         # техническое покрытие: сколько КАТЕГОРИЙНЫХ (не поставочных) требований реально совпало
         tech_pass = sum(1 for c in res.checks

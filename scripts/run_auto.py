@@ -86,7 +86,8 @@ def lot_placement(product_id, codes_by_id, positions):
 def to_requirements(raw):
     return [Requirement(key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
                         unit=r.get("unit"), hardness=Hardness(r.get("hardness", "soft")),
-                        type=ReqType(r.get("type", "technical")), raw=r.get("raw", ""))
+                        type=ReqType(r.get("type", "technical")), raw=r.get("raw", ""),
+                        remapped=r.get("remapped", False), remap_locked=r.get("remap_locked", False))
             for r in raw]
 
 
@@ -197,7 +198,7 @@ def main():
             req_fields = {r["key"]: r.get("value") for r in raw_reqs}
             # Семантический слой (Haiku, keymatch.py): маппинг имён ключей, затем сверка значений.
             mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
-            aligned = align_values(apply_mapping(raw_reqs, mapping), product)
+            aligned = align_values(apply_mapping(raw_reqs, mapping, profile.get("critical_attributes")), product)
             reqs = to_requirements(aligned)
             res = match(product, reqs, purchase.id, profile.get("synonyms"))
             # Сборный лот: где именно в нём товар и что ещё в лоте (§11.4).

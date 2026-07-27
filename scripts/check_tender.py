@@ -51,7 +51,8 @@ def load_product(path):
 def to_requirements(rows):
     return [Requirement(key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
                         unit=r.get("unit"), hardness=Hardness(r.get("hardness", "soft")),
-                        type=ReqType(r.get("type", "technical")), raw=r.get("raw", ""))
+                        type=ReqType(r.get("type", "technical")), raw=r.get("raw", ""),
+                        remapped=r.get("remapped", False), remap_locked=r.get("remap_locked", False))
             for r in rows]
 
 
@@ -134,7 +135,7 @@ def main():
     raw = extract_requirements(tz, profile=profile, position=pos)
     req_fields = {r["key"]: r.get("value") for r in raw}
     mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
-    aligned = align_values(apply_mapping(raw, mapping), product)
+    aligned = align_values(apply_mapping(raw, mapping, profile.get("critical_attributes")), product)
     res = match(product, to_requirements(aligned), args.id or args.tz, profile.get("synonyms"))
 
     print("\n=== %s | %d%% ===" % (VERDICT_RU[res.verdict], res.score))

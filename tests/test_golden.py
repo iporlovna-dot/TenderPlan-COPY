@@ -36,7 +36,9 @@ def _product(pd):
 def _reqs(rows):
     return [Requirement(key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
                         unit=r.get("unit"), hardness=Hardness(r.get("hardness", "soft")),
-                        type=ReqType(r.get("type", "technical")), raw=r.get("raw", ""))
+                        type=ReqType(r.get("type", "technical")), raw=r.get("raw", ""),
+                        remapped=r.get("remapped", False),
+                        remap_locked=r.get("remap_locked", False))
             for r in rows]
 
 

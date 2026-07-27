@@ -15,11 +15,38 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Dict, List, Optional
 
 import anthropic
 
 from models import pick_model
+
+_DIGIT_RE = re.compile(r"\d")
+
+
+def _numeric_scalar(v: object) -> Optional[bool]:
+    """Тип значения для сверки маппинга: True — числовой скаляр, False — текстовый скаляр,
+    None — не скаляр (список/словарь/None) → проверку типа пропускаем.
+
+    Числовым считаем int/float и строку с цифрой («3,5 В», «6»); булево — текстовым
+    («Да»/«Нет» — это enum, не число). Списки (наборы размеров) не типизируем: их
+    раскладку сверяет matcher (set/eq), а не имя поля."""
+    if isinstance(v, bool):
+        return False
+    if isinstance(v, (int, float)):
+        return True
+    if isinstance(v, str):
+        return bool(_DIGIT_RE.search(v))
+    return None
+
+
+def _types_compatible(rv: object, cv: object) -> bool:
+    """Значения ТЗ и карточки одного типа? Несовместимы, только если ОБА скаляры и один
+    числовой, а другой текстовый («Да» ↔ 6) — это признак ошибочного маппинга имён
+    (сменные_апертуры=Да ложно легло на количество_апертур=6). Остальное — совместимо."""
+    tr, tc = _numeric_scalar(rv), _numeric_scalar(cv)
+    return not (tr is not None and tc is not None and tr != tc)
 
 _SYSTEM = (
     "Ты сопоставляешь характеристики из ТЗ госзакупки с полями карточки товара поставщика. "
@@ -75,18 +102,23 @@ def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
                       ensure_ascii=False, default=str)
     resp = client.messages.create(
         model=pick_model("field_equivalence"),
-        max_tokens=2000,
+        max_tokens=8000,  # большой ТЗ (десятки полей) → маппинг не влезал в 2000 → обрыв JSON
         system=_SYSTEM,
         messages=[{"role": "user", "content": user}],
         output_config={"format": {"type": "json_schema", "schema": _SCHEMA}},
     )
     text = next((b.text for b in resp.content if b.type == "text"), "")
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return {}  # обрыв ответа модели — идём без семантич. маппинга (матчер на сырых ключах), не роняем прогон
     card_set = set(product_fields)
     return {
         m["tz_key"]: m["card_key"]
         for m in data.get("mapping", [])
         if m.get("card_key") in card_set and m["tz_key"] != m["card_key"]
+        # отсекаем маппинг с расхождением типа значения (строка↔число) — ложная эквивалентность
+        and _types_compatible(req_fields.get(m["tz_key"]), product_fields.get(m["card_key"]))
     }
 
 
@@ -146,12 +178,15 @@ def align_values(reqs: List[dict], product, client: Optional[anthropic.Anthropic
     payload = [{"key": k, "требование_тз": rv, "значение_карточки": cv} for _, k, rv, cv in pairs]
     resp = client.messages.create(
         model=pick_model("field_equivalence"),
-        max_tokens=2000,
+        max_tokens=8000,  # много пар на большом ТЗ → 2000 обрывало JSON
         system=_VAL_SYSTEM,
         messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
         output_config={"format": {"type": "json_schema", "schema": _VAL_SCHEMA}},
     )
-    data = json.loads(next((b.text for b in resp.content if b.type == "text"), "{}"))
+    try:
+        data = json.loads(next((b.text for b in resp.content if b.type == "text"), "{}"))
+    except json.JSONDecodeError:
+        return reqs  # обрыв ответа модели — оставляем требования как есть, не роняем прогон
     ok_keys = {c["key"] for c in data.get("checks", []) if c.get("satisfies")}
 
     out = [dict(r) for r in reqs]
@@ -161,14 +196,24 @@ def align_values(reqs: List[dict], product, client: Optional[anthropic.Anthropic
     return out
 
 
-def apply_mapping(reqs: List[dict], mapping: Dict[str, str]) -> List[dict]:
-    """Переименовать ключи требований по маппингу (не тронутые — как есть). Копия, без мутации."""
+def apply_mapping(reqs: List[dict], mapping: Dict[str, str],
+                  critical: Optional[List[str]] = None) -> List[dict]:
+    """Переименовать ключи требований по маппингу (не тронутые — как есть). Копия, без мутации.
+
+    Каждое переименованное требование помечаем `remapped=True` (ключ пришёл из семантики,
+    не дословно) и `remap_locked` — попадал ли ИСХОДНЫЙ ключ ТЗ в critical_attributes профиля.
+    Флаги читает matcher: несоответствие по remapped-и-НЕ-locked ключе → пробел, не нарушение
+    (plan §3.6в). По critical маппинг заперт — там ложную дисквалификацию не смягчаем."""
     if not mapping:
         return reqs
+    crit = {str(c) for c in (critical or [])}
     out = []
     for r in reqs:
         r = dict(r)
-        if r.get("key") in mapping:
-            r["key"] = mapping[r["key"]]
+        k = r.get("key")
+        if k in mapping:
+            r["remapped"] = True
+            r["remap_locked"] = k in crit
+            r["key"] = mapping[k]
         out.append(r)
     return out

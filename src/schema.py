@@ -77,6 +77,8 @@ class Requirement:
     hardness: Hardness = Hardness.SOFT
     type: ReqType = ReqType.TECHNICAL
     raw: str = ""                      # исходная формулировка из ТЗ
+    remapped: bool = False             # ключ пришёл из семантического маппинга align_keys (не дословно)
+    remap_locked: bool = False         # маппинг на critical_attribute — нарушение НЕ смягчаем (plan §3.6в)
 
 
 @dataclass
