@@ -76,13 +76,17 @@ function parseHtmlItems(html) {
   return items;
 }
 
+const REGION_LOWER_WORDS = new Set(["область", "край", "округ", "автономный", "автономная", "автономного", "район", "района"]);
+
 // Нормализуем субъект РФ под вид Портала: «МАГАДАНСКАЯ ОБЛАСТЬ» → «Магаданская область».
 function tidyRegion(s) {
   s = (s || "").replace(/\s+/g, " ").trim();
   if (!s) return "";
   if (!/[а-яё]/.test(s)) s = s.toLowerCase();          // ALL CAPS → нижний регистр
   s = s.replace(/(^|[\s-])([а-яёa-z])/g, (_, p, c) => p + c.toUpperCase());
-  return s.replace(/\b(Область|Край|Округ|Автономный|Автономная|Автономного|Района?)\b/g, m => m.toLowerCase());
+  // \b не видит кириллицу как «словесные» символы в JS-регэкспах, поэтому разбираем
+  // по словам-токенам, а не по границе слова.
+  return s.split(" ").map(w => REGION_LOWER_WORDS.has(w.toLowerCase()) ? w.toLowerCase() : w).join(" ");
 }
 // Регион берём из адреса «Место нахождения» в карточке (в выдаче его нет).
 function extractRegion(html) {
