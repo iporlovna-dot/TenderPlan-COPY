@@ -275,11 +275,17 @@
   }
 
   function passesSearch(p) {
-    const hay = (p.title + " " + p.customer + " " + p.number + " " + p.okpd).toLowerCase();
+    // ОКПД2 сюда сознательно не включаем: это официальный классификатор, у него
+    // название категории — часто длинный список разных товаров через запятую
+    // («…перчатки и прочие аксессуары к одежде…»), из-за чего искали «перчатки»,
+    // а находили галстуки — формальное совпадение, а не то, что реально покупают.
+    const hay = (p.title + " " + p.customer + " " + p.number).toLowerCase();
     const plus = tokens(state.query);
     const minus = tokens(state.minus);
     if (minus.some(m => hay.includes(stem(m)))) return false;
-    if (plus.length && !plus.some(w => hay.includes(stem(w)))) return false;
+    // все слова запроса должны найтись — иначе «строительные материалы» ловит
+    // любую закупку со словом «материалы» (хоть горюче-смазочные)
+    if (plus.length && !plus.every(w => hay.includes(stem(w)))) return false;
     return true;
   }
 
