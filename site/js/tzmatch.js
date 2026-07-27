@@ -78,36 +78,64 @@ const LKTZ = (() => {
     return await file.text();
   }
 
+  // Разбор через центральный каталог ZIP (конец файла), а не побайтовый поиск
+  // локальных заголовков: в локальном заголовке размер может быть обнулён при
+  // потоковой записи (data descriptor после данных) — тогда старый побайтовый
+  // разбор ломался или брал «до конца файла» как размер одного вложения.
+  // Центральный каталог всегда содержит настоящий размер и офсет — так же, как
+  // это делают JSZip/zip.js/python zipfile.
   async function readDocx(file) {
     const buf = new Uint8Array(await file.arrayBuffer());
-    const dv = new DataView(buf.buffer);
-    let i = 0;
-    while (i < buf.length - 4) {
-      if (buf[i] === 0x50 && buf[i + 1] === 0x4b && buf[i + 2] === 0x03 && buf[i + 3] === 0x04) {
-        const method = dv.getUint16(i + 8, true);
-        let compSize = dv.getUint32(i + 18, true);
-        const nameLen = dv.getUint16(i + 26, true);
-        const extraLen = dv.getUint16(i + 28, true);
-        const fname = new TextDecoder().decode(buf.slice(i + 30, i + 30 + nameLen));
-        const dataStart = i + 30 + nameLen + extraLen;
-        if (fname === "word/document.xml") {
-          const data = buf.slice(dataStart, dataStart + (compSize || buf.length - dataStart));
-          let xmlBytes;
-          if (method === 0) xmlBytes = data;
-          else {
-            const ds = new DecompressionStream("deflate-raw");
-            const stream = new Blob([data]).stream().pipeThrough(ds);
-            xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
-          }
-          let xml = new TextDecoder("utf-8").decode(xmlBytes);
-          xml = xml.replace(/<\/w:p>/g, "\n").replace(/<[^>]+>/g, "");
-          return xml.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-        }
-        i = dataStart + (compSize || 0) + 1;
-        if (!compSize) i = dataStart; // на всякий случай двигаемся вперёд
-      } else i++;
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+
+    const EOCD_SIG = 0x06054b50;
+    let eocdOff = -1;
+    const minPos = Math.max(0, buf.length - 22 - 65535); // комментарий в конце — до 65535 байт
+    for (let p = buf.length - 22; p >= minPos; p--) {
+      if (dv.getUint32(p, true) === EOCD_SIG) { eocdOff = p; break; }
     }
-    throw new Error("Не удалось прочитать .docx — вставьте текст вручную");
+    if (eocdOff < 0) throw new Error("Не похоже на .docx (нет конца центрального каталога ZIP) — вставьте текст вручную");
+
+    const cdSize = dv.getUint32(eocdOff + 12, true);
+    const cdOffset = dv.getUint32(eocdOff + 16, true);
+
+    const CD_SIG = 0x02014b50;
+    let p = cdOffset;
+    const cdEnd = cdOffset + cdSize;
+    let target = null;
+    while (p < cdEnd && p + 46 <= buf.length) {
+      if (dv.getUint32(p, true) !== CD_SIG) break;
+      const method = dv.getUint16(p + 10, true);
+      const compSize = dv.getUint32(p + 20, true);
+      const nameLen = dv.getUint16(p + 28, true);
+      const extraLen = dv.getUint16(p + 30, true);
+      const commentLen = dv.getUint16(p + 32, true);
+      const localOffset = dv.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(buf.slice(p + 46, p + 46 + nameLen));
+      if (name === "word/document.xml") { target = { method, compSize, localOffset }; break; }
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    if (!target) throw new Error("В файле нет word/document.xml — это не .docx? Вставьте текст вручную");
+
+    // локальный заголовок нужен только за именем/extra-полем (их длины могут
+    // отличаться от копии в центральном каталоге), сам размер — уже из target
+    const lp = target.localOffset;
+    const lNameLen = dv.getUint16(lp + 26, true);
+    const lExtraLen = dv.getUint16(lp + 28, true);
+    const dataStart = lp + 30 + lNameLen + lExtraLen;
+    const data = buf.slice(dataStart, dataStart + target.compSize);
+
+    let xmlBytes;
+    if (target.method === 0) xmlBytes = data;
+    else {
+      const ds = new DecompressionStream("deflate-raw");
+      const stream = new Blob([data]).stream().pipeThrough(ds);
+      xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    let xml = new TextDecoder("utf-8").decode(xmlBytes);
+    xml = xml.replace(/<\/w:p>/g, "\n").replace(/<[^>]+>/g, "");
+    // &amp; — последним, иначе двойная распаковка (&amp;lt; → &lt; → <)
+    return xml.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
   }
 
   return { compare, extractText };

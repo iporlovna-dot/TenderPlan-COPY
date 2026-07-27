@@ -25,6 +25,7 @@ _STOP = {
 
 def extract_text(filename: str, content: bytes) -> str:
     name = (filename or "").lower()
+    is_binary_format = name.endswith((".docx", ".pdf", ".xlsx", ".xls"))
     try:
         if name.endswith(".docx"):
             return _from_docx(content)
@@ -34,8 +35,13 @@ def extract_text(filename: str, content: bytes) -> str:
             return _from_xlsx(content)
         return content.decode("utf-8", errors="ignore")
     except Exception:
-        # не смогли распарсить — отдаём хоть что-то
-        return content.decode("utf-8", errors="ignore")
+        # docx/pdf/xlsx — это бинарный ZIP/бинарный формат: если разобрать не
+        # получилось (битый файл, пароль и т.п.), decode("utf-8", errors="ignore")
+        # даёт не текст, а мусор из обрывков байт — significant_terms() потом
+        # находит в этом мусоре случайные «термины» и выдаёт неверный, но
+        # уверенный результат сверки вместо честного «не удалось прочитать».
+        # Текстовые форматы (.txt и т.п.) так раскодировать можно смело.
+        return "" if is_binary_format else content.decode("utf-8", errors="ignore")
 
 
 def _from_docx(content: bytes) -> str:
