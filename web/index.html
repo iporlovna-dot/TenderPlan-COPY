@@ -124,7 +124,7 @@
 
   .empty{padding:44px 20px; text-align:center; color:var(--mut); border:1px dashed var(--line); border-radius:var(--r);}
   .empty .big{font-family:var(--disp); font-size:18px; color:var(--ink); margin-bottom:6px;}
-  .hidden{display:none;}
+  .hidden{display:none!important;}   /* важно: перебивает display у #authScreen (ID > класс) */
   @media(max-width:640px){
     .lead{grid-template-columns:72px 1fr; gap:14px;}
     .lead .go{grid-column:2; justify-content:flex-start;}
