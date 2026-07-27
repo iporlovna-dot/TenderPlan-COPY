@@ -11,7 +11,22 @@ const LKTZ = (() => {
     "государственн","бюджетн","учреждение","который","должен","также","соответствии",
     "требования","наличие","договор","контракт"];
 
-  function stem(w) { w = w.toLowerCase(); return w.length <= 4 ? w : w.slice(0, -2); }
+  // не ровно «-2 буквы» — иначе «клинки»→«клин» засчитает «клинику» как совпадение.
+  const RU_ENDINGS = [
+    "иями", "иях",
+    "ами", "ями", "его", "ому", "ыми", "ими", "ого",
+    "ах", "ях", "ов", "ев", "ий", "ый", "их", "ых", "ая", "яя", "ое", "ые", "ие", "ом", "ем", "им", "ым", "ой", "ей",
+    "а", "я", "о", "е", "и", "ы", "у", "ю", "й", "ь",
+  ];
+  const STEM_MIN = 4;
+  function stem(w) {
+    w = w.toLowerCase();
+    if (w.length <= STEM_MIN) return w;
+    for (const suf of RU_ENDINGS) {
+      if (w.length - suf.length >= STEM_MIN && w.endsWith(suf)) return w.slice(0, w.length - suf.length);
+    }
+    return w;
+  }
 
   function terms(text) {
     const set = new Set();

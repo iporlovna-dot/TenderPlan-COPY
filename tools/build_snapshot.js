@@ -16,14 +16,14 @@ const { collectEis } = require("./sources/eis");
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
 
-const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 400);
-const EIS_LIST = Number(process.env.LK_EIS_TAKE || 600);   // сколько ЕИС тянуть списком (дёшево)
+const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 500);
+const EIS_LIST = Number(process.env.LK_EIS_TAKE || 900);   // сколько ЕИС тянуть списком (дёшево)
 const EIS_DOCS = Number(process.env.LK_EIS_DOCS || 150);   // для скольких ближайших качать документы
 // прицельные проходы по темам (полнотекстовый поиск ЕИС), поверх общего списка —
 // иначе узкие темы почти не попадают в топ «последних обновлённых по всей РФ»
 const EIS_KEYWORDS = process.env.LK_EIS_KEYWORDS
   ? process.env.LK_EIS_KEYWORDS.split(",").map(s => s.trim()).filter(Boolean)
-  : undefined;  // undefined -> collectEis возьмёт свой список по умолчанию (медицина)
+  : undefined;  // undefined -> collectEis возьмёт свой список категорий по умолчанию
 
 function endTs(p) { return p.endDate ? new Date(p.endDate).getTime() : Infinity; }
 

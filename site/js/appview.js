@@ -254,10 +254,24 @@
   function tokens(str) {
     return (str || "").toLowerCase().split(/[\s,]+/).map(t => t.trim()).filter(Boolean);
   }
-  // грубый стемминг: отсекаем окончание, чтобы «перчатки» ловило «перчаток».
+  // грубый стемминг: отсекаем типичное русское окончание (не ровно 2 буквы — это
+  // «клинки» → «клин» ловило «клинику»/«клинический», совсем другие слова).
+  // Список окончаний отсортирован от длинных к коротким, чтобы резать максимум.
   // Не лингвистика — временный приём для демо; на проде заменят морфоанализатор / эмбеддинги.
+  const RU_ENDINGS = [
+    "иями", "иях",
+    "ами", "ями", "его", "ому", "ыми", "ими", "ого",
+    "ах", "ях", "ов", "ев", "ий", "ый", "их", "ых", "ая", "яя", "ое", "ые", "ие", "ом", "ем", "им", "ым", "ой", "ей",
+    "а", "я", "о", "е", "и", "ы", "у", "ю", "й", "ь",
+  ];
+  const STEM_MIN = 4;
   function stem(word) {
-    return word.length <= 4 ? word : word.slice(0, word.length - 2);
+    const w = (word || "").toLowerCase();
+    if (w.length <= STEM_MIN) return w;
+    for (const suf of RU_ENDINGS) {
+      if (w.length - suf.length >= STEM_MIN && w.endsWith(suf)) return w.slice(0, w.length - suf.length);
+    }
+    return w;
   }
 
   function passesSearch(p) {

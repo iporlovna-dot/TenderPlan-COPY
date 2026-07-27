@@ -69,9 +69,24 @@ def _from_xlsx(content: bytes) -> str:
 
 # ---------- термины ----------
 
+# не ровно «-2 буквы» — иначе «клинки»→«клин» засчитает «клинику» как совпадение.
+_RU_ENDINGS = [
+    "иями", "иях",
+    "ами", "ями", "его", "ому", "ыми", "ими", "ого",
+    "ах", "ях", "ов", "ев", "ий", "ый", "их", "ых", "ая", "яя", "ое", "ые", "ие", "ом", "ем", "им", "ым", "ой", "ей",
+    "а", "я", "о", "е", "и", "ы", "у", "ю", "й", "ь",
+]
+_STEM_MIN = 4
+
+
 def _stem(word: str) -> str:
     w = word.lower()
-    return w if len(w) <= 4 else w[:-2]
+    if len(w) <= _STEM_MIN:
+        return w
+    for suf in _RU_ENDINGS:
+        if len(w) - len(suf) >= _STEM_MIN and w.endswith(suf):
+            return w[: len(w) - len(suf)]
+    return w
 
 
 def significant_terms(text: str) -> set[str]:
