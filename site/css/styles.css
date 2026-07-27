@@ -1002,8 +1002,15 @@ section { padding: 78px 0; }
 .doc-name { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-dl { flex-shrink: 0; font-size: 0.78rem; font-weight: 600; color: var(--rust); }
 
-/* постраничная навигация */
-.pagination { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 22px 0 8px; flex-wrap: wrap; }
+/* постраничная навигация + размер страницы */
+.feed-pagebar { display: flex; align-items: center; gap: 16px; margin: 22px 0 8px; flex-wrap: wrap; }
+.page-size { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--ink-faint); flex-shrink: 0; }
+.page-size select {
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--white); color: var(--ink); font-family: var(--font-body);
+  font-size: 0.85rem; font-weight: 600; padding: 6px 10px;
+}
+.pagination { display: flex; justify-content: center; align-items: center; gap: 6px; flex: 1; flex-wrap: wrap; margin: 0; }
 .page-btn {
   min-width: 34px; height: 34px; padding: 0 8px;
   border: 1px solid var(--line); border-radius: var(--radius-sm);

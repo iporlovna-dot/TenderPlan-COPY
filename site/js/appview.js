@@ -31,6 +31,7 @@
     searchId: null,          // id сохранённого поиска или null (свободный / «Все закупки»)
     view: "all",             // all | saved («Мои конкурсы»)
     page: 1,
+    pageSize: LK.getPageSize(),
     filters: DEFAULT_FILTERS(),
     sort: "fresh",
     matchEnabled: false,
@@ -435,7 +436,12 @@
 
   // ---------- лента ----------
 
-  const PAGE = 30;
+  document.getElementById("page-size-select").value = String(state.pageSize);
+  document.getElementById("page-size-select").addEventListener("change", (e) => {
+    state.pageSize = Number(e.target.value) || 30;
+    LK.setPageSize(state.pageSize);
+    renderFeed();
+  });
 
   // окно номеров страниц вокруг текущей + первая/последняя, с «…» на разрывах
   function pageWindow(cur, total) {
@@ -507,7 +513,7 @@
       return;
     }
 
-    const totalPages = Math.max(1, Math.ceil(list.length / PAGE));
+    const totalPages = Math.max(1, Math.ceil(list.length / state.pageSize));
     if (state.page > totalPages) state.page = totalPages;
     if (state.page < 1) state.page = 1;
 
@@ -515,8 +521,8 @@
       `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}` +
       (totalPages > 1 ? ` · страница ${state.page} из ${totalPages}` : "");
 
-    const start = (state.page - 1) * PAGE;
-    const shownList = list.slice(start, start + PAGE);
+    const start = (state.page - 1) * state.pageSize;
+    const shownList = list.slice(start, start + state.pageSize);
     feed.innerHTML = shownList.map(cardHtml).join("");
     renderPagination(state.page, totalPages);
 

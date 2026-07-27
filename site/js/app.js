@@ -23,6 +23,7 @@ const LK = (() => {
   function setCompany(c) { localStorage.setItem(KEY_COMPANY, JSON.stringify(c)); }
   const KEY_SAVED = "lekalo_saved";
   const KEY_VIEWED = "lekalo_viewed";
+  const KEY_PAGE_SIZE = "lekalo_page_size";
   function clearSession() {
     localStorage.removeItem(KEY_COMPANY);
     localStorage.removeItem(KEY_PRODUCTS);
@@ -31,6 +32,14 @@ const LK = (() => {
     localStorage.removeItem(KEY_SAVED);
     localStorage.removeItem(KEY_VIEWED);
   }
+
+  // ---------- сколько закупок показывать на странице ----------
+
+  function getPageSize() {
+    const n = Number(localStorage.getItem(KEY_PAGE_SIZE));
+    return n === 10 || n === 30 ? n : 30;
+  }
+  function setPageSize(n) { localStorage.setItem(KEY_PAGE_SIZE, String(n)); }
 
   // ---------- сохранённые конкурсы (избранное) ----------
 
@@ -492,6 +501,7 @@ const LK = (() => {
     getCurrentSearchId, setCurrentSearchId,
     getSaved, isSaved, toggleSaved,
     getViewed, isViewed, markViewed,
+    getPageSize, setPageSize,
     seedDemo, allPurchases, loadPurchases
   };
 })();
