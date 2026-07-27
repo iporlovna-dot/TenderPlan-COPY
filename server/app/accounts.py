@@ -403,7 +403,7 @@ def admin_page(credentials: HTTPBasicCredentials = Depends(basic)):
                 <td><ul style="margin:0;padding-left:18px;">{users_html}</ul></td>
                 <td style="color:#888;font-size:.85em">{c['created_at'][:16].replace('T',' ')}</td>
               </tr>""")
-        html = f"""
+        page_html = f"""
         <html><head><meta charset="utf-8"><title>Лекало — зарегистрированные компании</title>
         <style>
           body {{ font-family: -apple-system, Segoe UI, sans-serif; margin: 30px; color: #222; }}
@@ -419,6 +419,6 @@ def admin_page(credentials: HTTPBasicCredentials = Depends(basic)):
             {''.join(rows_html) or '<tr><td colspan="7">Пока никто не зарегистрировался</td></tr>'}
           </table>
         </body></html>"""
-        return HTMLResponse(html)
+        return HTMLResponse(page_html)
     finally:
         conn.close()
