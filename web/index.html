@@ -3,232 +3,301 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SpecMatch — кабинет поставщика</title>
+<title>SpecMatch — сигнал в госзакупках</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f4f6fb; --card:#fff; --ink:#1c2430; --mut:#6b7684; --line:#e6e9f0;
-          --brand:#2f6bff; --green:#1f9d55; --amber:#c47f17; --red:#c0392b; }
-  * { box-sizing:border-box; }
-  body { margin:0; font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;
-         background:var(--bg); color:var(--ink); }
-  a { color:var(--brand); text-decoration:none; }
-  .wrap { max-width:960px; margin:0 auto; padding:20px; }
-  header { display:flex; align-items:center; justify-content:space-between;
-           padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); }
-  header .logo { font-weight:700; font-size:18px; }
-  header .logo span { color:var(--brand); }
-  .btn { background:var(--brand); color:#fff; border:0; border-radius:8px; padding:9px 14px;
-         font-size:14px; cursor:pointer; }
-  .btn.ghost { background:transparent; color:var(--brand); border:1px solid var(--line); }
-  .btn:disabled { opacity:.5; cursor:default; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px;
-          margin-bottom:14px; }
-  .muted { color:var(--mut); }
-  input, select { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
-                  font-size:14px; margin-top:4px; }
-  label { display:block; font-size:13px; color:var(--mut); margin-top:12px; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; }
-  .tabs { display:flex; gap:8px; margin-bottom:14px; }
-  .tabs button { flex:1; padding:9px; border:1px solid var(--line); background:var(--card);
-                 border-radius:8px; cursor:pointer; }
-  .tabs button.on { background:var(--brand); color:#fff; border-color:var(--brand); }
-  .err { color:var(--red); font-size:13px; margin-top:10px; min-height:18px; }
-  .auth { max-width:380px; margin:8vh auto; }
-  .products { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
-  .chip { padding:8px 12px; border:1px solid var(--line); border-radius:20px; background:var(--card);
-          cursor:pointer; font-size:14px; }
-  .chip.on { background:#eaf0ff; border-color:var(--brand); color:var(--brand); font-weight:600; }
-  .lead { display:flex; gap:14px; align-items:flex-start; }
-  .score { flex:0 0 58px; height:58px; border-radius:12px; display:flex; align-items:center;
-           justify-content:center; font-weight:700; font-size:18px; color:#fff; }
-  .s-hi{background:var(--green);} .s-mid{background:var(--amber);} .s-lo{background:var(--mut);}
-  .lead h4 { margin:0 0 4px; font-size:15px; }
-  .lead .meta { color:var(--mut); font-size:13px; }
-  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:12px;
-          background:#eef1f6; color:var(--mut); margin-right:6px; }
-  .hidden { display:none; }
-  h2 { font-size:17px; margin:4px 0 12px; }
+  :root{
+    --bg:#0a0d12; --bg2:#0d1219; --panel:#121a23; --panel2:#16202b; --line:#212c38;
+    --ink:#eaeef3; --mut:#8b96a4; --faint:#5a6572;
+    --mint:#3ee6a0; --mint2:#38d0e6; --amber:#f6b545; --coral:#ff6a54;
+    --disp:'Bricolage Grotesque',serif; --sans:'Instrument Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+    --r:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--sans); color:var(--ink); background:var(--bg);
+    -webkit-font-smoothing:antialiased; min-height:100vh; overflow-x:hidden;
+  }
+  /* атмосфера: мягкие сигнальные свечения + тонкая сетка */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:-2; pointer-events:none;
+    background:
+      radial-gradient(60vw 50vh at 12% -8%, rgba(62,230,160,.14), transparent 60%),
+      radial-gradient(50vw 45vh at 100% 0%, rgba(56,208,230,.10), transparent 55%),
+      linear-gradient(180deg,var(--bg),var(--bg2));
+  }
+  body::after{
+    content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.5;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:44px 44px; -webkit-mask-image:radial-gradient(120vw 90vh at 50% -10%,#000,transparent 70%);
+            mask-image:radial-gradient(120vw 90vh at 50% -10%,#000,transparent 70%); opacity:.06;
+  }
+  a{color:var(--mint); text-decoration:none;}
+  .mono{font-family:var(--mono); font-variant-numeric:tabular-nums;}
+  .wrap{max-width:1040px; margin:0 auto; padding:0 22px;}
+
+  /* ── бренд ── */
+  .brand{font-family:var(--disp); font-weight:800; letter-spacing:-.02em; display:inline-flex; align-items:center; gap:9px;}
+  .brand .dot{width:11px; height:11px; border-radius:3px; background:linear-gradient(135deg,var(--mint),var(--mint2)); box-shadow:0 0 16px rgba(62,230,160,.6);}
+  .brand em{font-style:normal; color:var(--mint);}
+
+  /* ── header ── */
+  header{position:sticky; top:0; z-index:20; backdrop-filter:blur(10px);
+    background:rgba(10,13,18,.72); border-bottom:1px solid var(--line);}
+  header .bar{max-width:1040px; margin:0 auto; padding:15px 22px; display:flex; align-items:center; justify-content:space-between;}
+  header .brand{font-size:20px;}
+  .who{color:var(--mut); font-size:13px; font-family:var(--mono);}
+
+  /* ── кнопки/поля ── */
+  .btn{font-family:var(--sans); font-weight:600; font-size:14px; cursor:pointer; border-radius:11px;
+    padding:11px 16px; border:1px solid transparent; transition:.18s; color:var(--bg);
+    background:linear-gradient(135deg,var(--mint),var(--mint2));}
+  .btn:hover{filter:brightness(1.06); transform:translateY(-1px);}
+  .btn:active{transform:translateY(0);}
+  .btn.ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+  .btn.ghost:hover{border-color:var(--mint); color:var(--mint); filter:none; transform:none;}
+  input,select{width:100%; font-family:var(--sans); font-size:14px; color:var(--ink);
+    background:var(--bg2); border:1px solid var(--line); border-radius:11px; padding:12px 13px; margin-top:6px; transition:.15s;}
+  input:focus,select:focus{outline:none; border-color:var(--mint); box-shadow:0 0 0 3px rgba(62,230,160,.14);}
+  input::placeholder{color:var(--faint);}
+  label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin-top:15px;}
+  .err{color:var(--coral); font-size:13px; min-height:18px; margin-top:10px;}
+  .muted{color:var(--mut);}
+  .panel{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+    border-radius:var(--r); padding:20px;}
+
+  /* ── авторизация ── */
+  #authScreen{min-height:100vh; display:grid; place-items:center; padding:32px 20px;}
+  .authbox{width:100%; max-width:410px;}
+  .authbox .hero{font-family:var(--disp); font-weight:800; font-size:44px; line-height:1; letter-spacing:-.03em; margin:0 0 10px;}
+  .authbox .tag{color:var(--mut); font-size:15px; margin-bottom:26px; max-width:340px;}
+  .authbox .tag b{color:var(--ink); font-weight:600;}
+  .tabs{display:flex; gap:6px; background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:5px; margin-bottom:6px;}
+  .tabs button{flex:1; padding:10px; border:0; border-radius:8px; cursor:pointer; font-family:var(--sans);
+    font-weight:600; font-size:14px; color:var(--mut); background:transparent; transition:.15s;}
+  .tabs button.on{background:linear-gradient(135deg,var(--mint),var(--mint2)); color:var(--bg);}
+
+  /* ── товары (рельс) ── */
+  .sect-h{display:flex; align-items:center; justify-content:space-between; margin:2px 0 14px;}
+  .sect-h h2{font-family:var(--disp); font-weight:700; font-size:19px; letter-spacing:-.01em; margin:0;}
+  .rail{display:flex; gap:12px; flex-wrap:wrap;}
+  .pcard{cursor:pointer; padding:13px 16px; border-radius:13px; border:1px solid var(--line);
+    background:var(--bg2); transition:.16s; min-width:180px;}
+  .pcard:hover{border-color:var(--faint); transform:translateY(-2px);}
+  .pcard.on{border-color:var(--mint); background:linear-gradient(180deg,rgba(62,230,160,.10),transparent);}
+  .pcard .pn{font-weight:600; font-size:14px; line-height:1.3;}
+  .pcard .pk{font-family:var(--mono); font-size:11px; color:var(--faint); margin-top:5px;}
+
+  /* ── лента ── */
+  #leadsWrap{margin-top:22px;}
+  .filter{display:flex; align-items:center; gap:10px;}
+  .filter select{width:auto; padding:8px 12px; margin:0;}
+  .count{font-family:var(--mono); font-size:13px; color:var(--mut);}
+
+  .lead{display:grid; grid-template-columns:96px 1fr auto; gap:20px; align-items:center;
+    padding:18px 20px; border:1px solid var(--line); border-radius:var(--r);
+    background:linear-gradient(180deg,var(--panel),var(--panel2)); margin-bottom:12px;
+    opacity:0; transform:translateY(10px); animation:rise .5s cubic-bezier(.2,.7,.2,1) forwards;}
+  @keyframes rise{to{opacity:1; transform:none;}}
+  .lead:hover{border-color:var(--faint);}
+  .sbox{text-align:center;}
+  .sbox .num{font-family:var(--mono); font-weight:600; font-size:34px; line-height:1; letter-spacing:-.02em;}
+  .sbox .num em{font-style:normal; font-size:15px; color:var(--faint); font-weight:400;}
+  .sbox .meter{height:5px; border-radius:4px; background:var(--line); margin-top:9px; overflow:hidden;}
+  .sbox .meter i{display:block; height:100%; border-radius:4px;}
+  .sbox .tier{font-size:10.5px; text-transform:uppercase; letter-spacing:.09em; margin-top:7px; color:var(--mut);}
+  .t-hi{color:var(--mint)!important;} .t-mid{color:var(--amber)!important;} .t-lo{color:var(--mut)!important;}
+  .f-hi{background:linear-gradient(90deg,var(--mint),var(--mint2));}
+  .f-mid{background:var(--amber);} .f-lo{background:var(--faint);}
+  .lmain h4{font-family:var(--disp); font-weight:600; font-size:16.5px; line-height:1.28; margin:0 0 5px; letter-spacing:-.01em;}
+  .lmain .cust{color:var(--mut); font-size:13.5px;}
+  .pills{display:flex; flex-wrap:wrap; gap:7px; margin-top:11px;}
+  .pill{font-family:var(--mono); font-size:12px; padding:4px 10px; border-radius:8px; background:var(--bg2); border:1px solid var(--line); color:var(--mut);}
+  .pill.price{color:var(--ink);}
+  .pill.urg-hi{color:var(--coral); border-color:rgba(255,106,84,.35);}
+  .pill.urg-mid{color:var(--amber); border-color:rgba(246,181,69,.3);}
+  .go{white-space:nowrap; font-weight:600; font-size:14px; color:var(--mint); display:inline-flex; align-items:center; gap:6px; transition:.15s;}
+  .lead:hover .go{gap:10px;}
+
+  .empty{padding:44px 20px; text-align:center; color:var(--mut); border:1px dashed var(--line); border-radius:var(--r);}
+  .empty .big{font-family:var(--disp); font-size:18px; color:var(--ink); margin-bottom:6px;}
+  .hidden{display:none;}
+  @media(max-width:640px){
+    .lead{grid-template-columns:72px 1fr; gap:14px;}
+    .lead .go{grid-column:2; justify-content:flex-start;}
+    .authbox .hero{font-size:38px;}
+  }
 </style>
 </head>
 <body>
 
-<!-- ЭКРАН АВТОРИЗАЦИИ -->
-<div id="authScreen" class="wrap">
-  <div class="auth card">
-    <div class="logo" style="font-size:22px;font-weight:700;margin-bottom:6px">Spec<span style="color:var(--brand)">Match</span></div>
-    <div class="muted" style="margin-bottom:16px">Госзакупки под твой товар — по характеристикам ТЗ</div>
-    <div class="tabs">
-      <button id="tabLogin" class="on" onclick="setMode('login')">Вход</button>
-      <button id="tabReg" onclick="setMode('register')">Регистрация</button>
+<!-- ЭКРАН ВХОДА -->
+<div id="authScreen">
+  <div class="authbox">
+    <div class="brand" style="font-size:15px;margin-bottom:18px"><span class="dot"></span>SPEC<em>MATCH</em></div>
+    <h1 class="hero">Сигнал в шуме<br>госзакупок.</h1>
+    <p class="tag">Загрузи товар — система сама найдёт тендеры, под которые он подходит <b>по характеристикам ТЗ</b>, а не по кодам.</p>
+    <div class="panel">
+      <div class="tabs">
+        <button id="tabLogin" class="on" onclick="setMode('login')">Вход</button>
+        <button id="tabReg" onclick="setMode('register')">Регистрация</button>
+      </div>
+      <div id="regCompany" class="hidden">
+        <label>Компания</label>
+        <input id="company" placeholder="ООО «Медпоставка»">
+      </div>
+      <label>Email</label>
+      <input id="email" type="email" placeholder="you@mail.ru" autocomplete="username">
+      <label>Пароль</label>
+      <input id="password" type="password" placeholder="········" autocomplete="current-password">
+      <div class="err" id="authErr"></div>
+      <button class="btn" id="authBtn" style="width:100%;margin-top:16px" onclick="submitAuth()">Войти →</button>
     </div>
-    <div id="regCompany" class="hidden">
-      <label>Название компании</label>
-      <input id="company" placeholder="ООО «Медпоставка»">
-    </div>
-    <label>Email</label>
-    <input id="email" type="email" placeholder="you@mail.ru" autocomplete="username">
-    <label>Пароль</label>
-    <input id="password" type="password" placeholder="не короче 8 символов" autocomplete="current-password">
-    <div class="err" id="authErr"></div>
-    <button class="btn" id="authBtn" style="width:100%;margin-top:14px" onclick="submitAuth()">Войти</button>
   </div>
 </div>
 
-<!-- ЭКРАН КАБИНЕТА -->
+<!-- КАБИНЕТ -->
 <div id="appScreen" class="hidden">
-  <header>
-    <div class="logo">Spec<span>Match</span></div>
-    <div class="row" style="align-items:center">
-      <span class="muted" id="who"></span>
+  <header><div class="bar">
+    <div class="brand"><span class="dot"></span>SPEC<em>MATCH</em></div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span class="who" id="who"></span>
       <button class="btn ghost" onclick="logout()">Выйти</button>
     </div>
-  </header>
-  <div class="wrap">
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <h2 style="margin:0">Мои товары</h2>
+  </div></header>
+
+  <div class="wrap" style="padding-top:28px;padding-bottom:60px">
+    <div class="panel">
+      <div class="sect-h">
+        <h2>Мои товары</h2>
         <button class="btn ghost" onclick="toggleAdd()">＋ Товар</button>
       </div>
-      <div class="products" id="products" style="margin-top:12px"></div>
-
-      <div id="addForm" class="hidden" style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
-        <div class="row">
-          <div style="flex:1"><label>Код (product_key)</label><input id="pkey" placeholder="besdata-bd-df"></div>
-          <div style="flex:2"><label>Название</label><input id="pname" placeholder="Видеоларингоскоп BESDATA BD-DF"></div>
+      <div class="rail" id="products"></div>
+      <div id="addForm" class="hidden" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px"><label>Код (product_key)</label><input id="pkey" placeholder="besdata-bd-df"></div>
+          <div style="flex:2;min-width:200px"><label>Название</label><input id="pname" placeholder="Видеоларингоскоп BESDATA BD-DF"></div>
         </div>
         <label>КТРУ (через запятую)</label>
         <input id="pktru" placeholder="32.50.13.190-00007689">
-        <label>Характеристики (JSON-массив, необязательно)</label>
+        <label>Характеристики — JSON (необязательно)</label>
         <input id="pattrs" placeholder='[{"key":"источник_света","value":"LED"}]'>
         <div class="err" id="addErr"></div>
-        <button class="btn" style="margin-top:12px" onclick="addProduct()">Сохранить товар</button>
+        <button class="btn" style="margin-top:14px" onclick="addProduct()">Сохранить товар</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <h2 style="margin:0" id="leadsTitle">Лента подходящих закупок</h2>
-        <div class="row" style="align-items:center">
-          <span class="muted" style="font-size:13px">порог %</span>
-          <select id="minScore" style="width:auto" onchange="loadLeads()">
-            <option>40</option><option selected>60</option><option>80</option>
+    <div id="leadsWrap">
+      <div class="sect-h">
+        <h2 id="leadsTitle">Лента подходящих закупок</h2>
+        <div class="filter">
+          <span class="count" id="leadCount"></span>
+          <span class="muted" style="font-size:12px">порог</span>
+          <select id="minScore" onchange="loadLeads()">
+            <option value="40">40%</option><option value="60" selected>60%</option><option value="80">80%</option>
           </select>
         </div>
       </div>
-      <div id="leads" style="margin-top:12px"></div>
+      <div id="leads"></div>
     </div>
   </div>
 </div>
 
 <script>
-const API = "";                       // тот же origin, бэкенд отдаёт и страницу, и API
-let mode = "login";
-let token = localStorage.getItem("sm_token") || "";
-let products = [];
-let currentProduct = null;
+const API="";
+let mode="login", token=localStorage.getItem("sm_token")||"", products=[], currentProduct=null;
 
 function setMode(m){ mode=m;
-  tabLogin.classList.toggle("on", m==="login");
-  tabReg.classList.toggle("on", m==="register");
-  regCompany.classList.toggle("hidden", m!=="register");
-  authBtn.textContent = m==="login" ? "Войти" : "Создать аккаунт";
-  authErr.textContent="";
+  tabLogin.classList.toggle("on",m==="login"); tabReg.classList.toggle("on",m==="register");
+  regCompany.classList.toggle("hidden",m!=="register");
+  authBtn.textContent=m==="login"?"Войти →":"Создать аккаунт →"; authErr.textContent="";
 }
-async function api(path, opts={}){
-  opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
-  if(token) opts.headers["Authorization"] = "Bearer "+token;
-  const r = await fetch(API+path, opts);
-  let body=null; try{ body=await r.json(); }catch(e){}
-  return {ok:r.ok, status:r.status, body};
+async function api(path,opts={}){
+  opts.headers=Object.assign({"Content-Type":"application/json"},opts.headers||{});
+  if(token) opts.headers["Authorization"]="Bearer "+token;
+  const r=await fetch(API+path,opts); let body=null; try{body=await r.json();}catch(e){}
+  return {ok:r.ok,status:r.status,body};
 }
-function fmtPrice(p){ return p==null ? "НМЦК —" : (Math.round(p).toLocaleString("ru-RU")+" ₽"); }
-function fmtDays(d){ return d==null ? "срок —" : (d<0 ? "подача истекла" : Math.round(d)+" дн до подачи"); }
+const fmtPrice=p=>p==null?"НМЦК —":Math.round(p).toLocaleString("ru-RU")+" ₽";
+function tier(s){ return s>=85?"hi":(s>=70?"mid":"lo"); }
+function tierLabel(s){ return s>=85?"сильное совпадение":(s>=70?"хорошее":"частичное"); }
+function dl(d){ if(d==null) return {t:"срок —",u:""}; if(d<0) return {t:"подача истекла",u:"urg-hi"};
+  return {t:Math.round(d)+" дн до подачи", u:d<7?"urg-hi":(d<14?"urg-mid":"")}; }
+function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
 
 async function submitAuth(){
-  authErr.textContent="";
-  const email=email_.value.trim(), password=password_.value;
+  authErr.textContent=""; const email=email_.value.trim(), password=password_.value;
   if(mode==="register"){
-    const r = await api("/auth/register",{method:"POST",body:JSON.stringify(
-      {email, password, company_name:company.value.trim()||"Моя компания"})});
-    if(!r.ok){ authErr.textContent = r.status===409?"Такой email уже зарегистрирован — войди.":"Проверь поля (пароль ≥8 символов)."; return; }
+    const r=await api("/auth/register",{method:"POST",body:JSON.stringify({email,password,company_name:company.value.trim()||"Моя компания"})});
+    if(!r.ok){ authErr.textContent=r.status===409?"Такой email уже зарегистрирован — войди.":"Проверь поля (пароль ≥8 символов)."; return; }
     token=r.body.access_token;
-  } else {
-    const r = await api("/auth/login",{method:"POST",body:JSON.stringify({email,password})});
-    if(!r.ok){ authErr.textContent = r.status===429?"Слишком много попыток, подожди минуту.":"Неверный логин или пароль."; return; }
+  }else{
+    const r=await api("/auth/login",{method:"POST",body:JSON.stringify({email,password})});
+    if(!r.ok){ authErr.textContent=r.status===429?"Слишком много попыток, подожди минуту.":"Неверный логин или пароль."; return; }
     token=r.body.access_token;
   }
-  localStorage.setItem("sm_token", token);
-  enterApp(email);
+  localStorage.setItem("sm_token",token); enterApp(email);
 }
-function enterApp(email){
-  authScreen.classList.add("hidden"); appScreen.classList.remove("hidden");
-  who.textContent = email||"";
-  loadProducts();
-}
-function logout(){ token=""; localStorage.removeItem("sm_token");
+function enterApp(email){ authScreen.classList.add("hidden"); appScreen.classList.remove("hidden");
+  who.textContent=email||""; loadProducts(); }
+function logout(){ token=""; localStorage.removeItem("sm_token"); currentProduct=null;
   appScreen.classList.add("hidden"); authScreen.classList.remove("hidden"); }
 
 async function loadProducts(){
-  const r = await api("/products");
-  if(r.status===401){ logout(); return; }
-  products = r.body||[];
-  const box = document.getElementById("products"); box.innerHTML="";
-  if(!products.length){ box.innerHTML='<span class="muted">Товаров пока нет — добавь через «＋ Товар».</span>'; }
+  const r=await api("/products"); if(r.status===401){ logout(); return; }
+  products=r.body||[]; const box=document.getElementById("products"); box.innerHTML="";
+  if(!products.length){ box.innerHTML='<div class="muted">Товаров пока нет — добавь через «＋ Товар».</div>';
+    document.getElementById("leads").innerHTML=""; document.getElementById("leadCount").textContent=""; return; }
   products.forEach(p=>{
-    const el=document.createElement("div"); el.className="chip"+(currentProduct&&currentProduct.id===p.id?" on":"");
-    el.textContent=p.name.length>42?p.name.slice(0,42)+"…":p.name;
+    const on=currentProduct&&currentProduct.id===p.id;
+    const el=document.createElement("div"); el.className="pcard"+(on?" on":"");
+    el.innerHTML='<div class="pn">'+esc(p.name.length>46?p.name.slice(0,46)+"…":p.name)+'</div>'+
+      '<div class="pk">'+esc((p.ktru&&p.ktru[0])||p.product_key)+'</div>';
     el.onclick=()=>selectProduct(p); box.appendChild(el);
   });
-  if(products.length){ selectProduct(currentProduct && products.find(x=>x.id===currentProduct.id) || products[0]); }
-  else { document.getElementById("leads").innerHTML=""; }
+  selectProduct((currentProduct&&products.find(x=>x.id===currentProduct.id))||products[0]);
 }
 function selectProduct(p){ currentProduct=p;
-  document.querySelectorAll(".chip").forEach((c,i)=>c.classList.toggle("on", products[i]&&products[i].id===p.id));
-  document.getElementById("leadsTitle").textContent="Лента: "+(p.name.length>50?p.name.slice(0,50)+"…":p.name);
+  document.querySelectorAll(".pcard").forEach((c,i)=>c.classList.toggle("on",products[i]&&products[i].id===p.id));
+  document.getElementById("leadsTitle").textContent="Лента: "+(p.name.length>44?p.name.slice(0,44)+"…":p.name);
   loadLeads();
 }
 async function loadLeads(){
   if(!currentProduct) return;
   const min=document.getElementById("minScore").value;
-  const r = await api("/products/"+currentProduct.id+"/leads?min_score="+min);
-  const box=document.getElementById("leads"); box.innerHTML="";
-  const leads=r.body||[];
-  if(!leads.length){ box.innerHTML='<span class="muted">Пока нет закупок ≥'+min+'%. Лента наполняется конвейером автоматически.</span>'; return; }
-  leads.forEach(l=>{
-    const cls = l.score>=85?"s-hi":(l.score>=60?"s-mid":"s-lo");
-    const div=document.createElement("div"); div.className="card"; div.style.marginBottom="10px";
-    div.innerHTML =
-      '<div class="lead"><div class="score '+cls+'">'+l.score+'%</div><div style="flex:1">'+
-      '<h4>'+esc(l.subject)+'</h4>'+
-      '<div class="meta">'+esc(l.customer||"заказчик —")+'</div>'+
-      '<div style="margin-top:8px"><span class="pill">'+fmtPrice(l.price)+'</span>'+
-      '<span class="pill">'+fmtDays(l.days_left)+'</span>'+
-      (l.region?'<span class="pill">регион '+esc(l.region)+'</span>':'')+'</div>'+
-      '<div style="margin-top:8px"><a href="'+l.url+'" target="_blank">Открыть закупку →</a></div>'+
-      '</div></div>';
-    box.appendChild(div);
-  });
+  const r=await api("/products/"+currentProduct.id+"/leads?min_score="+min);
+  const box=document.getElementById("leads"); const leads=r.body||[];
+  document.getElementById("leadCount").textContent=leads.length?leads.length+" закупок":"";
+  if(!leads.length){ box.innerHTML='<div class="empty"><div class="big">Пока тихо</div>Нет закупок ≥'+min+'%. Лента наполняется конвейером автоматически.</div>'; return; }
+  box.innerHTML=leads.map((l,i)=>{
+    const t=tier(l.score), d=dl(l.days_left);
+    return '<div class="lead" style="animation-delay:'+(i*55)+'ms">'+
+      '<div class="sbox"><div class="num">'+l.score+'<em>%</em></div>'+
+      '<div class="meter"><i class="f-'+t+'" style="width:'+l.score+'%"></i></div>'+
+      '<div class="tier t-'+t+'">'+tierLabel(l.score)+'</div></div>'+
+      '<div class="lmain"><h4>'+esc(l.subject)+'</h4>'+
+      '<div class="cust">'+esc(l.customer||"заказчик —")+'</div>'+
+      '<div class="pills"><span class="pill price">'+fmtPrice(l.price)+'</span>'+
+      '<span class="pill '+d.u+'">'+d.t+'</span>'+
+      (l.region?'<span class="pill">регион '+esc(l.region)+'</span>':'')+'</div></div>'+
+      '<a class="go" href="'+l.url+'" target="_blank">Открыть →</a></div>';
+  }).join("");
 }
-function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
-
 function toggleAdd(){ document.getElementById("addForm").classList.toggle("hidden"); }
 async function addProduct(){
-  addErr.textContent="";
-  let attrs=[]; const raw=document.getElementById("pattrs").value.trim();
-  if(raw){ try{ attrs=JSON.parse(raw); }catch(e){ addErr.textContent="Характеристики: неверный JSON."; return; } }
-  const body={ product_key:document.getElementById("pkey").value.trim(),
-    name:document.getElementById("pname").value.trim(),
-    ktru:document.getElementById("pktru").value.split(",").map(s=>s.trim()).filter(Boolean),
-    attributes:attrs };
+  addErr.textContent=""; let attrs=[]; const raw=document.getElementById("pattrs").value.trim();
+  if(raw){ try{attrs=JSON.parse(raw);}catch(e){ addErr.textContent="Характеристики: неверный JSON."; return; } }
+  const body={product_key:pkey.value.trim(), name:pname.value.trim(),
+    ktru:pktru.value.split(",").map(s=>s.trim()).filter(Boolean), attributes:attrs};
   if(!body.product_key||!body.name){ addErr.textContent="Заполни код и название."; return; }
   const r=await api("/products",{method:"POST",body:JSON.stringify(body)});
-  if(!r.ok){ addErr.textContent = r.status===409?"Товар с таким кодом уже есть.":"Не сохранилось, проверь поля."; return; }
+  if(!r.ok){ addErr.textContent=r.status===409?"Товар с таким кодом уже есть.":"Не сохранилось, проверь поля."; return; }
   toggleAdd(); loadProducts();
 }
-
-// алиасы, т.к. id email/password совпадают с window-свойствами
 const email_=document.getElementById("email"), password_=document.getElementById("password");
-
-// автовход, если токен уже есть
 if(token){ enterApp(""); }
 </script>
 </body>
