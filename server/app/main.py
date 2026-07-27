@@ -31,7 +31,9 @@ from app.sources.portal import PortalPostavshikov
 
 POOL_TAKE = int(os.getenv("LK_POOL_TAKE", "200"))
 POOL_TTL = int(os.getenv("LK_POOL_TTL", "300"))  # сек
-CORS_ORIGINS = os.getenv("LK_CORS_ORIGINS", "*").split(",")
+# Фронт живёт на том же домене (nginx проксирует /api) → CORS-звёздочка не нужна.
+# Вход/кабинет работают на https://…nip.io — его и разрешаем. Несколько origin'ов — через запятую.
+CORS_ORIGINS = [o.strip() for o in os.getenv("LK_CORS_ORIGINS", "https://186.246.30.213.nip.io").split(",") if o.strip()]
 
 _state: dict = {"client": None, "source": None, "pool": [], "pool_ts": 0.0}
 
@@ -50,6 +52,7 @@ app = FastAPI(title="Лекало — поиск торгов", version="0.1.0",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_credentials=False,  # cookie-сессия работает same-origin; НЕ включать вместе с "*"
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )

@@ -71,6 +71,15 @@ fi
 certbot --nginx -d "$DOMAIN" \
   --non-interactive --agree-tos -m "$EMAIL" --redirect --keep-until-expiring
 
+# 4.5) HSTS: браузер запоминает «этот домен только по HTTPS» (защита от downgrade/sslstrip).
+#       Кладём в server-блок под ${DOMAIN}, куда certbot дописал ssl. Идемпотентно.
+#       На голый IP не вешаем — он намеренно живёт на HTTP (см. nginx-lekalo.conf).
+if ! grep -q "Strict-Transport-Security" "$SITE"; then
+  sed -i '/ssl_certificate /a\    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;' "$SITE"
+  echo "-- HSTS добавлен --"
+fi
+nginx -t && systemctl reload nginx
+
 # 5) проверить, что автопродление настроено (certbot ставит systemd-timer)
 echo "== проверка автопродления =="
 certbot renew --dry-run
