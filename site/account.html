@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Личный кабинет — Лекало</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <aside class="app-sidebar">
+    <a class="brand" href="index.html">
+      <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="width:28px;height:28px;color:var(--rust)">
+        <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+        <circle cx="66" cy="27" r="7" fill="var(--paper-alt)"/>
+      </svg>
+      <span class="brand__word" style="font-size:1.1rem">Лекало</span>
+    </a>
+
+    <div class="sidebar-block">
+      <h5>Навигация</h5>
+      <nav class="saved-searches">
+        <a href="app.html" class="saved-search"><span class="saved-search__name">← Лента закупок</span></a>
+      </nav>
+    </div>
+
+    <div class="sidebar-foot">
+      <div class="plan-card">
+        <b id="plan-name">—</b>
+        <span style="color:var(--ink-faint)" id="plan-expires"></span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <div class="app-topbar">
+      <div style="flex:1;"><h2 style="margin:0;font-size:1.15rem;">Личный кабинет</h2></div>
+      <div class="user-menu">
+        <div style="text-align:right;">
+          <div class="user-name" id="user-company">—</div>
+          <div class="user-company">компания</div>
+        </div>
+        <div class="user-avatar" id="user-avatar">ЛК</div>
+        <button class="btn btn-quiet btn-sm" id="logout-btn">Выйти</button>
+      </div>
+    </div>
+
+    <div class="cabinet-wrap">
+
+      <section class="cabinet-card">
+        <h3>Компания <span class="cabinet-num" id="company-number"></span></h3>
+        <div class="form-error" id="company-error"></div>
+        <div class="cabinet-grid">
+          <div class="field">
+            <label for="cf-name">Название</label>
+            <input type="text" id="cf-name">
+          </div>
+          <div class="field">
+            <label for="cf-inn">ИНН</label>
+            <input type="text" id="cf-inn">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="company-save" style="margin-top:6px;">Сохранить</button>
+
+        <div class="cabinet-sub">
+          <span class="cabinet-sub__label">Подписка</span>
+          <b id="cabinet-plan">—</b>
+          <span class="cabinet-sub__hint" id="cabinet-plan-expires"></span>
+        </div>
+      </section>
+
+      <section class="cabinet-card">
+        <h3>Сотрудники <span class="cabinet-num" id="employee-count"></span></h3>
+        <div class="form-error" id="employee-error"></div>
+        <div id="employee-list" class="employee-list"></div>
+
+        <form id="employee-form" class="cabinet-grid" style="margin-top:14px;">
+          <div class="field">
+            <label for="ef-name">Имя</label>
+            <input type="text" id="ef-name" placeholder="Иван Иванов" required>
+          </div>
+          <div class="field">
+            <label for="ef-email">E-mail</label>
+            <input type="email" id="ef-email" placeholder="ivan@company.ru" required>
+          </div>
+          <div class="field">
+            <label for="ef-password">Пароль</label>
+            <input type="password" id="ef-password" placeholder="Минимум 6 символов" required minlength="6">
+          </div>
+          <div class="field" style="align-self:end;">
+            <button class="btn btn-primary btn-block" type="submit">+ Добавить сотрудника</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="cabinet-card">
+        <h3>История сверок ТЗ</h3>
+        <div id="tz-history-list" class="tz-history-list"></div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+(async function () {
+  await LK.initSession();
+  if (!LK.isServerSession()) {
+    window.location.href = "login.html";
+    return;
+  }
+  const company = LK.getCompany();
+  document.getElementById("user-company").textContent = company.name;
+  document.getElementById("user-avatar").textContent =
+    company.name.replace(/[^А-ЯA-Z]/g, "").slice(0, 2) || "ЛК";
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await LK.apiLogout();
+    LK.clearSession();
+    window.location.href = "index.html";
+  });
+
+  const planLabel = (p) => p === "business" ? "Тариф «Бизнес»" : p === "corp" ? "Тариф «Корпоративный»" : "Тариф «Старт»";
+  const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "—" : d.toLocaleDateString("ru-RU"); };
+
+  async function loadCompany() {
+    const c = await LK.apiGet("/api/company");
+    document.getElementById("plan-name").textContent = planLabel(c.plan);
+    document.getElementById("plan-expires").textContent = "Активна до " + fmtDate(c.planExpiresAt);
+    document.getElementById("company-number").textContent = "№ " + c.id;
+    document.getElementById("cf-name").value = c.name || "";
+    document.getElementById("cf-inn").value = c.inn || "";
+    document.getElementById("cabinet-plan").textContent = planLabel(c.plan) + ` (${c.employeeCount} сотр.)`;
+    document.getElementById("cabinet-plan-expires").textContent = "действует до " + fmtDate(c.planExpiresAt);
+  }
+
+  document.getElementById("company-save").addEventListener("click", async () => {
+    const errBox = document.getElementById("company-error");
+    errBox.classList.remove("is-visible");
+    try {
+      await LK.apiSend("PATCH", "/api/company", {
+        name: document.getElementById("cf-name").value.trim(),
+        inn: document.getElementById("cf-inn").value.trim(),
+      });
+      document.getElementById("user-company").textContent = document.getElementById("cf-name").value.trim();
+      await loadCompany();
+    } catch (e) {
+      errBox.textContent = "Не удалось сохранить (изменять данные компании может только владелец).";
+      errBox.classList.add("is-visible");
+    }
+  });
+
+  async function loadEmployees() {
+    const list = await LK.apiGet("/api/employees");
+    document.getElementById("employee-count").textContent = list.length;
+    const isOwner = company.role === "owner";
+    document.getElementById("employee-list").innerHTML = list.map(u => `
+      <div class="employee-row">
+        <div>
+          <b>${lkEscape(u.name)}</b> ${u.role === "owner" ? '<span class="badge badge-ok">владелец</span>' : ""}
+          <div style="color:var(--ink-faint);font-size:.85rem;">${lkEscape(u.email)} · № ${u.id}</div>
+        </div>
+        ${isOwner && u.role !== "owner"
+          ? `<button class="btn btn-ghost btn-sm" data-del="${u.id}">Удалить</button>` : ""}
+      </div>`).join("");
+    document.getElementById("employee-list").querySelectorAll("[data-del]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Удалить сотрудника?")) return;
+        try {
+          await LK.apiSend("DELETE", "/api/employees/" + btn.dataset.del);
+          loadEmployees();
+        } catch (e) {
+          document.getElementById("employee-error").textContent = "Не удалось удалить сотрудника.";
+          document.getElementById("employee-error").classList.add("is-visible");
+        }
+      });
+    });
+    document.getElementById("employee-form").style.display = isOwner ? "" : "none";
+  }
+
+  document.getElementById("employee-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById("employee-error");
+    errBox.classList.remove("is-visible");
+    try {
+      await LK.apiSend("POST", "/api/employees", {
+        name: document.getElementById("ef-name").value.trim(),
+        email: document.getElementById("ef-email").value.trim(),
+        password: document.getElementById("ef-password").value,
+      });
+      e.target.reset();
+      loadEmployees();
+    } catch (err) {
+      errBox.textContent = "Не удалось добавить сотрудника (возможно, такая почта уже занята).";
+      errBox.classList.add("is-visible");
+    }
+  });
+
+  async function loadTzHistory() {
+    const list = await LK.apiGet("/api/tz-checks");
+    const verdictCls = (v) => v === "eligible" ? "ok" : v === "eligible_with_gaps" ? "gap" : "bad";
+    const verdictText = (v) => v === "eligible" ? "проходит" : v === "eligible_with_gaps" ? "есть пробелы" : "не подходит";
+    document.getElementById("tz-history-list").innerHTML = list.length ? list.map(t => `
+      <div class="tz-history-row">
+        <span class="tz-history-score ${verdictCls(t.verdict)}">${t.score}%</span>
+        <div style="flex:1;min-width:0;">
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">№${lkEscape(t.purchaseNumber)} — ${lkEscape(t.purchaseTitle)}</div>
+          <div style="color:var(--ink-faint);font-size:.82rem;">${verdictText(t.verdict)} · ${fmtDate(t.createdAt)}</div>
+        </div>
+      </div>`).join("") : `<div class="cabinet-empty">Пока нет сверок — откройте закупку в ленте и нажмите «Сверить своё ТЗ».</div>`;
+  }
+
+  loadCompany();
+  loadEmployees();
+  loadTzHistory();
+})();
+</script>
+</body>
+</html>

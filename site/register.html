@@ -43,15 +43,12 @@
         </div>
         <div class="field-row">
           <div class="field">
-            <label for="company-inn">ИНН</label>
-            <input type="text" id="company-inn" placeholder="7701234567" required pattern="\d{10,12}">
+            <label for="owner-name">Ваше имя</label>
+            <input type="text" id="owner-name" placeholder="Иван Иванов" required>
           </div>
           <div class="field">
-            <label for="company-role">Ваша роль</label>
-            <select id="company-role">
-              <option value="owner">Владелец</option>
-              <option value="member">Сотрудник</option>
-            </select>
+            <label for="company-inn">ИНН</label>
+            <input type="text" id="company-inn" placeholder="7701234567" pattern="\d{10,12}">
           </div>
         </div>
         <div class="field">
@@ -60,8 +57,7 @@
         </div>
         <div class="field">
           <label for="company-password">Пароль</label>
-          <input type="password" id="company-password" placeholder="Минимум 8 символов" required minlength="8">
-          <div class="field-hint">Демо-сборка: пароль проверяется только по длине, реального хранения нет.</div>
+          <input type="password" id="company-password" placeholder="Минимум 6 символов" required minlength="6">
         </div>
         <button class="btn btn-primary btn-block" type="submit">Создать компанию →</button>
       </form>
@@ -94,35 +90,49 @@
     } catch (e) {}
   }
 
-  document.getElementById("register-form").addEventListener("submit", function (e) {
+  document.getElementById("register-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const errBox = document.getElementById("form-error");
-    const name = document.getElementById("company-name").value.trim();
+    const companyName = document.getElementById("company-name").value.trim();
+    const ownerName = document.getElementById("owner-name").value.trim();
     const inn = document.getElementById("company-inn").value.trim();
     const email = document.getElementById("company-email").value.trim();
     const password = document.getElementById("company-password").value;
 
-    if (!/^\d{10,12}$/.test(inn)) {
+    if (inn && !/^\d{10,12}$/.test(inn)) {
       errBox.textContent = "ИНН должен быть числом из 10–12 цифр.";
       errBox.classList.add("is-visible");
       return;
     }
-    if (password.length < 8) {
-      errBox.textContent = "Пароль должен быть не короче 8 символов.";
+    if (password.length < 6) {
+      errBox.textContent = "Пароль должен быть не короче 6 символов.";
       errBox.classList.add("is-visible");
       return;
     }
     errBox.classList.remove("is-visible");
 
-    const role = document.getElementById("company-role").value;
-    LK.setCompany({
-      name, inn, email, role,
-      plan: "business",
-      created_at: new Date().toISOString().slice(0, 10)
-    });
-    LK.setProducts([]);
-    lkNotifyTelegram({ name, inn, email, role });   // уведомление о регистрации
-    window.location.href = "app.html?onboarding=1";
+    const submitBtn = e.target.querySelector("button[type=submit]");
+    submitBtn.disabled = true;
+    try {
+      const r = await fetch("/api/auth/register", {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyName, inn, name: ownerName, email, password }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        errBox.textContent = d.detail || "Не удалось зарегистрироваться. Попробуйте ещё раз.";
+        errBox.classList.add("is-visible");
+        submitBtn.disabled = false;
+        return;
+      }
+      lkNotifyTelegram({ name: companyName, inn, email, role: "owner" });
+      window.location.href = "app.html?onboarding=1";
+    } catch (err) {
+      errBox.textContent = "Сервер недоступен. Попробуйте ещё раз чуть позже.";
+      errBox.classList.add("is-visible");
+      submitBtn.disabled = false;
+    }
   });
 </script>
 </body>

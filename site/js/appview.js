@@ -2,11 +2,13 @@
    Точка входа = поиск по ключевым словам. Лента = карточки закупок.
    Сверка по ТЗ (score/checks) — надстройка, включается тумблером. */
 
-(function () {
+(async function () {
 
   const params = new URLSearchParams(window.location.search);
 
   // ---------- гейт входа ----------
+
+  await LK.initSession();  // если есть настоящая cookie-сессия — подтянуть компанию/избранное
 
   if (!LK.isLoggedIn()) {
     if (params.get("demo") === "1") {
@@ -46,8 +48,13 @@
   document.getElementById("plan-name").textContent =
     company.plan === "business" ? "Тариф «Бизнес»" :
     company.plan === "corp" ? "Тариф «Корпоративный»" : "Тариф «Старт»";
+  if (company.planExpiresAt) {
+    const d = new Date(company.planExpiresAt);
+    if (!isNaN(d)) document.getElementById("plan-expires").textContent = "Активна до " + d.toLocaleDateString("ru-RU");
+  }
 
-  document.getElementById("logout-btn").addEventListener("click", () => {
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await LK.apiLogout();
     LK.clearSession();
     window.location.href = "index.html";
   });
@@ -638,11 +645,13 @@
   // ---------- модалка: сверка своего ТЗ с ТЗ закупки ----------
 
   const tzModal = document.getElementById("tz-modal");
+  let tzCurrentPurchase = null;
   function tenderText(p) {
     return [p.title, ...(p.lots || []).map(l => `${l.name} ${l.okpd || ""}`), p.okpd].filter(Boolean).join("\n");
   }
   function openTzModal(p) {
     if (!p) return;
+    tzCurrentPurchase = p;
     document.getElementById("tz-modal-sub").textContent = `Закупка №${p.number} — ${p.title}`.slice(0, 170);
     document.getElementById("tz-my-file").value = "";
     document.getElementById("tz-my-text").value = "";
@@ -674,6 +683,14 @@
     if (!pText || pText.length < 5) { res.innerHTML = `<div class="tz-hint tz-err">Добавьте ТЗ закупки.</div>`; return; }
 
     const m = LKTZ.compare(pText, myText);
+    if (LK.isServerSession() && tzCurrentPurchase) {
+      LK.apiSend("POST", "/api/tz-checks", {
+        purchaseId: String(tzCurrentPurchase.id || ""),
+        purchaseNumber: tzCurrentPurchase.number || "",
+        purchaseTitle: tzCurrentPurchase.title || "",
+        score: m.score, verdict: m.verdict,
+      }).catch(() => {});
+    }
     const checks = m.checks.map(c => `
       <div class="check-row"><span>${lkEscape(c.req)}${c.note ? ` — <span class="check-note">${lkEscape(c.note)}</span>` : ""}</span>
       <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span></div>`).join("");

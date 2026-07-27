@@ -52,6 +52,7 @@ const LK = (() => {
     const i = list.findIndex(x => x.id === p.id);
     if (i >= 0) list.splice(i, 1); else list.unshift(p);
     localStorage.setItem(KEY_SAVED, JSON.stringify(list));
+    if (hasServerSession) apiSend("POST", "/api/saved", { purchase: p }).catch(() => {});
     return i < 0;  // true = добавили в избранное
   }
 
@@ -70,6 +71,54 @@ const LK = (() => {
     localStorage.setItem(KEY_VIEWED, JSON.stringify(list));
   }
   function isLoggedIn() { return !!getCompany(); }
+
+  // ---------- реальная серверная сессия (личный кабинет) ----------
+  // Демо (?demo=1, LK.seedDemo) работает целиком в localStorage, без сервера —
+  // это НЕ трогаем. Если на бэкенде (см. server/app/accounts.py) есть настоящая
+  // сессия по cookie, initSession() подтягивает компанию + избранное в тот же
+  // localStorage-кэш, а toggleSaved/сверка ТЗ дополнительно шлют изменения на сервер.
+
+  let hasServerSession = false;
+
+  async function apiGet(path) {
+    const r = await fetch(path, { credentials: "same-origin", cache: "no-store" });
+    if (!r.ok) throw new Error("http " + r.status);
+    return r.json();
+  }
+  async function apiSend(method, path, body) {
+    const r = await fetch(path, {
+      method, credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    if (!r.ok) throw new Error("http " + r.status);
+    return r.json().catch(() => ({}));
+  }
+
+  async function initSession() {
+    try {
+      const me = await apiGet("/api/auth/me");
+      setCompany({
+        name: me.company.name, inn: me.company.inn, plan: me.company.plan,
+        planExpiresAt: me.company.planExpiresAt,
+        userId: me.user.id, userName: me.user.name, userEmail: me.user.email, role: me.user.role,
+      });
+      hasServerSession = true;
+      try {
+        const saved = await apiGet("/api/saved");
+        localStorage.setItem(KEY_SAVED, JSON.stringify(saved));
+      } catch { /* избранное недоступно — оставляем локальный кэш как есть */ }
+    } catch {
+      hasServerSession = false;  // демо или ещё не вошли — обычный локальный режим
+    }
+  }
+
+  async function apiLogout() {
+    if (hasServerSession) {
+      try { await apiSend("POST", "/api/auth/logout"); } catch { /* всё равно чистим локально */ }
+    }
+  }
+  function isServerSession() { return hasServerSession; }
 
   // ---------- товары (для надстройки «сверка по ТЗ») ----------
 
@@ -502,6 +551,7 @@ const LK = (() => {
     getSaved, isSaved, toggleSaved,
     getViewed, isViewed, markViewed,
     getPageSize, setPageSize,
+    initSession, apiLogout, isServerSession, apiGet, apiSend,
     seedDemo, allPurchases, loadPurchases
   };
 })();

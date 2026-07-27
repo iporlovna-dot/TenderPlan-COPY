@@ -8,6 +8,9 @@ User=www-data
 WorkingDirectory=/opt/lekalo/server
 Environment=LK_CORS_ORIGINS=*
 Environment=LK_POOL_TTL=300
+# LK_ADMIN_USER / LK_ADMIN_PASS для /api/admin — не коммитить, положить в
+# /opt/lekalo/server/.env (см. DEPLOY.md), файл не отслеживается git.
+EnvironmentFile=-/opt/lekalo/server/.env
 ExecStart=/opt/lekalo/server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=3

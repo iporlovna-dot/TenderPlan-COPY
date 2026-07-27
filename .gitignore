@@ -1,12 +1,16 @@
 # секреты и окружение
 .env
 *.env
+server/.env
 certs/
 
 # python
 server/.venv/
 __pycache__/
 *.pyc
+
+# БД аккаунтов (хэши паролей, личные данные) — не коммитить
+server/data/
 
 # временное / скачанные ТЗ с ПДн
 scratchpad/

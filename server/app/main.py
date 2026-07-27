@@ -24,6 +24,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from app import matching
+from app.accounts import router as accounts_router
+from app.db import init_db
 from app.schema import Purchase, PurchasePage
 from app.sources.portal import PortalPostavshikov
 
@@ -36,6 +38,7 @@ _state: dict = {"client": None, "source": None, "pool": [], "pool_ts": 0.0}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     client = httpx.AsyncClient(timeout=40.0, follow_redirects=True)
     _state["client"] = client
     _state["source"] = PortalPostavshikov(client)
@@ -47,9 +50,10 @@ app = FastAPI(title="Лекало — поиск торгов", version="0.1.0",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
+app.include_router(accounts_router)
 
 
 # ---------- пул закупок (кэш) ----------
