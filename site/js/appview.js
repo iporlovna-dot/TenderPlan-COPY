@@ -30,6 +30,7 @@
     minus: "",
     searchId: null,          // id сохранённого поиска или null (свободный / «Все закупки»)
     view: "all",             // all | saved («Мои конкурсы»)
+    page: 1,
     filters: DEFAULT_FILTERS(),
     sort: "fresh",
     matchEnabled: false,
@@ -402,7 +403,7 @@
       : "";
 
     return `
-    <article class="tender-card ${m ? "has-match" : ""}" data-id="${p.id}">
+    <article class="tender-card ${m ? "has-match" : ""} ${LK.isViewed(p.id) ? "is-viewed" : ""}" data-id="${p.id}">
       <div class="tender-card__main">
         ${scoreCol}
         <div class="tender-body">
@@ -434,11 +435,40 @@
 
   // ---------- лента ----------
 
-  const PAGE = 60;
-  let shownCount = PAGE;
+  const PAGE = 30;
+
+  // окно номеров страниц вокруг текущей + первая/последняя, с «…» на разрывах
+  function pageWindow(cur, total) {
+    const set = new Set([1, total, cur - 1, cur, cur + 1].filter(n => n >= 1 && n <= total));
+    const arr = [...set].sort((a, b) => a - b);
+    const out = [];
+    let prev = 0;
+    arr.forEach(n => { if (prev && n - prev > 1) out.push("…"); out.push(n); prev = n; });
+    return out;
+  }
+
+  function renderPagination(page, totalPages) {
+    const nav = document.getElementById("feed-pagination");
+    if (totalPages <= 1) { nav.innerHTML = ""; return; }
+    nav.innerHTML = `
+      <button class="page-btn page-arrow" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""} aria-label="Предыдущая">‹</button>
+      ${pageWindow(page, totalPages).map(n => n === "…"
+        ? `<span class="page-ellipsis">…</span>`
+        : `<button class="page-btn ${n === page ? "is-current" : ""}" data-page="${n}">${n}</button>`).join("")}
+      <button class="page-btn page-arrow" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""} aria-label="Следующая">›</button>`;
+    nav.querySelectorAll("[data-page]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const n = Number(btn.dataset.page);
+        if (!n || n < 1 || n > totalPages || n === state.page) return;
+        state.page = n;
+        renderFeed(false);
+        document.getElementById("feed-header").scrollIntoView({ block: "start" });
+      });
+    });
+  }
 
   function renderFeed(resetPage = true) {
-    if (resetPage) shownCount = PAGE;
+    if (resetPage) state.page = 1;
     const feed = document.getElementById("feed-content");
     const title = document.getElementById("feed-title");
     const count = document.getElementById("feed-count");
@@ -473,27 +503,35 @@
           ? "Нажмите ★ на карточке закупки, чтобы сохранить её сюда."
           : "Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап."}</p>
       </div>`;
+      document.getElementById("feed-pagination").innerHTML = "";
       return;
     }
 
-    const shown = Math.min(shownCount, list.length);
+    const totalPages = Math.max(1, Math.ceil(list.length / PAGE));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
     count.textContent =
       `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}` +
-      (shown < list.length ? ` · показаны ${shown}` : "");
+      (totalPages > 1 ? ` · страница ${state.page} из ${totalPages}` : "");
 
-    const shownList = list.slice(0, shown);
-    let html = shownList.map(cardHtml).join("");
-    if (shown < list.length) {
-      html += `<button class="btn btn-ghost btn-block load-more" id="load-more">
-        Показать ещё ${Math.min(PAGE, list.length - shown)} из ${list.length - shown}</button>`;
-    }
-    feed.innerHTML = html;
+    const start = (state.page - 1) * PAGE;
+    const shownList = list.slice(start, start + PAGE);
+    feed.innerHTML = shownList.map(cardHtml).join("");
+    renderPagination(state.page, totalPages);
 
     const byId = {};
     shownList.forEach(p => { byId[p.id] = p; });
 
     feed.querySelectorAll(".tender-card__main").forEach(el => {
-      el.addEventListener("click", () => el.closest(".tender-card").classList.toggle("is-open"));
+      el.addEventListener("click", () => {
+        const card = el.closest(".tender-card");
+        card.classList.toggle("is-open");
+        if (card.classList.contains("is-open")) {
+          LK.markViewed(card.dataset.id);
+          card.classList.add("is-viewed");
+        }
+      });
     });
     // ★ сохранить/убрать
     feed.querySelectorAll("[data-save]").forEach(btn => {
@@ -515,8 +553,6 @@
         openTzModal(byId[btn.dataset.tz]);
       });
     });
-    const more = document.getElementById("load-more");
-    if (more) more.addEventListener("click", () => { shownCount += PAGE; renderFeed(false); });
   }
 
   // ---------- модалка поиска ----------

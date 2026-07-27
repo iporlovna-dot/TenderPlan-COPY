@@ -557,6 +557,10 @@ section { padding: 78px 0; }
   display: flex;
   flex-direction: column;
   gap: 26px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 .app-sidebar .brand { margin-bottom: 4px; }
 
@@ -692,6 +696,11 @@ section { padding: 78px 0; }
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .tender-card:hover { box-shadow: var(--shadow-md); border-color: var(--ink-faint); }
+
+/* просмотренные — тусклее, чтобы не путаться в ленте; при наведении/раскрытии видно как обычно */
+.tender-card.is-viewed { opacity: 0.6; }
+.tender-card.is-viewed:hover,
+.tender-card.is-viewed.is-open { opacity: 1; }
 
 .tender-card__main { display: flex; gap: 20px; padding: 20px 22px; cursor: pointer; }
 .tender-score { flex-shrink: 0; width: 78px; text-align: center; }
@@ -993,8 +1002,20 @@ section { padding: 78px 0; }
 .doc-name { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-dl { flex-shrink: 0; font-size: 0.78rem; font-weight: 600; color: var(--rust); }
 
-/* «показать ещё» */
-.load-more { margin-top: 8px; }
+/* постраничная навигация */
+.pagination { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 22px 0 8px; flex-wrap: wrap; }
+.page-btn {
+  min-width: 34px; height: 34px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--white); color: var(--ink-soft);
+  font-size: 0.86rem; font-weight: 600; cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--rust); color: var(--rust); }
+.page-btn.is-current { background: var(--rust); border-color: var(--rust); color: var(--white); cursor: default; }
+.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.page-arrow { font-size: 1rem; }
+.page-ellipsis { color: var(--ink-faint); padding: 0 2px; }
 
 /* ★ сохранить конкурс */
 .save-btn {

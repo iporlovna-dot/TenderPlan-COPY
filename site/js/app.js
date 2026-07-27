@@ -22,12 +22,14 @@ const LK = (() => {
   }
   function setCompany(c) { localStorage.setItem(KEY_COMPANY, JSON.stringify(c)); }
   const KEY_SAVED = "lekalo_saved";
+  const KEY_VIEWED = "lekalo_viewed";
   function clearSession() {
     localStorage.removeItem(KEY_COMPANY);
     localStorage.removeItem(KEY_PRODUCTS);
     localStorage.removeItem(KEY_SEARCHES);
     localStorage.removeItem(KEY_CURRENT_SEARCH);
     localStorage.removeItem(KEY_SAVED);
+    localStorage.removeItem(KEY_VIEWED);
   }
 
   // ---------- сохранённые конкурсы (избранное) ----------
@@ -42,6 +44,21 @@ const LK = (() => {
     if (i >= 0) list.splice(i, 1); else list.unshift(p);
     localStorage.setItem(KEY_SAVED, JSON.stringify(list));
     return i < 0;  // true = добавили в избранное
+  }
+
+  // ---------- просмотренные закупки (чтобы не путаться в ленте) ----------
+
+  function getViewed() {
+    try { return JSON.parse(localStorage.getItem(KEY_VIEWED)) || []; } catch { return []; }
+  }
+  function isViewed(id) { return getViewed().includes(id); }
+  function markViewed(id) {
+    if (isViewed(id)) return;
+    const list = getViewed();
+    list.push(id);
+    // не даём списку расти бесконечно
+    if (list.length > 4000) list.splice(0, list.length - 4000);
+    localStorage.setItem(KEY_VIEWED, JSON.stringify(list));
   }
   function isLoggedIn() { return !!getCompany(); }
 
@@ -474,6 +491,7 @@ const LK = (() => {
     getSearches, setSearches, addSearch, updateSearch, deleteSearch,
     getCurrentSearchId, setCurrentSearchId,
     getSaved, isSaved, toggleSaved,
+    getViewed, isViewed, markViewed,
     seedDemo, allPurchases, loadPurchases
   };
 })();
