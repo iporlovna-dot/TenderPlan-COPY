@@ -59,14 +59,35 @@ function parseHtmlItems(html) {
   return items;
 }
 
-// со страницы карточки: ссылка на вкладку документов
-async function fetchDocsUrl(link) {
+// Нормализуем субъект РФ под вид Портала: «МАГАДАНСКАЯ ОБЛАСТЬ» → «Магаданская область».
+function tidyRegion(s) {
+  s = (s || "").replace(/\s+/g, " ").trim();
+  if (!s) return "";
+  if (!/[а-яё]/.test(s)) s = s.toLowerCase();          // ALL CAPS → нижний регистр
+  s = s.replace(/(^|[\s-])([а-яёa-z])/g, (_, p, c) => p + c.toUpperCase());
+  return s.replace(/\b(Область|Край|Округ|Автономный|Автономная|Автономного|Района?)\b/g, m => m.toLowerCase());
+}
+// Регион берём из адреса «Место нахождения» в карточке (в выдаче его нет).
+function extractRegion(html) {
+  const m = /Место нахождения<\/(?:div|span)>\s*<(?:div|span)[^>]*>([\s\S]*?)<\/(?:div|span)>/i.exec(html || "");
+  if (!m) return "";
+  const parts = stripTags(m[1]).split(",").map(x => x.replace(/\s+/g, " ").trim()).filter(Boolean);
+  for (const p of parts) {
+    const c = /^(?:г\.?\s*|город\s+)?(москва|санкт[- ]петербург|севастополь)$/i.exec(p);
+    if (c) return "г. " + tidyRegion(c[1]);
+  }
+  const subj = parts.find(x => /(облас|край|республик|автономн|округ|кузбасс)/i.test(x));
+  return subj ? tidyRegion(subj) : "";
+}
+
+// со страницы карточки: ссылка на вкладку документов + регион (один заход)
+async function fetchCardMeta(link) {
   try {
     const html = await curlText(link);
     let u = (/href="([^"]*documents\.html[^"]*)"/i.exec(html) || [])[1];
     if (u && u.startsWith("/")) u = "https://zakupki.gov.ru" + u;
-    return u || null;
-  } catch (e) { return null; }
+    return { docsUrl: u || null, region: extractRegion(html) };
+  } catch (e) { return { docsUrl: null, region: "" }; }
 }
 async function fetchDocs(docsUrl) {
   try {
@@ -93,7 +114,7 @@ async function fetchDocs(docsUrl) {
   } catch (e) { return []; }
 }
 
-function toPurchase(it, documents) {
+function toPurchase(it, documents, region) {
   const now = Date.now();
   const end = it.endIso ? new Date(it.endIso).getTime() : null;
   return {
@@ -104,7 +125,7 @@ function toPurchase(it, documents) {
     customerInn: "",
     law: it.law,
     source: "ЕИС (zakupki.gov.ru)",
-    region: "", okpd: "", price: it.price, stage: "active",
+    region: region || "", okpd: "", price: it.price, stage: "active",
     endDate: it.endIso,
     beginDate: it.pubIso,
     deadlineDays: end ? Math.max(0, Math.ceil((end - now) / DAY)) : 0,
@@ -141,16 +162,22 @@ async function collectEis(listLimit = 600, docsLimit = 150) {
     .sort((a, b) => new Date(a.endIso) - new Date(b.endIso))
     .slice(0, listLimit);
 
-  // 2) документы — только для ближайших docsLimit
+  // 2) документы + регион — только для ближайших docsLimit (один заход в карточку)
   const withDocs = items.slice(0, docsLimit);
-  const docsById = {};
+  const metaById = {};
   await mapLimit(withDocs, CONC, async (it) => {
-    const u = await fetchDocsUrl(it.link);
-    docsById[it.number] = u ? await fetchDocs(u) : [];
+    const meta = await fetchCardMeta(it.link);
+    metaById[it.number] = {
+      docs: meta.docsUrl ? await fetchDocs(meta.docsUrl) : [],
+      region: meta.region || "",
+    };
   }, (k, t) => process.stdout.write(`\r  ЕИС документы: ${k}/${t}`));
   if (withDocs.length) process.stdout.write("\n");
 
-  return items.map(it => toPurchase(it, docsById[it.number] || []));
+  return items.map(it => {
+    const m = metaById[it.number] || {};
+    return toPurchase(it, m.docs || [], m.region || "");
+  });
 }
 
 module.exports = { collectEis };
