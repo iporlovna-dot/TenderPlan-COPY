@@ -134,7 +134,8 @@ def main():
 
     raw = extract_requirements(tz, profile=profile, position=pos)
     req_fields = {r["key"]: r.get("value") for r in raw}
-    mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
+    mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes},
+                         key_synonyms=profile.get("key_synonyms"))
     aligned = align_values(apply_mapping(raw, mapping, profile.get("critical_attributes")), product)
     res = match(product, to_requirements(aligned), args.id or args.tz, profile.get("synonyms"))
 

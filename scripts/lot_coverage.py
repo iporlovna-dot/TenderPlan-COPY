@@ -174,7 +174,7 @@ def load_catalog(path):
     return cat
 
 
-def best_card(position_reqs, pos_code, catalog, synonyms, critical):
+def best_card(position_reqs, pos_code, catalog, synonyms, critical, key_synonyms=None):
     """Лучший товар каталога под позицию: КТРУ-предфильтр (не 'none') → align → match.
 
     position_reqs — список req-dict {key,operator,value,...} характеристик позиции.
@@ -188,7 +188,8 @@ def best_card(position_reqs, pos_code, catalog, synonyms, critical):
         codes = d.get("ktru") or []
         if pos_code and codes and ktru_relation(codes, [pos_code]) == "none":
             continue  # чужая категория — не тратим align
-        mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
+        mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes},
+                             key_synonyms=key_synonyms)
         aligned = align_values(apply_mapping(position_reqs, mapping, critical), product)
         # тип требования — из спеки (field_kind); поставочные поля идут как DOCUMENTARY
         reqs = [Requirement(key=r["key"], operator=Operator(r["operator"]), value=r.get("value"),
@@ -265,7 +266,8 @@ def main():
         # изоляция сбоя по позиции: один упавший LLM-вызов (grammar timeout, rate limit)
         # не должен ронять весь лот — помечаем позицию и идём дальше
         try:
-            best = best_card(spec["reqs"], code, catalog, synonyms, critical)
+            best = best_card(spec["reqs"], code, catalog, synonyms, critical,
+                             profile.get("key_synonyms"))
         except Exception as e:
             errors += 1
             print("       → ⚠ пропущено: сбой обработки позиции (%s: %s)"

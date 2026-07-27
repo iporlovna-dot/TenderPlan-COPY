@@ -53,6 +53,34 @@ def test_apply_mapping_remapped_flags():
     return r
 
 
+def test_align_keys_deterministic_no_llm():
+    """Детерминированный слой: морфология имени (ё/е) + словарь синонимов сводят ключи
+    БЕЗ вызова LLM (когда весь остаток закрыт)."""
+    req = {"объем_памяти_гб": 8, "разрешение_видеокамеры": "1280x720"}
+    card = {"объём_памяти_гб": 32, "разрешение_камеры": "1280 x 720"}
+    syn = [["разрешение_камеры", "разрешение_видеокамеры"]]
+    llm = MappingLLM([])
+    mp = align_keys(req, card, client=llm, key_synonyms=syn)
+    r = []
+    r.append(check("морфология ё/е: объем↔объём", mp.get("объем_памяти_гб") == "объём_памяти_гб"))
+    r.append(check("словарь: видеокамеры↔камеры", mp.get("разрешение_видеокамеры") == "разрешение_камеры"))
+    r.append(check("LLM не вызван (остаток пуст)", llm.calls == 0))
+    return r
+
+
+def test_align_keys_remainder_goes_to_llm():
+    """Что не свёл детерминированный слой — уходит в LLM; детерм. пары сохраняются."""
+    req = {"объем_памяти_гб": 8, "загадочное_поле": "x"}
+    card = {"объём_памяти_гб": 32, "нечто": "y"}
+    llm = MappingLLM([{"tz_key": "загадочное_поле", "card_key": "нечто"}])
+    mp = align_keys(req, card, client=llm)
+    r = []
+    r.append(check("детерм. пара сохранена", mp.get("объем_памяти_гб") == "объём_памяти_гб"))
+    r.append(check("остаток сведён LLM", mp.get("загадочное_поле") == "нечто"))
+    r.append(check("ровно один вызов LLM", llm.calls == 1))
+    return r
+
+
 def test_align_keys_type_guard():
     """align_keys отсекает маппинг с расхождением ТИПА значения: enum «Да» ↔ число 6
     (ложный сменные_апертуры→количество_апертур), но пропускает текст↔текст и число↔число."""
@@ -122,6 +150,7 @@ def test_align_values():
 
 def main():
     r = (test_apply_mapping() + test_apply_mapping_remapped_flags()
+         + test_align_keys_deterministic_no_llm() + test_align_keys_remainder_goes_to_llm()
          + test_align_keys_type_guard() + test_align_values())
     passed = sum(r)
     print("\n%d/%d passed" % (passed, len(r)))

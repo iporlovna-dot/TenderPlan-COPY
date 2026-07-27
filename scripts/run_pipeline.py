@@ -79,7 +79,8 @@ def main():
     product = load_product(args.product)
     # Семантический маппинг полей ТЗ→карточка по имени И значению (Haiku, keymatch.py).
     mapping = align_keys({r["key"]: r.get("value") for r in raw_reqs},
-                         {a.key: a.value for a in product.attributes})
+                         {a.key: a.value for a in product.attributes},
+                         key_synonyms=(profile or {}).get("key_synonyms"))
     if mapping:
         print("  маппинг ключей: %s" % ", ".join("%s→%s" % kv for kv in mapping.items()))
     aligned = align_values(apply_mapping(raw_reqs, mapping,

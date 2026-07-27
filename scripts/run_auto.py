@@ -197,7 +197,8 @@ def main():
             raw_reqs = reqs_for(product.id)
             req_fields = {r["key"]: r.get("value") for r in raw_reqs}
             # Семантический слой (Haiku, keymatch.py): маппинг имён ключей, затем сверка значений.
-            mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes})
+            mapping = align_keys(req_fields, {a.key: a.value for a in product.attributes},
+                                 key_synonyms=profile.get("key_synonyms"))
             aligned = align_values(apply_mapping(raw_reqs, mapping, profile.get("critical_attributes")), product)
             reqs = to_requirements(aligned)
             res = match(product, reqs, purchase.id, profile.get("synonyms"))

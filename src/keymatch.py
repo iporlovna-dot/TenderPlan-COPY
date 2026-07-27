@@ -82,23 +82,67 @@ _SCHEMA = {
 }
 
 
+def _kname(s: object) -> frozenset:
+    """Имя поля → множество токенов (без регистра, ё→е, разделители/единицы-суффиксы сняты).
+    Порядок и разделители не важны: «прочность_повышенная»≡«повышенная прочность»,
+    «объём_памяти»≡«объем памяти». Множество → сравнение имён морфологически-устойчиво."""
+    s = str(s).lower().replace("ё", "е")
+    toks = [t for t in re.split(r"[^0-9a-zа-я]+", s) if t]
+    return frozenset(toks)
+
+
+def _deterministic_map(req_fields, product_fields, key_synonyms):
+    """Детерминированный слой align_keys БЕЗ LLM: (1) морфологическое равенство имени
+    (ё/е, порядок, разделители); (2) словарь групп-синонимов имён по категории. Возвращает
+    (mapping, remaining) — уверенные пары и остаток req-полей для LLM. Стабильно и бесплатно,
+    это же — фундамент самообучения (словарь копится из подтверждённых пар)."""
+    card_keys = list(product_fields)
+    card_by_norm = {}
+    for ck in card_keys:
+        card_by_norm.setdefault(_kname(ck), ck)
+    groups = [{_kname(x) for x in g} for g in (key_synonyms or [])]
+
+    mapping, remaining = {}, {}
+    for rk, rv in req_fields.items():
+        if not rk or rk in product_fields:      # точное совпадение — matcher сам
+            continue
+        nk = _kname(rk)
+        hit = card_by_norm.get(nk)              # (1) морфология
+        if hit is None:                          # (2) группа-синоним
+            for g in groups:
+                if nk in g:
+                    hit = next((ck for ck in card_keys if _kname(ck) in g), None)
+                    if hit:
+                        break
+        if hit and hit != rk and _types_compatible(rv, product_fields.get(hit)):
+            mapping[rk] = hit
+        else:
+            remaining[rk] = rv
+    return mapping, remaining
+
+
 def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
-               client: Optional[anthropic.Anthropic] = None) -> Dict[str, str]:
+               client: Optional[anthropic.Anthropic] = None,
+               key_synonyms: Optional[List[list]] = None) -> Dict[str, str]:
     """Сопоставить поля ТЗ с полями карточки по имени И значению. -> {ключ_тз: ключ_карточки}.
 
-    Вход — словари {имя_поля: значение} для ТЗ и для карточки. Значения нужны, чтобы разрешать
-    расхождения раскладки (ТЗ «тип_клинка=прямой» → карточка «форма=прямой», а не «тип_клинка»).
-    В результате только уверенные пары; поля без пары опущены (останутся пробелами в matcher).
+    Двухслойно: сперва ДЕТЕРМИНИРОВАННЫЙ слой (морфология имени + словарь `key_synonyms` из
+    профиля) — стабильно и бесплатно; LLM (Haiku) вызывается ТОЛЬКО на нераспознанном остатке.
+    Значения нужны, чтобы разрешать расхождения раскладки и отсекать маппинг разного типа.
     Пустой вход → пустой маппинг (без вызова API).
     """
     if not req_fields or not product_fields:
         return {}
 
+    mapping, remaining = _deterministic_map(req_fields, product_fields, key_synonyms)
+    if not remaining:
+        return mapping                          # всё сведено детерминированно — LLM не нужен
+
     def _fmt(d):
         return [{"имя": k, "значение": v} for k, v in d.items() if k]
 
     client = client or anthropic.Anthropic()
-    user = json.dumps({"поля_тз": _fmt(req_fields), "поля_карточки": _fmt(product_fields)},
+    user = json.dumps({"поля_тз": _fmt(remaining), "поля_карточки": _fmt(product_fields)},
                       ensure_ascii=False, default=str)
     resp = client.messages.create(
         model=pick_model("field_equivalence"),
@@ -111,15 +155,15 @@ def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        return {}  # обрыв ответа модели — идём без семантич. маппинга (матчер на сырых ключах), не роняем прогон
+        return mapping  # обрыв ответа модели — оставляем детерминированный слой, не роняем прогон
     card_set = set(product_fields)
-    return {
-        m["tz_key"]: m["card_key"]
-        for m in data.get("mapping", [])
-        if m.get("card_key") in card_set and m["tz_key"] != m["card_key"]
-        # отсекаем маппинг с расхождением типа значения (строка↔число) — ложная эквивалентность
-        and _types_compatible(req_fields.get(m["tz_key"]), product_fields.get(m["card_key"]))
-    }
+    for m in data.get("mapping", []):
+        tz, cd = m.get("tz_key"), m.get("card_key")
+        if (cd in card_set and tz != cd and tz in remaining
+                # отсекаем маппинг с расхождением типа значения (строка↔число)
+                and _types_compatible(remaining.get(tz), product_fields.get(cd))):
+            mapping[tz] = cd
+    return mapping
 
 
 _VAL_SYSTEM = (
