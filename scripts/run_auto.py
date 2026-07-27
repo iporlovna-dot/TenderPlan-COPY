@@ -212,6 +212,10 @@ def main():
                     "purchase_id": purchase.id, "subject": purchase.subject,
                     "product_id": product.id, "score": res.score,
                     "verdict": res.verdict.value, "explanation": res.explanation,
+                    # практичная обвязка закупки для ленты (карточка контракта, §Этап 1)
+                    "customer": purchase.customer, "price": purchase.price,
+                    "region": purchase.region, "submission_close": purchase.submission_close,
+                    "url": "https://tenderplan.ru/app?tender=%s" % purchase.id,
                     "lot": lot,
                     "checks": [{"req": c.req.key, "status": c.status.value,
                                 "note": c.note, "action": c.action} for c in res.checks],
