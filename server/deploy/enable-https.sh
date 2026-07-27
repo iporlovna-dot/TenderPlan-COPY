@@ -26,13 +26,37 @@ if ! command -v certbot >/dev/null 2>&1; then
   apt-get install -y -qq certbot python3-certbot-nginx
 fi
 
-# 2) server_name → домен (certbot --nginx ищет server-блок по имени)
-if grep -qE 'server_name\s+_\s*;' "$SITE"; then
-  sed -i "s/server_name\s\+_\s*;/server_name ${DOMAIN};/" "$SITE"
-  echo "-- server_name → ${DOMAIN} --"
-elif ! grep -q "server_name ${DOMAIN};" "$SITE"; then
-  sed -i "s/\(server_name\)[^;]*;/\1 ${DOMAIN};/" "$SITE"
-  echo "-- server_name перезаписан на ${DOMAIN} --"
+# 2) отдельный server-блок под домен (certbot --nginx ищет блок по server_name
+# и сам дописывает туда ssl+редирект). НЕ трогаем существующие блоки (голый IP
+# и уже настроенные домены остаются рабочими как есть) — только добавляем
+# новый, если такого server_name ещё нет.
+if ! grep -q "server_name ${DOMAIN};" "$SITE"; then
+  cat >> "$SITE" <<EOF
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    root /opt/lekalo/site;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_read_timeout 60s;
+        client_max_body_size 25m;
+    }
+}
+EOF
+  echo "-- добавлен server-блок для ${DOMAIN} --"
+else
+  echo "-- server-блок для ${DOMAIN} уже есть --"
 fi
 nginx -t && systemctl reload nginx
 

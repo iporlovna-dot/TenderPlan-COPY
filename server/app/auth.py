@@ -37,13 +37,16 @@ def create_session(conn: sqlite3.Connection, user_id: int) -> str:
 
 
 def set_session_cookie(response: Response, token: str) -> None:
-    # secure=False: сайт пока на голом HTTP (без домена/TLS, см. plan.md).
-    # Поднимем HTTPS — переключить на secure=True.
+    # secure=True: сайт теперь на HTTPS (186.246.30.213.nip.io, Let's Encrypt).
+    # ВАЖНО: голый IP по-прежнему живёт на голом HTTP (для старых ссылок) —
+    # secure-cookie там браузер не сохранит, т.е. вход/регистрация работают
+    # только через https://186.246.30.213.nip.io/, не через голый IP.
     response.set_cookie(
         SESSION_COOKIE,
         token,
         max_age=SESSION_DAYS * 86400,
         httponly=True,
+        secure=True,
         samesite="lax",
         path="/",
     )

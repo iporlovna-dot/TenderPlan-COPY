@@ -93,7 +93,9 @@ bash enable-https.sh
 ```bash
 LK_DOMAIN=lekalo.ru LK_LE_EMAIL=me@mail.ru bash enable-https.sh
 ```
-Идемпотентно — можно гонять повторно. Продление автоматическое (systemd-timer certbot).
+Скрипт добавляет отдельный server-блок под новый домен, не трогая уже
+настроенные (голый IP и nip.io остаются рабочими) — можно гонять повторно.
+Продление сертификатов автоматическое (systemd-timer certbot).
 
 ## Откат к Nexara
 
