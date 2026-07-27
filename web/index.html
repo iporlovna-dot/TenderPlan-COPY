@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpecMatch — кабинет поставщика</title>
+<style>
+  :root { --bg:#f4f6fb; --card:#fff; --ink:#1c2430; --mut:#6b7684; --line:#e6e9f0;
+          --brand:#2f6bff; --green:#1f9d55; --amber:#c47f17; --red:#c0392b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 -apple-system,Segoe UI,Roboto,Arial,sans-serif;
+         background:var(--bg); color:var(--ink); }
+  a { color:var(--brand); text-decoration:none; }
+  .wrap { max-width:960px; margin:0 auto; padding:20px; }
+  header { display:flex; align-items:center; justify-content:space-between;
+           padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); }
+  header .logo { font-weight:700; font-size:18px; }
+  header .logo span { color:var(--brand); }
+  .btn { background:var(--brand); color:#fff; border:0; border-radius:8px; padding:9px 14px;
+         font-size:14px; cursor:pointer; }
+  .btn.ghost { background:transparent; color:var(--brand); border:1px solid var(--line); }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px;
+          margin-bottom:14px; }
+  .muted { color:var(--mut); }
+  input, select { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+                  font-size:14px; margin-top:4px; }
+  label { display:block; font-size:13px; color:var(--mut); margin-top:12px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .tabs { display:flex; gap:8px; margin-bottom:14px; }
+  .tabs button { flex:1; padding:9px; border:1px solid var(--line); background:var(--card);
+                 border-radius:8px; cursor:pointer; }
+  .tabs button.on { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .err { color:var(--red); font-size:13px; margin-top:10px; min-height:18px; }
+  .auth { max-width:380px; margin:8vh auto; }
+  .products { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .chip { padding:8px 12px; border:1px solid var(--line); border-radius:20px; background:var(--card);
+          cursor:pointer; font-size:14px; }
+  .chip.on { background:#eaf0ff; border-color:var(--brand); color:var(--brand); font-weight:600; }
+  .lead { display:flex; gap:14px; align-items:flex-start; }
+  .score { flex:0 0 58px; height:58px; border-radius:12px; display:flex; align-items:center;
+           justify-content:center; font-weight:700; font-size:18px; color:#fff; }
+  .s-hi{background:var(--green);} .s-mid{background:var(--amber);} .s-lo{background:var(--mut);}
+  .lead h4 { margin:0 0 4px; font-size:15px; }
+  .lead .meta { color:var(--mut); font-size:13px; }
+  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:12px;
+          background:#eef1f6; color:var(--mut); margin-right:6px; }
+  .hidden { display:none; }
+  h2 { font-size:17px; margin:4px 0 12px; }
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН АВТОРИЗАЦИИ -->
+<div id="authScreen" class="wrap">
+  <div class="auth card">
+    <div class="logo" style="font-size:22px;font-weight:700;margin-bottom:6px">Spec<span style="color:var(--brand)">Match</span></div>
+    <div class="muted" style="margin-bottom:16px">Госзакупки под твой товар — по характеристикам ТЗ</div>
+    <div class="tabs">
+      <button id="tabLogin" class="on" onclick="setMode('login')">Вход</button>
+      <button id="tabReg" onclick="setMode('register')">Регистрация</button>
+    </div>
+    <div id="regCompany" class="hidden">
+      <label>Название компании</label>
+      <input id="company" placeholder="ООО «Медпоставка»">
+    </div>
+    <label>Email</label>
+    <input id="email" type="email" placeholder="you@mail.ru" autocomplete="username">
+    <label>Пароль</label>
+    <input id="password" type="password" placeholder="не короче 8 символов" autocomplete="current-password">
+    <div class="err" id="authErr"></div>
+    <button class="btn" id="authBtn" style="width:100%;margin-top:14px" onclick="submitAuth()">Войти</button>
+  </div>
+</div>
+
+<!-- ЭКРАН КАБИНЕТА -->
+<div id="appScreen" class="hidden">
+  <header>
+    <div class="logo">Spec<span>Match</span></div>
+    <div class="row" style="align-items:center">
+      <span class="muted" id="who"></span>
+      <button class="btn ghost" onclick="logout()">Выйти</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Мои товары</h2>
+        <button class="btn ghost" onclick="toggleAdd()">＋ Товар</button>
+      </div>
+      <div class="products" id="products" style="margin-top:12px"></div>
+
+      <div id="addForm" class="hidden" style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
+        <div class="row">
+          <div style="flex:1"><label>Код (product_key)</label><input id="pkey" placeholder="besdata-bd-df"></div>
+          <div style="flex:2"><label>Название</label><input id="pname" placeholder="Видеоларингоскоп BESDATA BD-DF"></div>
+        </div>
+        <label>КТРУ (через запятую)</label>
+        <input id="pktru" placeholder="32.50.13.190-00007689">
+        <label>Характеристики (JSON-массив, необязательно)</label>
+        <input id="pattrs" placeholder='[{"key":"источник_света","value":"LED"}]'>
+        <div class="err" id="addErr"></div>
+        <button class="btn" style="margin-top:12px" onclick="addProduct()">Сохранить товар</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h2 style="margin:0" id="leadsTitle">Лента подходящих закупок</h2>
+        <div class="row" style="align-items:center">
+          <span class="muted" style="font-size:13px">порог %</span>
+          <select id="minScore" style="width:auto" onchange="loadLeads()">
+            <option>40</option><option selected>60</option><option>80</option>
+          </select>
+        </div>
+      </div>
+      <div id="leads" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "";                       // тот же origin, бэкенд отдаёт и страницу, и API
+let mode = "login";
+let token = localStorage.getItem("sm_token") || "";
+let products = [];
+let currentProduct = null;
+
+function setMode(m){ mode=m;
+  tabLogin.classList.toggle("on", m==="login");
+  tabReg.classList.toggle("on", m==="register");
+  regCompany.classList.toggle("hidden", m!=="register");
+  authBtn.textContent = m==="login" ? "Войти" : "Создать аккаунт";
+  authErr.textContent="";
+}
+async function api(path, opts={}){
+  opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+  if(token) opts.headers["Authorization"] = "Bearer "+token;
+  const r = await fetch(API+path, opts);
+  let body=null; try{ body=await r.json(); }catch(e){}
+  return {ok:r.ok, status:r.status, body};
+}
+function fmtPrice(p){ return p==null ? "НМЦК —" : (Math.round(p).toLocaleString("ru-RU")+" ₽"); }
+function fmtDays(d){ return d==null ? "срок —" : (d<0 ? "подача истекла" : Math.round(d)+" дн до подачи"); }
+
+async function submitAuth(){
+  authErr.textContent="";
+  const email=email_.value.trim(), password=password_.value;
+  if(mode==="register"){
+    const r = await api("/auth/register",{method:"POST",body:JSON.stringify(
+      {email, password, company_name:company.value.trim()||"Моя компания"})});
+    if(!r.ok){ authErr.textContent = r.status===409?"Такой email уже зарегистрирован — войди.":"Проверь поля (пароль ≥8 символов)."; return; }
+    token=r.body.access_token;
+  } else {
+    const r = await api("/auth/login",{method:"POST",body:JSON.stringify({email,password})});
+    if(!r.ok){ authErr.textContent = r.status===429?"Слишком много попыток, подожди минуту.":"Неверный логин или пароль."; return; }
+    token=r.body.access_token;
+  }
+  localStorage.setItem("sm_token", token);
+  enterApp(email);
+}
+function enterApp(email){
+  authScreen.classList.add("hidden"); appScreen.classList.remove("hidden");
+  who.textContent = email||"";
+  loadProducts();
+}
+function logout(){ token=""; localStorage.removeItem("sm_token");
+  appScreen.classList.add("hidden"); authScreen.classList.remove("hidden"); }
+
+async function loadProducts(){
+  const r = await api("/products");
+  if(r.status===401){ logout(); return; }
+  products = r.body||[];
+  const box = document.getElementById("products"); box.innerHTML="";
+  if(!products.length){ box.innerHTML='<span class="muted">Товаров пока нет — добавь через «＋ Товар».</span>'; }
+  products.forEach(p=>{
+    const el=document.createElement("div"); el.className="chip"+(currentProduct&&currentProduct.id===p.id?" on":"");
+    el.textContent=p.name.length>42?p.name.slice(0,42)+"…":p.name;
+    el.onclick=()=>selectProduct(p); box.appendChild(el);
+  });
+  if(products.length){ selectProduct(currentProduct && products.find(x=>x.id===currentProduct.id) || products[0]); }
+  else { document.getElementById("leads").innerHTML=""; }
+}
+function selectProduct(p){ currentProduct=p;
+  document.querySelectorAll(".chip").forEach((c,i)=>c.classList.toggle("on", products[i]&&products[i].id===p.id));
+  document.getElementById("leadsTitle").textContent="Лента: "+(p.name.length>50?p.name.slice(0,50)+"…":p.name);
+  loadLeads();
+}
+async function loadLeads(){
+  if(!currentProduct) return;
+  const min=document.getElementById("minScore").value;
+  const r = await api("/products/"+currentProduct.id+"/leads?min_score="+min);
+  const box=document.getElementById("leads"); box.innerHTML="";
+  const leads=r.body||[];
+  if(!leads.length){ box.innerHTML='<span class="muted">Пока нет закупок ≥'+min+'%. Лента наполняется конвейером автоматически.</span>'; return; }
+  leads.forEach(l=>{
+    const cls = l.score>=85?"s-hi":(l.score>=60?"s-mid":"s-lo");
+    const div=document.createElement("div"); div.className="card"; div.style.marginBottom="10px";
+    div.innerHTML =
+      '<div class="lead"><div class="score '+cls+'">'+l.score+'%</div><div style="flex:1">'+
+      '<h4>'+esc(l.subject)+'</h4>'+
+      '<div class="meta">'+esc(l.customer||"заказчик —")+'</div>'+
+      '<div style="margin-top:8px"><span class="pill">'+fmtPrice(l.price)+'</span>'+
+      '<span class="pill">'+fmtDays(l.days_left)+'</span>'+
+      (l.region?'<span class="pill">регион '+esc(l.region)+'</span>':'')+'</div>'+
+      '<div style="margin-top:8px"><a href="'+l.url+'" target="_blank">Открыть закупку →</a></div>'+
+      '</div></div>';
+    box.appendChild(div);
+  });
+}
+function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function toggleAdd(){ document.getElementById("addForm").classList.toggle("hidden"); }
+async function addProduct(){
+  addErr.textContent="";
+  let attrs=[]; const raw=document.getElementById("pattrs").value.trim();
+  if(raw){ try{ attrs=JSON.parse(raw); }catch(e){ addErr.textContent="Характеристики: неверный JSON."; return; } }
+  const body={ product_key:document.getElementById("pkey").value.trim(),
+    name:document.getElementById("pname").value.trim(),
+    ktru:document.getElementById("pktru").value.split(",").map(s=>s.trim()).filter(Boolean),
+    attributes:attrs };
+  if(!body.product_key||!body.name){ addErr.textContent="Заполни код и название."; return; }
+  const r=await api("/products",{method:"POST",body:JSON.stringify(body)});
+  if(!r.ok){ addErr.textContent = r.status===409?"Товар с таким кодом уже есть.":"Не сохранилось, проверь поля."; return; }
+  toggleAdd(); loadProducts();
+}
+
+// алиасы, т.к. id email/password совпадают с window-свойствами
+const email_=document.getElementById("email"), password_=document.getElementById("password");
+
+// автовход, если токен уже есть
+if(token){ enterApp(""); }
+</script>
+</body>
+</html>
