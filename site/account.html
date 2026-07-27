@@ -148,7 +148,7 @@
       document.getElementById("user-company").textContent = document.getElementById("cf-name").value.trim();
       await loadCompany();
     } catch (e) {
-      errBox.textContent = "Не удалось сохранить (изменять данные компании может только владелец).";
+      errBox.textContent = e.message || "Не удалось сохранить данные компании.";
       errBox.classList.add("is-visible");
     }
   });
@@ -194,7 +194,7 @@
       e.target.reset();
       loadEmployees();
     } catch (err) {
-      errBox.textContent = "Не удалось добавить сотрудника (возможно, такая почта уже занята).";
+      errBox.textContent = err.message || "Не удалось добавить сотрудника.";
       errBox.classList.add("is-visible");
     }
   });

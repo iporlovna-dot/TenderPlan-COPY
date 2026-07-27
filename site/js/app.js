@@ -91,7 +91,10 @@ const LK = (() => {
       headers: { "Content-Type": "application/json" },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-    if (!r.ok) throw new Error("http " + r.status);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.detail || ("http " + r.status));
+    }
     return r.json().catch(() => ({}));
   }
 

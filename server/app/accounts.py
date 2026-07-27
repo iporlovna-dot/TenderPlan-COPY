@@ -99,6 +99,18 @@ def _plan_label(plan: str) -> str:
     return {"start": "Тариф «Старт»", "business": "Тариф «Бизнес»", "corp": "Тариф «Корпоративный»"}.get(plan, plan)
 
 
+def _check_inn_free(conn, inn: str, exclude_company_id: int | None = None) -> None:
+    """ИНН — уникален на компанию (пустой ИНН не считается: его можно не указывать)."""
+    if not inn:
+        return
+    row = conn.execute(
+        "SELECT id FROM companies WHERE inn = ? AND id != ?",
+        (inn, exclude_company_id or 0),
+    ).fetchone()
+    if row:
+        raise HTTPException(status_code=409, detail="Компания с таким ИНН уже зарегистрирована")
+
+
 # ---------- auth ----------
 
 @router.post("/auth/register")
@@ -110,12 +122,14 @@ def register(body: RegisterBody, response: Response):
         if exists:
             raise HTTPException(status_code=409, detail="Компания с такой почтой уже зарегистрирована")
         _check_password(body.password)
+        inn = body.inn.strip()
+        _check_inn_free(conn, inn)
 
         now = datetime.now(timezone.utc)
         expires = now + timedelta(days=TRIAL_DAYS)
         cur = conn.execute(
             "INSERT INTO companies (name, inn, plan, plan_expires_at, created_at) VALUES (?, ?, 'business', ?, ?)",
-            (body.companyName.strip(), body.inn.strip(), expires.isoformat(), now.isoformat()),
+            (body.companyName.strip(), inn, expires.isoformat(), now.isoformat()),
         )
         company_id = cur.lastrowid
         pw_hash = auth.hash_password(body.password)
@@ -205,7 +219,9 @@ def update_company(body: CompanyUpdate, lekalo_session: str | None = Cookie(defa
         if body.name is not None:
             fields.append("name = ?"); params.append(body.name.strip())
         if body.inn is not None:
-            fields.append("inn = ?"); params.append(body.inn.strip())
+            inn = body.inn.strip()
+            _check_inn_free(conn, inn, exclude_company_id=user["company_id"])
+            fields.append("inn = ?"); params.append(inn)
         if fields:
             params.append(user["company_id"])
             conn.execute(f"UPDATE companies SET {', '.join(fields)} WHERE id = ?", params)
