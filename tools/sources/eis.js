@@ -2,13 +2,26 @@
 // (results.html, 50 закупок/страница) — оттуда номер, закон, предмет, заказчик,
 // цена и СРОК окончания подачи (без захода в карточку). Документы дозапрашиваем
 // только для ближайших к дедлайну (docsLimit), чтобы не гонять тысячи запросов.
-// Экспортирует async collectEis(listLimit, docsLimit).
+//
+// Общий пул «последние обновлённые» — по сути случайная выборка по всем категориям
+// сразу (закупок в ЕИС — десятки тысяч), поэтому узкие темы туда почти не попадают.
+// ЕИС поддерживает полнотекстовый поиск (searchString+morphology=on) — прогоняем
+// им ключевые слова (по умолчанию — медицинские) отдельными проходами и сливаем
+// с общим пулом, чтобы такие темы гарантированно были в снапшоте.
+//
+// Экспортирует async collectEis(listLimit, docsLimit, keywords).
 
 const { curlAsync, mapLimit } = require("./util");
 
 const RESULTS = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html";
 const DAY = 86400000;
 const CONC = Number(process.env.LK_EIS_CONC || 6);
+
+const DEFAULT_MED_KEYWORDS = [
+  "медицинские изделия", "перчатки медицинские", "шприцы", "лекарственные препараты",
+  "медицинское оборудование", "стоматологические материалы", "хирургические инструменты",
+  "лабораторные реагенты", "средства индивидуальной защиты медицинские", "ларингоскоп",
+];
 
 async function curlText(url, extraArgs = []) {
   return curlAsync(["-L", ...extraArgs, url]);
@@ -26,12 +39,16 @@ function parsePrice(s) {
   return parseFloat(t) || 0;
 }
 
-async function fetchResultsPage(page) {
-  return curlText(RESULTS, [
+async function fetchResultsPage(page, searchString) {
+  const args = [
     "-G", "--data", "fz44=on", "--data", "fz223=on", "--data", "af=on",
     "--data", "sortBy=UPDATE_DATE", "--data", "recordsPerPage=_50",
     "--data", "pageNumber=" + page,
-  ]);
+  ];
+  if (searchString) {
+    args.push("--data-urlencode", "searchString=" + searchString, "--data", "morphology=on");
+  }
+  return curlText(RESULTS, args);
 }
 
 function parseHtmlItems(html) {
@@ -118,30 +135,45 @@ function toPurchase(it, documents) {
   };
 }
 
-async function collectEis(listLimit = 600, docsLimit = 150) {
-  // 1) массовый список по HTML-страницам (дёшево)
-  const seen = new Set();
-  let items = [];
-  const maxPages = Math.ceil(listLimit / 50) + 1;
-  for (let page = 1; page <= maxPages && items.length < listLimit; page++) {
+// Прогоняет постраничный сбор results.html (опционально с ключевым словом) в
+// общий Set/массив items, пока не наберёт take штук или страницы не кончатся.
+async function fetchPool(seen, items, take, searchString, label) {
+  const maxPages = Math.ceil(take / 50) + 1;
+  let got = 0;
+  for (let page = 1; page <= maxPages && got < take; page++) {
     let parsed;
-    try { parsed = parseHtmlItems(await fetchResultsPage(page)); } catch (e) { break; }
+    try { parsed = parseHtmlItems(await fetchResultsPage(page, searchString)); } catch (e) { break; }
     if (!parsed.length) break;
     for (const it of parsed) {
       if (seen.has(it.number)) continue;
-      seen.add(it.number); items.push(it);
+      seen.add(it.number); items.push(it); got++;
     }
-    process.stdout.write(`\r  ЕИС список: ${items.length}`);
+    process.stdout.write(`\r  ЕИС ${label}: ${got}/${take}`);
   }
   process.stdout.write("\n");
+}
+
+async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_MED_KEYWORDS) {
+  const seen = new Set();
+  let items = [];
+
+  // 1) прицельные проходы по ключевым словам — иначе узкие темы (медицина и т.п.)
+  // почти не попадают в общий пул «последние обновлённые по всем категориям»
+  const perKeyword = Number(process.env.LK_EIS_KEYWORD_TAKE || 60);
+  for (const kw of keywords) {
+    await fetchPool(seen, items, perKeyword, kw, `«${kw}»`);
+  }
+
+  // 2) общий список — для широты охвата остальных тем
+  await fetchPool(seen, items, listLimit, undefined, "список");
+
   // только с будущим сроком, ближайшие сверху
   const now = Date.now();
   items = items
     .filter(it => it.endIso && new Date(it.endIso).getTime() > now)
-    .sort((a, b) => new Date(a.endIso) - new Date(b.endIso))
-    .slice(0, listLimit);
+    .sort((a, b) => new Date(a.endIso) - new Date(b.endIso));
 
-  // 2) документы — только для ближайших docsLimit
+  // 3) документы — только для ближайших docsLimit
   const withDocs = items.slice(0, docsLimit);
   const docsById = {};
   await mapLimit(withDocs, CONC, async (it) => {
