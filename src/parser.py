@@ -21,8 +21,10 @@ def parse(path: str) -> str:
         return _parse_docx(path)
     if ext == ".pdf":
         return _parse_pdf(path)
-    if ext in (".xlsx", ".xls"):
+    if ext == ".xlsx":
         return _parse_xlsx(path)
+    if ext == ".xls":
+        return _parse_xls(path)
     if ext == ".doc":
         return _parse_doc(path)
     if ext in (".txt", ".md"):
@@ -132,6 +134,26 @@ def _parse_xlsx(path: str) -> str:
         if rendered:
             parts.append("[ЛИСТ '%s']\n%s" % (ws.title, rendered))
     wb.close()
+    return "\n\n".join(parts).strip()
+
+
+def _parse_xls(path: str) -> str:
+    """Старый бинарный .xls (Excel 97-2003) через xlrd — openpyxl его не читает.
+    Целочисленные значения нормализуем («1.0»→«1»), чтобы таблица читалась как в .xlsx."""
+    import xlrd
+
+    def _cell(v):
+        if isinstance(v, float) and v.is_integer():
+            return int(v)
+        return v
+
+    wb = xlrd.open_workbook(path)
+    parts: List[str] = []
+    for sh in wb.sheets():
+        rows = [[_cell(v) for v in sh.row_values(i)] for i in range(sh.nrows)]
+        rendered = _render_table(rows)
+        if rendered:
+            parts.append("[ЛИСТ '%s']\n%s" % (sh.name, rendered))
     return "\n\n".join(parts).strip()
 
 
