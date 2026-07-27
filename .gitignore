@@ -14,3 +14,6 @@ scratchpad/
 
 # секреты фронта (токен Telegram-бота) — не коммитить
 site/js/secrets.js
+
+# playwright и браузеры
+tools/node_modules/
