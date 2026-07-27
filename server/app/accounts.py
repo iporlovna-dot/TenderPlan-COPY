@@ -13,12 +13,12 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, EmailStr
 
-from app import auth, db
+from app import auth, db, ratelimit
 
 router = APIRouter(prefix="/api")
 basic = HTTPBasic()
@@ -114,7 +114,8 @@ def _check_inn_free(conn, inn: str, exclude_company_id: int | None = None) -> No
 # ---------- auth ----------
 
 @router.post("/auth/register")
-def register(body: RegisterBody, response: Response):
+def register(body: RegisterBody, request: Request, response: Response):
+    ratelimit.guard_register(ratelimit.client_ip(request))
     conn = db.get_conn()
     try:
         email = _norm_email(body.email)
@@ -152,12 +153,17 @@ def register(body: RegisterBody, response: Response):
 
 
 @router.post("/auth/login")
-def login(body: LoginBody, response: Response):
+def login(body: LoginBody, request: Request, response: Response):
+    ip = ratelimit.client_ip(request)
+    email = _norm_email(body.email)
+    ratelimit.guard_login(ip, email)  # 429 ДО bcrypt — режет брутфорс и CPU-DoS
     conn = db.get_conn()
     try:
-        user_row = conn.execute("SELECT * FROM users WHERE email = ?", (_norm_email(body.email),)).fetchone()
+        user_row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         if not user_row or not auth.verify_password(body.password, user_row["password_hash"]):
+            ratelimit.record_login_failure(ip, email)
             raise HTTPException(status_code=401, detail="Неверная почта или пароль")
+        ratelimit.reset_login(ip, email)  # верный пароль обнуляет счётчик
 
         token = auth.create_session(conn, user_row["id"])
         auth.set_session_cookie(response, token)
