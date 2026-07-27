@@ -154,6 +154,35 @@ def _num_and_raw(v: object) -> tuple:
     return None, ""
 
 
+def _num_candidates(av: object):
+    """Числовые трактовки одного значения: (число, сырая_единица). Для «1280 x 720» —
+    и первое число (1280), и произведение-пиксели (921600, единица пустая)."""
+    n, u = _num_and_raw(av)
+    if n is not None:
+        yield n, u
+    rp = _resolution_product(av)
+    if rp is not None:
+        yield rp, ""
+
+
+def _numeric_match(attr_value: object, req_raw_unit: object, pred) -> tuple:
+    """Числовой предикат против значения товара — СКАЛЯР или СПИСОК (любой элемент).
+    -> (status, matched_pv). Список нужен, когда ТЗ просит «клинок с длиной в диапазоне», а у
+    товара несколько клинков этого типа: проходит, если подходит ХОТЯ БЫ один (набор покрывает).
+    Единица несовместима → это несоответствие (не пробел). Нет ни одного числа → пробел."""
+    values = attr_value if isinstance(attr_value, (list, tuple)) else [attr_value]
+    saw_numeric = False
+    for av in values:
+        for cand, unit in _num_candidates(av):
+            saw_numeric = True
+            pv, compat = _reconcile(cand, unit, req_raw_unit)
+            if compat and pred(pv):
+                return "pass", pv
+    if not saw_numeric:
+        return "gap", None        # значение не распознано как число
+    return "violation", None      # числа есть, но ни одно не подходит (или единицы несовместимы)
+
+
 def _reconcile(pv: float, au_raw: object, ru_raw: object) -> tuple:
     """Согласовать единицы товара (au_raw) и требования (ru_raw). -> (pv_в_единице_требования,
     совместимы?). Одно семейство разного масштаба → конвертируем pv (1350 мАч → 1.35 А·ч).
@@ -261,33 +290,24 @@ def evaluate(req: Requirement, attr: Optional[Attribute],
         return _pass_or_violation(req, ok, attr)
 
     if op in (Operator.GTE, Operator.LTE):
-        pv, au = _num_and_raw(attr.value)
         rv = _to_number(req.value)
-        if pv is None or rv is None:
+        if rv is None:
+            return Check(req, Status.GAP, note="значение требования не распознано как число")
+        pred = (lambda pv: pv >= rv) if op == Operator.GTE else (lambda pv: pv <= rv)
+        status, pv = _numeric_match(attr.value, _req_raw_unit(req), pred)  # список → любой элемент
+        if status == "gap":
             return Check(req, Status.GAP, note="значение не распознано как число")
-        pv, compat = _reconcile(pv, au, _req_raw_unit(req))  # 1350 мАч → 1.35 А·ч
-        if not compat:
-            return _pass_or_violation(req, False, attr)   # напр. «3 А» ≠ «≥2,5 В»
-        ok = pv >= rv if op == Operator.GTE else pv <= rv
-        if not ok:  # разрешение «1280 x 720» как число пикселей (921600)
-            rp = _resolution_product(attr.value)
-            if rp is not None:
-                ok = rp >= rv if op == Operator.GTE else rp <= rv
-        note = "проходит впритык" if ok and pv == rv else ""
-        return _pass_or_violation(req, ok, attr, note=note)
+        note = "проходит впритык" if status == "pass" and pv == rv else ""
+        return _pass_or_violation(req, status == "pass", attr, note=note)
 
     if op == Operator.RANGE:
-        pv, au = _num_and_raw(attr.value)
         lo, hi = _to_number(req.value[0]), _to_number(req.value[1])
-        if pv is None:
-            return _pass_or_violation(req, False, attr)
-        pv, compat = _reconcile(pv, au, _req_raw_unit(req))
-        ok = compat and lo <= pv <= hi
-        if not ok:  # разрешение как число пикселей
-            rp = _resolution_product(attr.value)
-            if rp is not None:
-                ok = lo <= rp <= hi
-        return _pass_or_violation(req, ok, attr)
+        if lo is None or hi is None:
+            return Check(req, Status.GAP, note="границы диапазона не распознаны как числа")
+        status, _ = _numeric_match(attr.value, _req_raw_unit(req), lambda pv: lo <= pv <= hi)
+        if status == "gap":
+            return Check(req, Status.GAP, note="значение не распознано как число")
+        return _pass_or_violation(req, status == "pass", attr)
 
     if op == Operator.ONE_OF:
         # значение товара должно попасть в допустимый набор ТЗ (гомоглифы + синонимы)

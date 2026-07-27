@@ -243,6 +243,28 @@ def test_dimension_value_no_spurious_unit():
     assert _num_unit("2,5 В")[1] == "b"           # настоящая единица цела
 
 
+def test_range_against_list_any_element_passes():
+    # ТЗ: «клинок Макинтош с длиной 110-143 мм»; товар — набор длин, подходит хотя бы один
+    p = _product(длина_клинка_макинтош=["10.45 см", "12.11 см", "14.25 см", "16.08 см"])
+    r = [_req("длина_клинка_макинтош", "range", [110, 143], unit="мм")]  # 142,5 попадает
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
+def test_range_against_list_none_matches_violation():
+    p = _product(длина_клинка_макинтош=["10.45 см", "12.11 см"])  # 104.5, 121.1 — вне [130,161]
+    r = [_req("длина_клинка_макинтош", "range", [130, 161], unit="мм")]
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.VIOLATION
+
+
+def test_gte_against_list_any_element_passes():
+    p = _product(ширина=["12", "23", "23"])
+    r = [_req("ширина", "gte", 20)]  # 23 >= 20
+    res = match(p, r, "t")
+    assert res.checks[0].status == Status.PASS
+
+
 def test_resolution_pixelcount_gte_passes():
     # ТЗ задаёт разрешение числом пикселей (1280*720=921600), карточка размерами
     p = _product(разрешение_камеры="1280 x 720")
