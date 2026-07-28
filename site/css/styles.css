@@ -992,7 +992,11 @@ section { padding: 78px 0; }
 
 .lot-line {
   display: grid;
-  grid-template-columns: 20px 1fr auto auto;
+  /* Фикс. ширина колонок «Количество»/«Цена за ед.»: каждая строка лота — отдельный
+     grid, при auto-колонках ширина считается по своему контенту и заголовок с числом
+     не совпадают. Фиксированные треки → все строки делят одну сетку, числа ровно под
+     заголовком (оба выровнены вправо). */
+  grid-template-columns: 20px minmax(0, 1fr) 150px 140px;
   gap: 12px;
   align-items: baseline;
   padding: 8px 0;
