@@ -71,6 +71,10 @@ class Lead(Base):
     score: Mapped[int] = mapped_column(Integer, default=0)
     verdict: Mapped[str] = mapped_column(String(30), default="")
     explanation: Mapped[str] = mapped_column(Text, default="")
+    # Замороженные требования закупки (+синонимы профиля) — нужны для пересчёта % при
+    # дозаполнении пробелов клиентом (§Этап 1, фича founder). Пишет ingest из run_auto.
+    requirements_json: Mapped[str] = mapped_column(Text, default="[]")
+    synonyms_json: Mapped[str] = mapped_column(Text, default="{}")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
     __table_args__ = (UniqueConstraint("product_id", "purchase_id", name="uq_product_purchase"),)

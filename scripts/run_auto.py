@@ -229,6 +229,10 @@ def main():
                     "lot": lot,
                     "checks": [{"req": c.req.key, "status": c.status.value,
                                 "note": c.note, "action": c.action} for c in res.checks],
+                    # для дозаполнения пробелов клиентом: замороженные требования + синонимы
+                    # профиля → API пересчитывает % без повторного извлечения (§Этап 1)
+                    "requirements": aligned,
+                    "synonyms": profile.get("synonyms") or {},
                 }, f, ensure_ascii=False, indent=2)
 
     source.close()

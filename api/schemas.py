@@ -56,3 +56,25 @@ class LeadOut(BaseModel):
     score: int
     verdict: str
     explanation: str
+
+
+class CheckOut(BaseModel):
+    req: str
+    status: str                       # pass | violation | gap
+    note: str = ""
+    action: str = ""                  # что сделать (для gap) — подсказка клиенту
+
+
+class LeadDetailOut(BaseModel):
+    purchase_id: str
+    subject: str
+    score: int
+    verdict: str
+    explanation: str
+    checks: List[CheckOut]
+    gaps: List[str]                   # ключи требований-пробелов — их можно дозаполнить
+    attributes: List[dict]            # текущая карточка (с уже внесёнными дозаполнениями)
+
+
+class GapFillIn(BaseModel):
+    fills: dict                       # {ключ_пробела: значение_клиента}

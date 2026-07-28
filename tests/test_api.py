@@ -86,7 +86,14 @@ def run():
                "product_id": "besdata-1", "score": 88, "verdict": "eligible_with_gaps",
                "explanation": "ok", "customer": "ГУЗ КБ СМП №7", "price": 489510.0,
                "region": "64", "submission_close": None,
-               "url": "https://tenderplan.ru/app?tender=6a6372cf"},
+               "url": "https://tenderplan.ru/app?tender=6a6372cf",
+               # требования для дозаполнения пробелов: источник_света пройдёт, угол_обзора — пробел
+               "requirements": [
+                   {"key": "источник_света", "operator": "eq", "value": "LED", "unit": "",
+                    "hardness": "soft", "type": "technical", "raw": "Источник света - LED"},
+                   {"key": "угол_обзора", "operator": "gte", "value": 60, "unit": "°",
+                    "hardness": "soft", "type": "technical", "raw": "Угол обзора не менее 60"}],
+               "synonyms": {}},
               open(os.path.join(rdir, "v1.json"), "w"))
     n = ingest_results(db, rdir, cid)
     db.close()
@@ -97,6 +104,34 @@ def run():
                    and leads.json()[0]["score"] == 88))
     r.append(check("B не видит ленту товара A → 404",
                    client.get("/products/%d/leads" % pid, headers=_auth(tok_b)).status_code == 404))
+
+    # --- Дозаполнение пробелов (§Этап 1) ---
+    det = client.get("/products/%d/leads/6a6372cf" % pid, headers=_auth(tok_a))
+    r.append(check("деталь лида → 200", det.status_code == 200))
+    r.append(check("угол_обзора — пробел (gap)", "угол_обзора" in det.json()["gaps"]))
+    r.append(check("источник_света прошёл",
+                   any(c["req"] == "источник_света" and c["status"] == "pass"
+                       for c in det.json()["checks"])))
+    score0 = det.json()["score"]
+
+    # честность: значение НИЖЕ порога не «зачитывается»
+    bad = client.post("/products/%d/leads/6a6372cf/fill" % pid,
+                      json={"fills": {"угол_обзора": 50}}, headers=_auth(tok_a))
+    r.append(check("дозаполнение 50 (<60) не проходит честно",
+                   not any(c["req"] == "угол_обзора" and c["status"] == "pass"
+                           for c in bad.json()["checks"])))
+
+    # валидное значение → пробел закрыт, % вырос
+    ok = client.post("/products/%d/leads/6a6372cf/fill" % pid,
+                     json={"fills": {"угол_обзора": 70}}, headers=_auth(tok_a))
+    r.append(check("дозаполнение 70 (≥60) → % вырос", ok.json()["score"] > score0))
+    r.append(check("угол_обзора больше не пробел", "угол_обзора" not in ok.json()["gaps"]))
+    r.append(check("значение вписано в карточку (confirmable)",
+                   any(a["key"] == "угол_обзора" and a["status"] == "confirmable"
+                       for a in ok.json()["attributes"])))
+    r.append(check("B не может дозаполнить лид A → 404",
+                   client.post("/products/%d/leads/6a6372cf/fill" % pid,
+                               json={"fills": {"угол_обзора": 70}}, headers=_auth(tok_b)).status_code == 404))
 
     # rate-limit: 5 неудач по свежему email → блокировка (429)
     for _ in range(5):

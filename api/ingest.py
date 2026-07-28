@@ -44,6 +44,9 @@ def ingest_results(db: Session, results_dir: str, company_id: int) -> int:
         lead.score = int(v.get("score", 0))
         lead.verdict = v.get("verdict", "")
         lead.explanation = v.get("explanation", "")
+        # требования + синонимы для дозаполнения пробелов (пересчёт % без повторного извлечения)
+        lead.requirements_json = json.dumps(v.get("requirements", []), ensure_ascii=False)
+        lead.synonyms_json = json.dumps(v.get("synonyms") or {}, ensure_ascii=False)
         n += 1
     db.commit()
     return n
