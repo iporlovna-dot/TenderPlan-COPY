@@ -15,14 +15,20 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Dict, List, Optional
 
 import anthropic
 
+from embed import cosine_matrix, default_embedder
 from models import pick_model
 
 _DIGIT_RE = re.compile(r"\d")
+
+# Порог косинусного сходства имён+значений для эмбеддинг-маппинга (plan.md §3.7). Консервативный
+# дефолт; калибруется на golden. Ниже порога — не маппим (пробел безопаснее ложной пары).
+_EMBED_THRESHOLD = float(os.getenv("SPECMATCH_EMBED_THRESHOLD", "0.60"))
 
 
 def _numeric_scalar(v: object) -> Optional[bool]:
@@ -121,23 +127,62 @@ def _deterministic_map(req_fields, product_fields, key_synonyms):
     return mapping, remaining
 
 
+def _field_text(name: object, value: object) -> str:
+    """Имя+значение поля в строку для эмбеддинга. Подчёркивания → пробелы (имя ближе к естественному
+    языку → лучше вектор): «объём_памяти_гб»→«объём памяти гб: 32»."""
+    return "%s: %s" % (str(name).replace("_", " "), value)
+
+
+def _embed_map(remaining: Dict[str, object], product_fields: Dict[str, object],
+               embedder, threshold: float = _EMBED_THRESHOLD) -> Dict[str, str]:
+    """Свести остаток имён полей эмбеддингами (косинус имя+значение). Детерминированно и бесплатно,
+    замена LLM (plan.md §3.7). Для каждого поля ТЗ берём ближайшее поле карточки выше порога, с тем
+    же type-guard'ом. Ниже порога → не маппим (пробел безопаснее ложной пары)."""
+    card_keys = [k for k in product_fields if k]
+    req_keys = [k for k in remaining if k]
+    if not card_keys or not req_keys:
+        return {}
+    req_vecs = embedder.encode([_field_text(k, remaining[k]) for k in req_keys])
+    card_vecs = embedder.encode([_field_text(k, product_fields[k]) for k in card_keys])
+    sims = cosine_matrix(req_vecs, card_vecs)
+    out: Dict[str, str] = {}
+    for i, rk in enumerate(req_keys):
+        j = int(sims[i].argmax())
+        ck = card_keys[j]
+        if (sims[i][j] >= threshold and ck != rk
+                and _types_compatible(remaining[rk], product_fields[ck])):
+            out[rk] = ck
+    return out
+
+
 def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
                client: Optional[anthropic.Anthropic] = None,
-               key_synonyms: Optional[List[list]] = None) -> Dict[str, str]:
+               key_synonyms: Optional[List[list]] = None,
+               embedder=None) -> Dict[str, str]:
     """Сопоставить поля ТЗ с полями карточки по имени И значению. -> {ключ_тз: ключ_карточки}.
 
-    Двухслойно: сперва ДЕТЕРМИНИРОВАННЫЙ слой (морфология имени + словарь `key_synonyms` из
-    профиля) — стабильно и бесплатно; LLM (Haiku) вызывается ТОЛЬКО на нераспознанном остатке.
-    Значения нужны, чтобы разрешать расхождения раскладки и отсекать маппинг разного типа.
-    Пустой вход → пустой маппинг (без вызова API).
+    Трёхслойно (plan.md §3.7): (1) ДЕТЕРМИНИРОВАННЫЙ слой (морфология имени + словарь `key_synonyms`
+    из профиля) — стабильно и бесплатно; (2) на остатке — ЛОКАЛЬНЫЕ ЭМБЕДДИНГИ (bge-m3), тоже
+    детерминированно/бесплатно/приватно; (3) если эмбеддер недоступен (нет пакета/модели) — МЯГКАЯ
+    деградация на LLM (Haiku). Значения нужны, чтобы разрешать расхождения раскладки и отсекать
+    маппинг разного типа. Пустой вход → пустой маппинг (без вызова).
+
+    embedder — инъекция эмбеддера (для тестов); None → singleton `embed.default_embedder()` (или
+    None, если недоступен → тогда LLM). client — anthropic-клиент для LLM-fallback.
     """
     if not req_fields or not product_fields:
         return {}
 
     mapping, remaining = _deterministic_map(req_fields, product_fields, key_synonyms)
     if not remaining:
-        return mapping                          # всё сведено детерминированно — LLM не нужен
+        return mapping                          # всё сведено детерминированно — ни эмбеддер, ни LLM
 
+    embedder = embedder if embedder is not None else default_embedder()
+    if embedder is not None:
+        mapping.update(_embed_map(remaining, product_fields, embedder))
+        return mapping                          # эмбеддинги сведи остаток — LLM не нужен (0 ₽, приватно)
+
+    # эмбеддер недоступен → прежний LLM-путь (мягкая деградация)
     def _fmt(d):
         return [{"имя": k, "значение": v} for k, v in d.items() if k]
 

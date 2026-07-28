@@ -6,6 +6,13 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+# Форсируем LLM-fallback в align_keys, когда эмбеддер НЕ инъектирован явно: тесты не должны зависеть
+# от того, установлен ли sentence-transformers в окружении. Эмбеддинг-путь тестируем инъекцией
+# FakeEmbedder (она обходит default_embedder, поэтому этот флаг ей не мешает).
+os.environ["SPECMATCH_EMBED"] = "off"
+
+import numpy as np
+
 from _llm_mock import ChecksLLM as FakeLLM  # общий мок anthropic-клиента (tests/_llm_mock.py)
 from _llm_mock import MappingLLM
 from keymatch import align_keys, apply_mapping, align_values
@@ -15,6 +22,27 @@ from schema import Attribute, Product
 def check(name, ok):
     print(("  ✓ " if ok else "  ✗ ") + name)
     return ok
+
+
+class FakeEmbedder:
+    """Детерминированный эмбеддер для тестов: вектор по «концепту» (подстроке в тексте поля).
+    Тексты с общим концептом → косинус 1.0; разные концепты → 0.0. Без сети и без модели —
+    проверяем МЕХАНИКУ align_keys на эмбеддингах, не качество конкретной нейросети."""
+
+    def __init__(self, concepts):
+        self.concepts = [c.lower() for c in concepts]
+        self._extra = {}
+
+    def encode(self, texts):
+        dim = len(self.concepts) + 128
+        out = np.zeros((len(texts), dim), dtype=np.float32)
+        for i, t in enumerate(texts):
+            tl = t.lower()
+            idx = next((k for k, c in enumerate(self.concepts) if c in tl), None)
+            if idx is None:  # нет концепта → уникальная ортогональная ось (ни с чем не совпадёт)
+                idx = self._extra.setdefault(tl, len(self.concepts) + len(self._extra))
+            out[i, idx] = 1.0
+        return out
 
 
 def test_apply_mapping():
@@ -111,6 +139,44 @@ def test_align_keys_type_guard():
     return r
 
 
+def test_align_keys_embeddings(capsys=None):
+    """Инъектированный эмбеддер сводит остаток имён (детерм. слой отработал раньше), LLM НЕ зовётся.
+    Пара «объем↔объём» уходит морфологии, «видеокамеры↔камеры» — эмбеддингам (§3.7)."""
+    req = {"объем_памяти_гб": 8, "разрешение_видеокамеры": "1280x720"}
+    card = {"объём_памяти_гб": 32, "разрешение_камеры": "1280 x 720"}
+    llm = MappingLLM([])  # не должен быть вызван
+    emb = FakeEmbedder(["памят", "разрешен"])
+    mp = align_keys(req, card, client=llm, embedder=emb)
+    r = []
+    r.append(check("морфология (ё/е) свела память до эмбеддингов", mp.get("объем_памяти_гб") == "объём_памяти_гб"))
+    r.append(check("эмбеддинги свели видеокамеры↔камеры", mp.get("разрешение_видеокамеры") == "разрешение_камеры"))
+    r.append(check("LLM не вызван (остаток закрыт эмбеддингами)", llm.calls == 0))
+    return r
+
+
+def test_align_keys_embeddings_type_guard():
+    """Эмбеддинг-путь применяет тот же type-guard: «Да»(текст) не ложится на число 6, даже если
+    имена семантически близки (сменные_апертуры↔количество_апертур)."""
+    req = {"сменные_апертуры": "Да"}
+    card = {"количество_апертур": 6}
+    emb = FakeEmbedder(["апертур"])          # оба текста → один концепт → косинус 1.0
+    mp = align_keys(req, card, client=MappingLLM([]), embedder=emb)
+    return [check("тип-конфликт (Да↔6) отсечён и в эмбеддингах", "сменные_апертуры" not in mp)]
+
+
+def test_align_keys_embeddings_below_threshold():
+    """Несвязанные поля (разные концепты → косинус 0 < порога) НЕ маппятся; ложная пара опаснее пробела."""
+    req = {"загадочное_поле": "текстовое значение"}
+    card = {"нечто_иное": "другое значение"}
+    llm = MappingLLM([{"tz_key": "загадочное_поле", "card_key": "нечто_иное"}])  # не должен примениться
+    emb = FakeEmbedder([])                    # нет концептов → ортогональные оси → косинус 0
+    mp = align_keys(req, card, client=llm, embedder=emb)
+    r = []
+    r.append(check("ниже порога → не маппим", mp == {}))
+    r.append(check("LLM не вызван (эмбеддер решил, пусть и пусто)", llm.calls == 0))
+    return r
+
+
 def test_align_values():
     product = Product(id="p", name="Клинок", attributes=[
         Attribute(key="материал", value="нержавеющая сталь"),
@@ -151,7 +217,9 @@ def test_align_values():
 def main():
     r = (test_apply_mapping() + test_apply_mapping_remapped_flags()
          + test_align_keys_deterministic_no_llm() + test_align_keys_remainder_goes_to_llm()
-         + test_align_keys_type_guard() + test_align_values())
+         + test_align_keys_type_guard()
+         + test_align_keys_embeddings() + test_align_keys_embeddings_type_guard()
+         + test_align_keys_embeddings_below_threshold() + test_align_values())
     passed = sum(r)
     print("\n%d/%d passed" % (passed, len(r)))
     sys.exit(0 if passed == len(r) else 1)
