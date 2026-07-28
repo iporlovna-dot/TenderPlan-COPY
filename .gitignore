@@ -19,5 +19,10 @@ scratchpad/
 # секреты фронта (токен Telegram-бота) — не коммитить
 site/js/secrets.js
 
+# снапшот закупок — на ~4000+ закупках это уже не 2 МБ, а ближе к 7; коммитить
+# ежечасно раздувало бы git-историю на гигабайты за месяцы. Доставляется на VPS
+# напрямую по scp (tools/refresh.sh), не через git. См. CLAUDE.md / plan.md §3.
+site/data/purchases.json
+
 # playwright и браузеры
 tools/node_modules/

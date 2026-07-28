@@ -80,17 +80,26 @@ lots[{name,qty,price,okpd}], documents[{id,name,url}], matches{productId→Match
 
 Сбор — **только на машине с доступом к mos.ru/zakupki.gov.ru** (не на VPS!):
 ```bash
-node tools/build_snapshot.js         # пишет site/data/purchases.json (~1 мин)
-git add site/data/purchases.json && git commit -m "refresh" && git push
-ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'cd /opt/lekalo && git pull --ff-only'
+node tools/build_snapshot.js         # пишет site/data/purchases.json (~5-6 мин)
+scp -i ~/.ssh/nexara_deploy site/data/purchases.json root@186.246.30.213:/opt/lekalo/site/data/purchases.json.tmp
+ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'mv /opt/lekalo/site/data/purchases.json{.tmp,}'
 ```
-Или разом: `bash tools/refresh.sh` (коммитит/деплоит только если изменился состав).
+Или разом: `bash tools/refresh.sh` (доставляет по scp только если изменился состав).
+
+**Снапшот больше НЕ коммитится в git** (см. «Грабли» — на ~4000+ закупках это ~7 МБ,
+раздуло бы историю). `.gitignore` его исключает; на диске файл остаётся как обычно,
+просто git его не отслеживает. Код (`site/js`, `server/`, `tools/`) — по-прежнему
+через обычный `git push` + `ssh … git pull` на VPS, вручную.
 
 **Автообновление:** Планировщик Windows `LekaloSnapshotRefresh` запускает `refresh.cmd` каждый
 час (лог `C:\Users\nikit\lekalo-refresh.log`). Управление: `schtasks /Run|/Change /TN LekaloSnapshotRefresh`.
+Проверено: интервал ровно `PT1H`, без пропусков.
 
-**Тюнинг объёма (env):** `LK_SNAPSHOT_TAKE` (Портал, деф. 400), `LK_EIS_TAKE` (ЕИС список, 600),
-`LK_EIS_DOCS` (для скольких ЕИС качать документы, 150), `LK_POOL`, `LK_PORTAL_CONC`, `LK_EIS_CONC`.
+**Тюнинг объёма (env):** `LK_SNAPSHOT_TAKE` (Портал, деф. 500), `LK_EIS_TAKE` (ЕИС общий список, 2000),
+`LK_EIS_DOCS` (для скольких ЕИС качать документы/регион, 150), `LK_EIS_KEYWORDS`
+(свой список тем через запятую вместо ~30 по умолчанию), `LK_EIS_KEYWORD_TAKE` (закупок на тему, 60),
+`LK_POOL`, `LK_PORTAL_CONC`, `LK_EIS_CONC`. Прицельный поиск по темам ЕИС идёт через headless-Chromium
+(Playwright), не curl — источник глушит поиск для голых HTTP-клиентов (см. «Грабли»).
 
 ---
 
@@ -101,7 +110,10 @@ ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'cd /opt/lekalo && git pull --ff
 - Заменили статику **Nexara** (это отдельный проект!). Бэкап: `/root/backups/nexara-*.tgz`.
   Откат — см. `server/deploy/DEPLOY.md`.
 - Деплой правок = `git push` + `ssh … 'cd /opt/lekalo && git pull --ff-only'`.
-- Живой сайт: `http://186.246.30.213/` (лендинг), `/app.html?demo=1` (лента). HTTP, без домена.
+- Живой сайт: **`https://186.246.30.213.nip.io/`** (HTTPS, Let's Encrypt через nip.io — см.
+  `server/deploy/enable-https.sh`). Голый IP `http://186.246.30.213/` тоже работает для
+  ленты/админки (старые ссылки не ломаются), но вход/регистрация/кабинет с него редиректят
+  на HTTPS-домен — secure-cookie сессии по голому HTTP браузер не сохранит.
 
 ---
 
@@ -118,8 +130,15 @@ ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'cd /opt/lekalo && git pull --ff
    НЕ долбить повторно, попросить пользователя перезагрузить сервер через панель Timeweb.
 5. **Cyrillic в curl-параметрах** → кракозябры. Кодировать через `curl --data-urlencode` / `--data`,
    не вставлять кириллицу прямо в URL.
-6. **Снапшот 2.1 МБ коммитится ежечасно** (при смене состава) → git-история растёт. Если мешает —
-   переключить доставку на прямой `scp` на VPS (без git).
+6. **Снапшот в git больше не коммитится** (было 2.1 МБ ежечасно, на ~4000+ закупках выросло бы
+   до ~7 МБ и раздуло историю) — доставляется на VPS напрямую по `scp` (`tools/refresh.sh`),
+   `.gitignore` файл исключает. На диске он есть как обычно, просто не отслеживается.
+7. **Поиск по ключевым словам (searchString) ЕИС глушится для «голых» HTTP-клиентов** —
+   curl с этой машины получает «0 записей» на любой поисковый запрос (проверено заведомо
+   новыми словами), а тот же запрос с той же машины/IP через headless-Chromium (Playwright) —
+   реальные результаты. Не IP-бан, а разбор клиента (TLS/JS-отпечаток). Поэтому
+   `collectEis`'s прицельный поиск по темам идёт через Playwright, а не curl (общий список
+   без поиска — по-прежнему curl, там не глушит). Не пытаться обходить проксями/спуфингом.
 
 ---
 
