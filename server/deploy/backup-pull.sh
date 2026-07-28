@@ -4,9 +4,12 @@
 # ЗАПУСКАТЬ НА ОСНОВНОЙ машине (там SSH-ключ к VPS). По расписанию — Планировщик Windows.
 #
 # Разовая проверка (Git Bash):  bash server/deploy/backup-pull.sh
-# Планировщик (ежедневно 04:00, после серверного бэкапа в 03:00):
-#   schtasks /Create /TN LekaloDbBackupPull /SC DAILY /ST 04:00 ^
-#     /TR "\"C:\Program Files\Git\bin\bash.exe\" -lc \"bash /c/Users/nikit/TenderPlan-COPY/server/deploy/backup-pull.sh\""
+# Планировщик (ежедневно 04:00, после серверного бэкапа в 03:00) — запускать из
+# PowerShell, не Git Bash (тот перепишет "/TN" и т.п. в путь вида "C:/Program
+# Files/Git/TN" — известная особенность MSYS2; в Git Bash нужен
+# MSYS2_ARG_CONV_EXCL="*", иначе тот же эффект):
+#   schtasks /Create /TN LekaloDbBackupPull /SC DAILY /ST 04:00 /F ^
+#     /TR "\"C:\Program Files\Git\bin\bash.exe\" -lc \"bash /c/Users/nikit/OneDrive/Dokumente/TenderPlan-COPY/server/deploy/backup-pull.sh\""
 set -euo pipefail
 
 KEY_SSH="${LK_SSH_KEY:-$HOME/.ssh/nexara_deploy}"
