@@ -46,7 +46,9 @@ Node-сборщики (tools/) → site/data/purchases.json → статичес
 | `tools/sources/portal.js` | адаптер Портала поставщиков (mos.ru) |
 | `tools/sources/eis.js` | адаптер ЕИС (zakupki.gov.ru) |
 | `tools/sources/util.js` | `curlAsync` + `mapLimit` (конкурентность) |
-| `tools/refresh.sh` | автообновление: пересобрать → коммит если состав изменился → push → git pull на VPS |
+| `tools/build_analytics.js` | собирает реестр контрактов по темам → `site/data/analytics.json` (ценовой ориентир, история заказчика) |
+| `tools/sources/eisContracts.js` | адаптер реестра контрактов ЕИС (для аналитики, не для ленты) |
+| `tools/refresh.sh` | автообновление: пересобрать → scp на VPS (закупки — если состав изменился; аналитика — раз в сутки) |
 | `tools/refresh.cmd` | обёртка для Планировщика Windows |
 | `server/` | FastAPI-бэкенд (отложен) + `deploy/` (systemd, nginx, DEPLOY.md) |
 
@@ -59,6 +61,17 @@ lots[{name,qty,price,okpd}], documents[{id,name,url}], matches{productId→Match
 ---
 
 ## Источники (проверенные эндпоинты, анонимно)
+
+**Реестр контрактов ЕИС (zakupki.gov.ru)** — источник аналитики (не активных закупок):
+- список: `GET epz/contract/search/results.html?searchString=<текст>&recordsPerPage=_50&pageNumber=N`
+  (те же блоки `search-registry-entry-block`: заказчик, предмет, **реальная цена контракта**, дата)
+- **НЕ глушится антиботом для searchString** (в отличие от поиска активных закупок ниже) — обычный
+  curl без Chromium, проверено заведомо-бессмысленным словом (честные 0). Важно: без `-L` (follow
+  redirect) — с ним почему-то молча теряет searchString и отдаёт 0.
+- ИНН заказчика и имя поставщика-победителя в списке **не показаны** (пустой `inn=` в ссылке на
+  заказчика) — победитель только в карточке `contractCard/...`, отдельный заход, не собираем.
+- Число участников/уровень конкуренции — не нашли нигде в списке, вероятно только в протоколе
+  подведения итогов конкретной закупки; **не реализовано**, честно написано в UI, а не выдумано.
 
 **Портал поставщиков (mos.ru)** — чистый JSON:
 - поиск: `GET old.zakupki.mos.ru/api/Cssp/Purchase/Query?queryDto=<json>` (typeIn=1 КС, stateIdIn=19000002 «Активная»)
