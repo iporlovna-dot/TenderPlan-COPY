@@ -299,4 +299,4 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   });
 }
 
-module.exports = { collectEis };
+module.exports = { collectEis, DEFAULT_KEYWORDS };

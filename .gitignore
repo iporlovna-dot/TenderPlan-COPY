@@ -23,6 +23,7 @@ site/js/secrets.js
 # ежечасно раздувало бы git-историю на гигабайты за месяцы. Доставляется на VPS
 # напрямую по scp (tools/refresh.sh), не через git. См. CLAUDE.md / plan.md §3.
 site/data/purchases.json
+site/data/analytics.json
 
 # playwright и браузеры
 tools/node_modules/

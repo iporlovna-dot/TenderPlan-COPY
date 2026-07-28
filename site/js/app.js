@@ -557,6 +557,20 @@ const LK = (() => {
   }
   function allPurchases() { return _purchases || MOCK_PURCHASES; }
 
+  // Аналитика (ценовой ориентир по категориям + история заказчика) — необязательный
+  // слой поверх снапшота, отдельный файл data/analytics.json (собирается
+  // tools/build_analytics.js из реестра контрактов ЕИС). Если файла нет/не собрался —
+  // просто не показываем блок аналитики, не роняем остальную ленту.
+  let _analytics = null;
+  async function loadAnalytics() {
+    try {
+      const r = await fetch("data/analytics.json", { cache: "no-store" });
+      if (r.ok) _analytics = await r.json();
+    } catch (e) { /* аналитика необязательна — тихо пропускаем */ }
+    return _analytics;
+  }
+  function getAnalytics() { return _analytics; }
+
   return {
     getCompany, setCompany, clearSession, isLoggedIn,
     getProducts, setProducts, addProduct,
@@ -566,7 +580,7 @@ const LK = (() => {
     getViewed, isViewed, markViewed,
     getPageSize, setPageSize,
     initSession, apiLogout, isServerSession, apiGet, apiSend,
-    seedDemo, allPurchases, loadPurchases
+    seedDemo, allPurchases, loadPurchases, loadAnalytics, getAnalytics
   };
 })();
 

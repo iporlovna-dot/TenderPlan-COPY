@@ -20,19 +20,51 @@ before="$(ids)"
 node tools/build_snapshot.js
 after="$(ids)"
 
-if [ "$before" = "$after" ]; then
-  echo "$(date +%F\ %H:%M) состав не изменился — пропускаю"
-  exit 0
+# Аналитика (реестр контрактов) — история контрактов почти не меняется от часа к
+# часу, пересобирать её на каждый прогон (доп. ~3000 запросов к источнику) смысла
+# нет. Пересобираем максимум раз в LK_ANALYTICS_MAX_AGE_HOURS часов (по умолчанию
+# 20 — примерно раз в сутки), деплоим то, что уже есть, при каждом прогоне (это
+# просто scp готового файла, дёшево).
+ANALYTICS_MAX_AGE_HOURS="${LK_ANALYTICS_MAX_AGE_HOURS:-20}"
+analytics_stale() {
+  node -e '
+    const fs = require("fs");
+    try {
+      const d = JSON.parse(fs.readFileSync("site/data/analytics.json", "utf8"));
+      const ageH = (Date.now() - new Date(d.generatedAt).getTime()) / 3600000;
+      process.exit(ageH > Number(process.argv[1]) ? 0 : 1);
+    } catch (e) { process.exit(0); }
+  ' "$ANALYTICS_MAX_AGE_HOURS"
+}
+if analytics_stale; then
+  echo "$(date +%F\ %H:%M) аналитика устарела/отсутствует — пересобираю"
+  node tools/build_analytics.js || echo "$(date +%F\ %H:%M) ОШИБКА сборки аналитики — оставляю прежний файл"
 fi
 
-# scp во временный файл + атомарный mv на сервере — чтобы nginx никогда не
-# отдал наполовину записанный JSON.
-if scp -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
-     site/data/purchases.json "$VPS:$REMOTE_DIR/purchases.json.tmp" \
-   && ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
-     "$VPS" "mv $REMOTE_DIR/purchases.json.tmp $REMOTE_DIR/purchases.json"
-then
-  echo "$(date +%F\ %H:%M) обновлено и задеплоено по scp (состав изменился)"
+if [ "$before" = "$after" ]; then
+  echo "$(date +%F\ %H:%M) состав закупок не изменился — покупки не деплою"
 else
-  echo "$(date +%F\ %H:%M) ОШИБКА доставки по scp — на VPS остался прежний снапшот"
+  # scp во временный файл + атомарный mv на сервере — чтобы nginx никогда не
+  # отдал наполовину записанный JSON.
+  if scp -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
+       site/data/purchases.json "$VPS:$REMOTE_DIR/purchases.json.tmp" \
+     && ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
+       "$VPS" "mv $REMOTE_DIR/purchases.json.tmp $REMOTE_DIR/purchases.json"
+  then
+    echo "$(date +%F\ %H:%M) закупки обновлены и задеплоены по scp (состав изменился)"
+  else
+    echo "$(date +%F\ %H:%M) ОШИБКА доставки закупок по scp — на VPS остался прежний снапшот"
+  fi
+fi
+
+if [ -f site/data/analytics.json ]; then
+  if scp -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
+       site/data/analytics.json "$VPS:$REMOTE_DIR/analytics.json.tmp" \
+     && ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
+       "$VPS" "mv $REMOTE_DIR/analytics.json.tmp $REMOTE_DIR/analytics.json"
+  then
+    echo "$(date +%F\ %H:%M) аналитика задеплоена по scp"
+  else
+    echo "$(date +%F\ %H:%M) ОШИБКА доставки аналитики по scp — на VPS остался прежний файл"
+  fi
 fi

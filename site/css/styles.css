@@ -984,6 +984,17 @@ section { padding: 78px 0; }
 .fact__k { color: var(--ink-faint); }
 .fact__v { font-weight: 600; text-align: right; }
 
+/* аналитика: ценовой ориентир + история заказчика */
+.detail-analytics { background: var(--paper-alt); border-radius: var(--radius-md); padding: 16px 18px; }
+.analytics-row { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px dashed var(--line-soft); font-size: 0.88rem; }
+.analytics-row:first-of-type { border-top: none; }
+.analytics-row__k { color: var(--ink-faint); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.analytics-row__v { font-weight: 500; line-height: 1.5; }
+.analytics-diff { font-weight: 700; }
+.analytics-diff.is-high { color: var(--bad); }
+.analytics-diff.is-low { color: var(--ok); }
+.analytics-note { margin-top: 10px; font-size: 0.76rem; color: var(--ink-faint); line-height: 1.4; }
+
 /* документы закупки */
 .doc-list { display: flex; flex-direction: column; gap: 6px; }
 .doc-link {

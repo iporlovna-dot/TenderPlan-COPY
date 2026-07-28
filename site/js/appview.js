@@ -297,6 +297,54 @@
     return true;
   }
 
+  // ---------- аналитика (ценовой ориентир + история заказчика) ----------
+  // Необязательный слой поверх снапшота (data/analytics.json, см.
+  // tools/build_analytics.js) — реестр контрактов ЕИС, выборка по темам, не полный
+  // реестр. Если файла нет — analytics === null и все функции ниже тихо отдают null.
+
+  let _categoryDefs = null;
+  function categoryDefs() {
+    if (_categoryDefs) return _categoryDefs;
+    const analytics = LK.getAnalytics();
+    _categoryDefs = analytics
+      ? Object.keys(analytics.categories).map(kw => ({ keyword: kw, stems: tokens(kw).map(stem) }))
+      : [];
+    return _categoryDefs;
+  }
+  // ищем тему поиска, все слова которой (по той же stem-логике, что и в поиске)
+  // находятся в названии/позициях лота закупки — среди совпавших берём самую
+  // «специфичную» (больше слов в теме), а не первую попавшуюся
+  function categoryFor(p) {
+    const analytics = LK.getAnalytics();
+    const defs = categoryDefs();
+    if (!analytics || !defs.length) return null;
+    const hay = tokens(p.title + " " + (p.lots || []).map(l => l.name).join(" "));
+    let best = null;
+    for (const def of defs) {
+      if (def.stems.every(s => hay.some(hw => hw.startsWith(s)))) {
+        if (!best || def.stems.length > best.stems.length) best = def;
+      }
+    }
+    if (!best) return null;
+    const stats = analytics.categories[best.keyword];
+    return (stats && stats.count) ? { keyword: best.keyword, stats } : null;
+  }
+  // та же нормализация имени заказчика, что и в tools/build_analytics.js —
+  // в реестре контрактов ИНН заказчика в списке не показан, сопоставляем текстом
+  function normalizeCustomerName(s) {
+    return (s || "")
+      .toUpperCase()
+      .replace(/[«»"'ʼ]/g, "")
+      .replace(/[^\wА-ЯЁ0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  function customerFor(p) {
+    const analytics = LK.getAnalytics();
+    if (!analytics) return null;
+    return analytics.customers[normalizeCustomerName(p.customer)] || null;
+  }
+
   function passesFilters(p) {
     const f = state.filters;
     if (f.customer) {
@@ -382,6 +430,42 @@
       </div>`;
   }
 
+  function analyticsDetail(p) {
+    const cat = categoryFor(p);
+    const cust = customerFor(p);
+    if (!cat && !cust) return "";
+
+    const catRow = cat ? (() => {
+      const s = cat.stats;
+      const diff = (p.price && s.medianPrice) ? Math.round((p.price - s.medianPrice) / s.medianPrice * 100) : null;
+      const diffCls = diff == null ? "" : diff > 5 ? "is-high" : diff < -5 ? "is-low" : "";
+      const diffTxt = diff == null ? "" :
+        ` <span class="analytics-diff ${diffCls}">${diff > 0 ? "+" : ""}${diff}% к медиане по рынку</span>`;
+      return `
+        <div class="analytics-row">
+          <span class="analytics-row__k">Ценовой ориентир</span>
+          <span class="analytics-row__v">по теме «${lkEscape(cat.keyword)}»: медиана ${lkFormatMoney(s.medianPrice)},
+            среднее ${lkFormatMoney(s.avgPrice)}, диапазон ${lkFormatMoney(s.minPrice)}–${lkFormatMoney(s.maxPrice)}
+            (${s.count} контрактов)${diffTxt}</span>
+        </div>`;
+    })() : "";
+
+    const custRow = cust ? `
+        <div class="analytics-row">
+          <span class="analytics-row__k">История заказчика</span>
+          <span class="analytics-row__v">${cust.count} ${lkPlural(cust.count, ["контракт", "контракта", "контрактов"])}
+            в выборке, средний чек ${lkFormatMoney(cust.avgPrice)}${cust.minDate ? `, с ${cust.minDate.slice(0, 4)} по ${(cust.maxDate || cust.minDate).slice(0, 4)}` : ""}</span>
+        </div>` : "";
+
+    return `
+      <div class="detail-block detail-analytics">
+        <div class="detail-block__title">Аналитика по заключённым контрактам</div>
+        ${catRow}
+        ${custRow}
+        <div class="analytics-note">По выборке контрактов ЕИС (не полный реестр); уровень конкуренции пока не считаем — эти данные не публикуются в списке, только в протоколе каждой закупки отдельно.</div>
+      </div>`;
+  }
+
   function purchaseDetail(p, m) {
     const lots = p.lots.map((l, i) => `
       <div class="lot-line">
@@ -421,6 +505,7 @@
           <div class="facts-grid">${facts}</div>
         </div>
         ${docsHtml}
+        ${analyticsDetail(p)}
         <div class="tender-actions">
           ${p.href
             ? `<a class="btn btn-primary btn-sm" href="${lkEscape(p.href)}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
@@ -747,5 +832,8 @@
     // живое устаревание: раз в минуту перерисовываем (без сброса пагинации)
     setInterval(() => renderFeed(false), 60000);
   });
+  // аналитика — необязательный слой, грузится параллельно и не блокирует ленту;
+  // если файла нет/не собрался, analyticsFor() просто вернёт null везде
+  LK.loadAnalytics().then(() => renderFeed(false));
 
 })();
