@@ -120,9 +120,11 @@
       <button class="filter-reset" id="filter-reset">Сбросить</button>
     </div>
 
-    <!-- надстройка: сверка по ТЗ (скрыта по требованию — оставлена в разметке,
-         чтобы вернуть одним снятием hidden, без переписывания логики) -->
-    <div class="match-bar" id="match-bar" hidden>
+    <!-- надстройка: сверка по ТЗ (скрыта по требованию). display:none инлайном, а НЕ
+         атрибут hidden: правило .match-bar{display:flex} перебивает [hidden] по
+         приоритету, и строка оставалась видимой. Элементы оставлены в DOM (на них
+         ссылается appview.js: #match-enable/#match-product) — вернуть = убрать style. -->
+    <div class="match-bar" id="match-bar" style="display:none">
       <label class="match-toggle">
         <input type="checkbox" id="match-enable">
         <span class="match-toggle__track"><span class="match-toggle__thumb"></span></span>
