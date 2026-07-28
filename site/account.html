@@ -97,6 +97,40 @@
       </section>
 
       <section class="cabinet-card">
+        <h3>Двухфакторная аутентификация</h3>
+        <div class="form-error" id="totp-error"></div>
+
+        <button class="btn btn-primary btn-sm" id="totp-enable-btn">Включить 2FA</button>
+
+        <div id="totp-setup" style="display:none;margin-top:14px;">
+          <p style="color:var(--ink-faint);font-size:0.9rem;">Отсканируйте QR-код приложением-аутентификатором
+            (Google Authenticator, Яндекс Ключ, Authy) или введите секрет вручную, затем подтвердите кодом.</p>
+          <div id="totp-qr" style="max-width:200px;margin:12px 0;"></div>
+          <div class="field">
+            <label for="totp-secret-text">Секрет (если вводите вручную)</label>
+            <input type="text" id="totp-secret-text" readonly>
+          </div>
+          <div class="field">
+            <label for="totp-code">Код из приложения</label>
+            <input type="text" id="totp-code" inputmode="numeric" placeholder="123456" maxlength="6">
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary btn-sm" id="totp-confirm-btn">Подтвердить и включить</button>
+            <button class="btn btn-ghost btn-sm" id="totp-cancel-btn" type="button">Отмена</button>
+          </div>
+        </div>
+
+        <div id="totp-enabled-block" style="display:none;">
+          <p style="color:var(--ok);font-weight:600;">2FA включена.</p>
+          <div class="field">
+            <label for="totp-disable-password">Пароль (чтобы отключить)</label>
+            <input type="password" id="totp-disable-password">
+          </div>
+          <button class="btn btn-ghost btn-sm" id="totp-disable-btn">Отключить 2FA</button>
+        </div>
+      </section>
+
+      <section class="cabinet-card">
         <h3>История сверок ТЗ</h3>
         <div id="tz-history-list" class="tz-history-list"></div>
       </section>
@@ -213,9 +247,67 @@
       </div>`).join("") : `<div class="cabinet-empty">Пока нет сверок — откройте закупку в ленте и нажмите «Сверить своё ТЗ».</div>`;
   }
 
+  // ---------- 2FA ----------
+
+  async function loadTotpStatus() {
+    const me = await LK.apiGet("/api/auth/me");
+    const enabled = me.user.totpEnabled;
+    document.getElementById("totp-enable-btn").style.display = enabled ? "none" : "";
+    document.getElementById("totp-enabled-block").style.display = enabled ? "" : "none";
+    document.getElementById("totp-setup").style.display = "none";
+  }
+
+  document.getElementById("totp-enable-btn").addEventListener("click", async () => {
+    const errBox = document.getElementById("totp-error");
+    errBox.classList.remove("is-visible");
+    try {
+      const r = await LK.apiSend("POST", "/api/auth/2fa/setup");
+      document.getElementById("totp-qr").innerHTML = r.qrSvg;
+      document.getElementById("totp-secret-text").value = r.secret;
+      document.getElementById("totp-code").value = "";
+      document.getElementById("totp-setup").style.display = "";
+      document.getElementById("totp-enable-btn").style.display = "none";
+    } catch (e) {
+      errBox.textContent = e.message || "Не удалось начать настройку 2FA.";
+      errBox.classList.add("is-visible");
+    }
+  });
+
+  document.getElementById("totp-cancel-btn").addEventListener("click", () => {
+    loadTotpStatus();
+  });
+
+  document.getElementById("totp-confirm-btn").addEventListener("click", async () => {
+    const errBox = document.getElementById("totp-error");
+    errBox.classList.remove("is-visible");
+    try {
+      await LK.apiSend("POST", "/api/auth/2fa/confirm", { code: document.getElementById("totp-code").value.trim() });
+      lkToast("2FA включена");
+      loadTotpStatus();
+    } catch (e) {
+      errBox.textContent = e.message || "Неверный код.";
+      errBox.classList.add("is-visible");
+    }
+  });
+
+  document.getElementById("totp-disable-btn").addEventListener("click", async () => {
+    const errBox = document.getElementById("totp-error");
+    errBox.classList.remove("is-visible");
+    try {
+      await LK.apiSend("POST", "/api/auth/2fa/disable", { password: document.getElementById("totp-disable-password").value });
+      document.getElementById("totp-disable-password").value = "";
+      lkToast("2FA отключена");
+      loadTotpStatus();
+    } catch (e) {
+      errBox.textContent = e.message || "Не удалось отключить 2FA.";
+      errBox.classList.add("is-visible");
+    }
+  });
+
   loadCompany();
   loadEmployees();
   loadTzHistory();
+  loadTotpStatus();
 })();
 </script>
 </body>

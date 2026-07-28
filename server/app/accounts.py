@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, EmailStr
 
-from app import auth, db, ratelimit
+from app import auth, db, ratelimit, totp
 
 router = APIRouter(prefix="/api")
 basic = HTTPBasic()
@@ -64,10 +64,26 @@ class TzCheckBody(BaseModel):
     verdict: str = ""
 
 
+class TotpConfirmBody(BaseModel):
+    code: str
+
+
+class TotpDisableBody(BaseModel):
+    password: str
+
+
+class TotpVerifyLoginBody(BaseModel):
+    tempToken: str
+    code: str
+
+
 # ---------- вспомогательное ----------
 
 def _row_to_user(row) -> dict:
-    return {"id": row["id"], "name": row["name"], "email": row["email"], "role": row["role"]}
+    return {
+        "id": row["id"], "name": row["name"], "email": row["email"], "role": row["role"],
+        "totpEnabled": bool(row["totp_enabled"]),
+    }
 
 
 def _row_to_company(row) -> dict:
@@ -165,6 +181,34 @@ def login(body: LoginBody, request: Request, response: Response):
             raise HTTPException(status_code=401, detail="Неверная почта или пароль")
         ratelimit.reset_login(ip, email)  # верный пароль обнуляет счётчик
 
+        if user_row["totp_enabled"]:
+            # пароль верный, но нужен код 2FA — сессию пока НЕ выдаём
+            token = totp.create_pending(user_row["id"])
+            return {"needsTotp": True, "tempToken": token}
+
+        token = auth.create_session(conn, user_row["id"])
+        auth.set_session_cookie(response, token)
+
+        company_row = conn.execute("SELECT * FROM companies WHERE id = ?", (user_row["company_id"],)).fetchone()
+        return {"user": _row_to_user(user_row), "company": _row_to_company(company_row)}
+    finally:
+        conn.close()
+
+
+@router.post("/auth/2fa/verify-login")
+def verify_login_totp(body: TotpVerifyLoginBody, request: Request, response: Response):
+    ip = ratelimit.client_ip(request)
+    ratelimit.guard_totp(ip)  # 429 ДО проверки кода — 6 цифр перебираются быстро
+    user_id = totp.peek_pending(body.tempToken)  # 401 если истёк/неверный; токен пока не расходуем
+    conn = db.get_conn()
+    try:
+        user_row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user_row or not totp.verify_code(user_row["totp_secret"], body.code):
+            ratelimit.record_totp_failure(ip)
+            raise HTTPException(status_code=401, detail="Неверный код")
+        ratelimit.reset_totp(ip)
+        totp.consume_pending(body.tempToken)  # успех — токен больше не нужен
+
         token = auth.create_session(conn, user_row["id"])
         auth.set_session_cookie(response, token)
 
@@ -193,6 +237,51 @@ def me(lekalo_session: str | None = Cookie(default=None)):
     try:
         company_row = conn.execute("SELECT * FROM companies WHERE id = ?", (user["company_id"],)).fetchone()
         return {"user": _row_to_user(user), "company": _row_to_company(company_row)}
+    finally:
+        conn.close()
+
+
+# ---------- 2FA (настройка из личного кабинета, отдельно от входа) ----------
+
+@router.post("/auth/2fa/setup")
+def setup_totp(lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        # новый секрет пишем сразу, но totp_enabled остаётся 0, пока не подтвердят
+        # кодом — так что незавершённая настройка не может внезапно включить 2FA
+        secret = totp.generate_secret()
+        conn.execute("UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?", (secret, user["id"]))
+        conn.commit()
+        uri = totp.provisioning_uri(secret, user["email"])
+        return {"secret": secret, "otpauthUri": uri, "qrSvg": totp.qr_svg(uri)}
+    finally:
+        conn.close()
+
+
+@router.post("/auth/2fa/confirm")
+def confirm_totp(body: TotpConfirmBody, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        if not user["totp_secret"]:
+            raise HTTPException(status_code=400, detail="Сначала запросите настройку 2FA")
+        if not totp.verify_code(user["totp_secret"], body.code):
+            raise HTTPException(status_code=400, detail="Неверный код — проверьте время на телефоне и попробуйте ещё раз")
+        conn.execute("UPDATE users SET totp_enabled = 1 WHERE id = ?", (user["id"],))
+        conn.commit()
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@router.post("/auth/2fa/disable")
+def disable_totp(body: TotpDisableBody, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        if not auth.verify_password(body.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Неверный пароль")
+        conn.execute("UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?", (user["id"],))
+        conn.commit()
+        return {"ok": True}
     finally:
         conn.close()
 

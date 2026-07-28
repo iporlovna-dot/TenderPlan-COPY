@@ -63,11 +63,32 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 
+# (таблица, [(колонка, DDL-тип-и-дефолт), ...]) — добавляются, если ещё нет.
+# ALTER TABLE ADD COLUMN в SQLite не умеет "IF NOT EXISTS", поэтому проверяем
+# через PRAGMA table_info сами. Нужно, т.к. в проде уже есть реальные компании —
+# пересоздавать таблицу с нуля нельзя.
+MIGRATIONS = [
+    ("users", [
+        ("totp_secret", "TEXT"),
+        ("totp_enabled", "INTEGER NOT NULL DEFAULT 0"),
+    ]),
+]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, columns in MIGRATIONS:
+        existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for name, ddl in columns:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+
+
 def init_db() -> None:
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = get_conn()
     try:
         conn.executescript(SCHEMA)
+        _migrate(conn)
         conn.commit()
     finally:
         conn.close()

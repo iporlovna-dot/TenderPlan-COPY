@@ -32,6 +32,8 @@ LOGIN_EMAIL_MAX = _int("LK_RL_LOGIN_EMAIL_MAX", 5)    # неудачных на 
 LOGIN_EMAIL_WINDOW = _int("LK_RL_LOGIN_EMAIL_WINDOW", 900)  # за 15 минут
 REGISTER_IP_MAX = _int("LK_RL_REGISTER_IP_MAX", 8)    # регистраций с одного IP
 REGISTER_IP_WINDOW = _int("LK_RL_REGISTER_IP_WINDOW", 3600)  # за час
+TOTP_MAX = _int("LK_RL_TOTP_MAX", 8)                  # неудачных кодов 2FA
+TOTP_WINDOW = _int("LK_RL_TOTP_WINDOW", 300)          # за 5 минут (код 6 цифр — жёстче, чем пароль)
 
 # Предохранитель памяти: email в запросе задаёт атакующий, поэтому число ключей
 # ограничиваем — иначе поток разных email раздул бы словарь (DoS через сам лимитер).
@@ -108,6 +110,7 @@ class _Window:
 _login_ip = _Window(LOGIN_IP_MAX, LOGIN_IP_WINDOW)
 _login_email = _Window(LOGIN_EMAIL_MAX, LOGIN_EMAIL_WINDOW)
 _register_ip = _Window(REGISTER_IP_MAX, REGISTER_IP_WINDOW)
+_totp_ip = _Window(TOTP_MAX, TOTP_WINDOW)
 
 
 def client_ip(request: Request) -> str:
@@ -153,3 +156,18 @@ def guard_register(ip: str) -> None:
     key = "ip:" + ip
     if _register_ip.hit(key) > _register_ip.max:
         raise _too_many(_register_ip.retry_after(key))
+
+
+def guard_totp(ip: str) -> None:
+    """Вызывать ДО проверки кода 2FA — 6 цифр перебираются быстро без лимита."""
+    key = "ip:" + ip
+    if _totp_ip.over(key):
+        raise _too_many(_totp_ip.retry_after(key))
+
+
+def record_totp_failure(ip: str) -> None:
+    _totp_ip.hit("ip:" + ip)
+
+
+def reset_totp(ip: str) -> None:
+    _totp_ip.reset("ip:" + ip)
