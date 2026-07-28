@@ -251,8 +251,11 @@
 
   // ---------- фильтрация и поиск ----------
 
+  // «слово» — любая пробежка букв/цифр; всё остальное (пробелы, запятые, дефисы,
+  // №, кавычки) — просто разделитель. Одна и та же функция режет и запрос,
+  // и текст закупки — чтобы по обе стороны сравнения было одинаково.
   function tokens(str) {
-    return (str || "").toLowerCase().split(/[\s,]+/).map(t => t.trim()).filter(Boolean);
+    return [...(str || "").toLowerCase().matchAll(/[а-яёa-z0-9]+/g)].map(m => m[0]);
   }
   // грубый стемминг: отсекаем типичное русское окончание (не ровно 2 буквы — это
   // «клинки» → «клин» ловило «клинику»/«клинический», совсем другие слова).
@@ -280,12 +283,17 @@
     // («…перчатки и прочие аксессуары к одежде…»), из-за чего искали «перчатки»,
     // а находили галстуки — формальное совпадение, а не то, что реально покупают.
     const hay = (p.title + " " + p.customer + " " + p.number).toLowerCase();
+    const hayWords = tokens(hay);
     const plus = tokens(state.query);
     const minus = tokens(state.minus);
-    if (minus.some(m => hay.includes(stem(m)))) return false;
+    // совпадение — по началу слова, а не по любому месту в строке: иначе
+    // короткие запросы вроде «IT» ловят «Security»/«City» (буквы «it» просто
+    // затесались посреди слова), а не только настоящие ИТ-закупки.
+    const matches = (w) => { const s = stem(w); return hayWords.some(hw => hw.startsWith(s)); };
+    if (minus.some(matches)) return false;
     // все слова запроса должны найтись — иначе «строительные материалы» ловит
     // любую закупку со словом «материалы» (хоть горюче-смазочные)
-    if (plus.length && !plus.every(w => hay.includes(stem(w)))) return false;
+    if (plus.length && !plus.every(matches)) return false;
     return true;
   }
 
