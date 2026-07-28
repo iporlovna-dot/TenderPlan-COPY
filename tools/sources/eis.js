@@ -44,7 +44,20 @@ function toIso(s) {
   if (!m) return null;
   return `${m[3]}-${m[2]}-${m[1]}T${m[4] || "23"}:${m[5] || "59"}:00`;
 }
-function stripTags(s) { return (s || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim(); }
+function stripTags(s) {
+  // подсветка найденного слова в поиске рвёт его пополам: «Поставка
+  // <span class="highlightColor">ларингоскоп</span>ов» — span убираем без
+  // пробела (это внутри слова), остальные теги — с пробелом (граница строк).
+  return (s || "")
+    .replace(/<\/?span[^>]*>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")  // последним — иначе «&amp;lt;» распакуется в «<» дважды
+    .replace(/\s+/g, " ")
+    .trim();
+}
 function parsePrice(s) {
   let t = stripTags(s).split("&#")[0].split("₽")[0]; // до символа валюты (&#8381; / ₽)
   t = t.replace(/[^\d,]/g, "").replace(",", ".");
@@ -61,6 +74,39 @@ async function fetchResultsPage(page, searchString) {
     args.push("--data-urlencode", "searchString=" + searchString, "--data", "morphology=on");
   }
   return curlText(RESULTS, args);
+}
+
+// Тот же results.html, но через настоящий Chromium (Playwright), а не curl.
+// Источник глушит поиск (searchString) для голых HTTP-клиентов — тот же самый
+// запрос из настоящего браузера проходит нормально (проверено вручную: curl —
+// «0 записей», Chromium с той же машины в тот же момент — реальные результаты).
+// Общий список (без searchString) источник не глушит — там браузер не нужен,
+// оставляем на curl (быстрее, без веса Chromium).
+function resultsUrl(pageNum, searchString) {
+  const params = new URLSearchParams({
+    fz44: "on", fz223: "on", af: "on", sortBy: "UPDATE_DATE",
+    recordsPerPage: "_50", pageNumber: String(pageNum),
+  });
+  if (searchString) { params.set("searchString", searchString); params.set("morphology", "on"); }
+  return RESULTS + "?" + params.toString();
+}
+async function fetchResultsPageViaBrowser(browserPage, pageNum, searchString) {
+  await browserPage.goto(resultsUrl(pageNum, searchString), { waitUntil: "networkidle", timeout: 30000 });
+  return browserPage.content();
+}
+
+let _browserPromise = null;
+async function getBrowser() {
+  if (!_browserPromise) {
+    const { chromium } = require("playwright");
+    _browserPromise = chromium.launch({ headless: true });
+  }
+  return _browserPromise;
+}
+async function closeBrowser() {
+  if (!_browserPromise) return;
+  try { await (await _browserPromise).close(); } catch (e) { /* уже закрыт/не поднялся */ }
+  _browserPromise = null;
 }
 
 function parseHtmlItems(html) {
@@ -174,12 +220,18 @@ function toPurchase(it, documents, region) {
 
 // Прогоняет постраничный сбор results.html (опционально с ключевым словом) в
 // общий Set/массив items, пока не наберёт take штук или страницы не кончатся.
-async function fetchPool(seen, items, take, searchString, label) {
+// browserPage передан → тянем через Chromium (для поиска), иначе — curl.
+async function fetchPool(seen, items, take, searchString, label, browserPage) {
   const maxPages = Math.ceil(take / 50) + 1;
   let got = 0;
   for (let page = 1; page <= maxPages && got < take; page++) {
     let parsed;
-    try { parsed = parseHtmlItems(await fetchResultsPage(page, searchString)); } catch (e) { break; }
+    try {
+      const html = browserPage
+        ? await fetchResultsPageViaBrowser(browserPage, page, searchString)
+        : await fetchResultsPage(page, searchString);
+      parsed = parseHtmlItems(html);
+    } catch (e) { break; }
     if (!parsed.length) break;
     for (const it of parsed) {
       if (seen.has(it.number)) continue;
@@ -196,17 +248,32 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
 
   // 1) прицельные проходы по ключевым словам — иначе узкие темы (медицина и т.п.)
   // почти не попадают в общий пул «последние обновлённые по всем категориям».
-  // Небольшая пауза между проходами — 30 разных поисковых запросов подряд без
-  // пауз выглядит как обстрел, а не как обычный просмотр; так честнее к источнику.
+  // Через настоящий Chromium (Playwright) — источник глушит поиск для голых HTTP-
+  // клиентов вроде curl (см. комментарий у fetchResultsPageViaBrowser); если
+  // Playwright не поднялся (не установлен на этой машине и т.п.) — тихо откатываемся
+  // на curl, чтобы сборка не падала целиком, просто без гарантии по этим темам.
+  // Пауза между проходами — 30 разных поисковых запросов подряд без пауз выглядит
+  // как обстрел, а не как обычный просмотр; так честнее к источнику.
   const perKeyword = Number(process.env.LK_EIS_KEYWORD_TAKE || 60);
   const KEYWORD_PAUSE_MS = Number(process.env.LK_EIS_KEYWORD_PAUSE_MS || 400);
-  for (const kw of keywords) {
-    await fetchPool(seen, items, perKeyword, kw, `«${kw}»`);
-    await sleep(KEYWORD_PAUSE_MS + Math.floor(Math.random() * KEYWORD_PAUSE_MS));
+  if (keywords.length) {
+    let browserPage = null;
+    try {
+      const browser = await getBrowser();
+      const ctx = await browser.newContext({ locale: "ru-RU" });
+      browserPage = await ctx.newPage();
+    } catch (e) {
+      console.error("ЕИС: Chromium не поднялся, поиск по темам — через curl —", e.message);
+    }
+    for (const kw of keywords) {
+      await fetchPool(seen, items, perKeyword, kw, `«${kw}»`, browserPage);
+      await sleep(KEYWORD_PAUSE_MS + Math.floor(Math.random() * KEYWORD_PAUSE_MS));
+    }
   }
 
-  // 2) общий список — для широты охвата остальных тем
+  // 2) общий список (без поиска) — источник не глушит, оставляем на curl (дешевле)
   await fetchPool(seen, items, listLimit, undefined, "список");
+  await closeBrowser();
 
   // только с будущим сроком, ближайшие сверху
   const now = Date.now();
