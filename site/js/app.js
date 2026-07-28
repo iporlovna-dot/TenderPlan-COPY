@@ -111,6 +111,10 @@ const LK = (() => {
         const saved = await apiGet("/api/saved");
         localStorage.setItem(KEY_SAVED, JSON.stringify(saved));
       } catch { /* избранное недоступно — оставляем локальный кэш как есть */ }
+      try {
+        const searches = await apiGet("/api/searches");
+        localStorage.setItem(KEY_SEARCHES, JSON.stringify(searches));
+      } catch { /* сохранённые поиски недоступны — оставляем локальный кэш как есть */ }
     } catch {
       hasServerSession = false;  // демо или ещё не вошли — обычный локальный режим
     }
@@ -148,17 +152,24 @@ const LK = (() => {
     s.id = "srch_" + Math.random().toString(36).slice(2, 9);
     list.push(s);
     setSearches(list);
+    if (hasServerSession) apiSend("POST", "/api/searches", { ...s }).catch(() => {});
     return s;
   }
   function updateSearch(id, patch) {
     const list = getSearches();
     const i = list.findIndex(s => s.id === id);
-    if (i >= 0) { list[i] = { ...list[i], ...patch }; setSearches(list); return list[i]; }
+    if (i >= 0) {
+      list[i] = { ...list[i], ...patch };
+      setSearches(list);
+      if (hasServerSession) apiSend("PATCH", "/api/searches/" + id, patch).catch(() => {});
+      return list[i];
+    }
     return null;
   }
   function deleteSearch(id) {
     setSearches(getSearches().filter(s => s.id !== id));
     if (localStorage.getItem(KEY_CURRENT_SEARCH) === id) localStorage.removeItem(KEY_CURRENT_SEARCH);
+    if (hasServerSession) apiSend("DELETE", "/api/searches/" + id).catch(() => {});
   }
   function getCurrentSearchId() { return localStorage.getItem(KEY_CURRENT_SEARCH) || null; }
   function setCurrentSearchId(id) {

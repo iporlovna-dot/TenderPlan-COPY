@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS tz_checks (
     verdict TEXT,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS searches (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    query TEXT NOT NULL DEFAULT '',
+    minus TEXT NOT NULL DEFAULT '',
+    filters TEXT NOT NULL DEFAULT '{}',
+    new_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 """
 
 

@@ -77,6 +77,22 @@ class TotpVerifyLoginBody(BaseModel):
     code: str
 
 
+class SearchCreate(BaseModel):
+    id: str  # клиент генерирует (как и раньше в localStorage) — проще синхронного создания
+    name: str
+    query: str = ""
+    minus: str = ""
+    filters: dict = {}
+
+
+class SearchUpdate(BaseModel):
+    name: str | None = None
+    query: str | None = None
+    minus: str | None = None
+    filters: dict | None = None
+    newCount: int | None = None
+
+
 # ---------- вспомогательное ----------
 
 def _row_to_user(row) -> dict:
@@ -452,6 +468,89 @@ def add_tz_check(body: TzCheckBody, lekalo_session: str | None = Cookie(default=
             (user["id"], body.purchaseId, body.purchaseNumber, body.purchaseTitle, body.score, body.verdict,
              datetime.now(timezone.utc).isoformat()),
         )
+        conn.commit()
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+# ---------- сохранённые поиски (личные, привязаны к user_id) ----------
+
+def _row_to_search(row) -> dict:
+    try:
+        filters = json.loads(row["filters"])
+    except (TypeError, ValueError):
+        filters = {}
+    return {
+        "id": row["id"], "name": row["name"], "query": row["query"], "minus": row["minus"],
+        "filters": filters, "newCount": row["new_count"],
+    }
+
+
+@router.get("/searches")
+def list_searches(lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        rows = conn.execute(
+            "SELECT * FROM searches WHERE user_id = ? ORDER BY created_at", (user["id"],)
+        ).fetchall()
+        return [_row_to_search(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@router.post("/searches")
+def create_search(body: SearchCreate, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO searches (id, user_id, name, query, minus, filters, new_count, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
+            (body.id, user["id"], body.name.strip(), body.query, body.minus,
+             json.dumps(body.filters, ensure_ascii=False), datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM searches WHERE id = ?", (body.id,)).fetchone()
+        return _row_to_search(row)
+    finally:
+        conn.close()
+
+
+@router.patch("/searches/{search_id}")
+def update_search(search_id: str, body: SearchUpdate, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        existing = conn.execute(
+            "SELECT * FROM searches WHERE id = ? AND user_id = ?", (search_id, user["id"])
+        ).fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Поиск не найден")
+        fields, params = [], []
+        if body.name is not None:
+            fields.append("name = ?"); params.append(body.name.strip())
+        if body.query is not None:
+            fields.append("query = ?"); params.append(body.query)
+        if body.minus is not None:
+            fields.append("minus = ?"); params.append(body.minus)
+        if body.filters is not None:
+            fields.append("filters = ?"); params.append(json.dumps(body.filters, ensure_ascii=False))
+        if body.newCount is not None:
+            fields.append("new_count = ?"); params.append(body.newCount)
+        if fields:
+            params.append(search_id)
+            conn.execute(f"UPDATE searches SET {', '.join(fields)} WHERE id = ?", params)
+            conn.commit()
+        row = conn.execute("SELECT * FROM searches WHERE id = ?", (search_id,)).fetchone()
+        return _row_to_search(row)
+    finally:
+        conn.close()
+
+
+@router.delete("/searches/{search_id}")
+def delete_search(search_id: str, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        conn.execute("DELETE FROM searches WHERE id = ? AND user_id = ?", (search_id, user["id"]))
         conn.commit()
         return {"ok": True}
     finally:
