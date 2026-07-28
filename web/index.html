@@ -121,14 +121,25 @@
   .pill.urg-mid{color:var(--amber); border-color:rgba(246,181,69,.3);}
   .go{white-space:nowrap; font-weight:600; font-size:14px; color:var(--mint); display:inline-flex; align-items:center; gap:6px; transition:.15s;}
   .lead:hover .go{gap:10px;}
+  .expl{grid-column:1/-1; margin-top:4px; padding-top:12px; border-top:1px solid var(--line);
+    color:var(--mut); font-size:13.5px; line-height:1.5;}
+  .expl-toggle{cursor:pointer; color:var(--faint); font-size:12.5px; margin-top:9px; user-select:none;}
+  .expl-toggle:hover{color:var(--mint);}
 
   .empty{padding:44px 20px; text-align:center; color:var(--mut); border:1px dashed var(--line); border-radius:var(--r);}
   .empty .big{font-family:var(--disp); font-size:18px; color:var(--ink); margin-bottom:6px;}
   .hidden{display:none!important;}   /* важно: перебивает display у #authScreen (ID > класс) */
   @media(max-width:640px){
-    .lead{grid-template-columns:72px 1fr; gap:14px;}
-    .lead .go{grid-column:2; justify-content:flex-start;}
-    .authbox .hero{font-size:38px;}
+    .wrap{padding:0 15px;}
+    header .bar{padding:12px 15px;}
+    .lead{grid-template-columns:64px 1fr; gap:13px; padding:15px;}
+    .lead .go{grid-column:2; justify-content:flex-start; margin-top:2px;}
+    .expl{grid-column:1/-1;}
+    .sbox .num{font-size:28px;}
+    .authbox .hero{font-size:34px;}
+    .sect-h{flex-wrap:wrap; gap:10px;}
+    .pcard{min-width:0; flex:1 1 100%;}
+    .lmain h4{font-size:15.5px;}
   }
 </style>
 </head>
@@ -292,10 +303,13 @@ async function loadLeads(){
       '<div class="cust">'+esc(l.customer||"заказчик —")+'</div>'+
       '<div class="pills"><span class="pill price">'+fmtPrice(l.price)+'</span>'+
       '<span class="pill '+d.u+'">'+d.t+'</span>'+
-      (l.region?'<span class="pill">регион '+esc(l.region)+'</span>':'')+'</div></div>'+
-      '<a class="go" href="'+l.url+'" target="_blank">Открыть →</a></div>';
+      (l.region?'<span class="pill">регион '+esc(l.region)+'</span>':'')+'</div>'+
+      (l.explanation?'<div class="expl-toggle" onclick="toggleExpl('+i+')">разбор ▾</div>':'')+'</div>'+
+      '<a class="go" href="'+l.url+'" target="_blank">Открыть →</a>'+
+      (l.explanation?'<div class="expl hidden" id="expl'+i+'">'+esc(l.explanation)+'</div>':'')+'</div>';
   }).join("");
 }
+function toggleExpl(i){ const e=document.getElementById("expl"+i); if(e) e.classList.toggle("hidden"); }
 function toggleAdd(){ document.getElementById("addForm").classList.toggle("hidden"); }
 async function addProduct(){
   addErr.textContent=""; let attrs=[]; const raw=document.getElementById("pattrs").value.trim();
