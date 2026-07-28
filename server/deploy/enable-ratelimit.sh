@@ -8,10 +8,23 @@
 set -euo pipefail
 
 SITE="/etc/nginx/sites-available/lekalo"
+ENABLED="/etc/nginx/sites-enabled/lekalo"
 DROPIN="/etc/nginx/conf.d/lekalo-limits.conf"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 [ -f "$SITE" ] || { echo "НЕТ $SITE — сперва деплой сайта (DEPLOY.md шаг 5)"; exit 1; }
+
+# sites-enabled/lekalo ДОЛЖЕН быть симлинком на $SITE, иначе правки сюда уходят
+# в никуда: nginx грузит sites-enabled, а не sites-available (было 2026-07-28 —
+# скрипт молча правил не тот файл, nginx -t/reload проходили, лимит не работал).
+if [ ! -L "$ENABLED" ] || [ "$(readlink -f "$ENABLED")" != "$(readlink -f "$SITE")" ]; then
+  echo "!! $ENABLED — не симлинк на $SITE (разошлись) — чиню"
+  [ -e "$ENABLED" ] && cp "$ENABLED" "/root/nginx-backups/lekalo-enabled-$(date +%s).bak" 2>/dev/null \
+    || { mkdir -p /root/nginx-backups; cp "$ENABLED" "/root/nginx-backups/lekalo-enabled-$(date +%s).bak" 2>/dev/null; }
+  rm -f "$ENABLED"
+  ln -s "$SITE" "$ENABLED"
+  echo "-- симлинок восстановлен: $ENABLED -> $SITE --"
+fi
 
 # 1) зоны в http-контекст (из версии в репо)
 cp "$HERE/nginx-lekalo-limits.conf" "$DROPIN"
