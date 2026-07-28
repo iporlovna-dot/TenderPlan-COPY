@@ -12,7 +12,7 @@
 //
 // Экспортирует async collectEis(listLimit, docsLimit, keywords).
 
-const { curlAsync, mapLimit } = require("./util");
+const { curlAsync, mapLimit, sleep } = require("./util");
 
 const RESULTS = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html";
 const DAY = 86400000;
@@ -195,10 +195,14 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   let items = [];
 
   // 1) прицельные проходы по ключевым словам — иначе узкие темы (медицина и т.п.)
-  // почти не попадают в общий пул «последние обновлённые по всем категориям»
+  // почти не попадают в общий пул «последние обновлённые по всем категориям».
+  // Небольшая пауза между проходами — 30 разных поисковых запросов подряд без
+  // пауз выглядит как обстрел, а не как обычный просмотр; так честнее к источнику.
   const perKeyword = Number(process.env.LK_EIS_KEYWORD_TAKE || 60);
+  const KEYWORD_PAUSE_MS = Number(process.env.LK_EIS_KEYWORD_PAUSE_MS || 400);
   for (const kw of keywords) {
     await fetchPool(seen, items, perKeyword, kw, `«${kw}»`);
+    await sleep(KEYWORD_PAUSE_MS + Math.floor(Math.random() * KEYWORD_PAUSE_MS));
   }
 
   // 2) общий список — для широты охвата остальных тем

@@ -14,7 +14,14 @@ function curlOnce(args) {
     // -s (тихий прогресс) + -S (но ошибки всё же печатать) — раньше -s одна
     // глушила и реальный текст ошибки curl, поэтому сбои были нечитаемыми
     // ("Command failed: curl ..." без причины).
-    execFile("curl", ["-s", "-S", "-A", UA, "--max-time", "30", ...args],
+    // Accept/Accept-Language — обычный браузер их шлёт, простой curl — нет;
+    // без деанонимизации, просто честный набор заголовков реального клиента.
+    execFile("curl", [
+      "-s", "-S", "-A", UA,
+      "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "-H", "Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+      "--max-time", "30", ...args,
+    ],
       { maxBuffer: 40 * 1024 * 1024, encoding: "utf8" },
       // node сам подставляет stderr в err.message при ненулевом коде возврата —
       // достаточно, что -S заставляет curl вообще что-то туда написать.
@@ -56,4 +63,4 @@ async function mapLimit(arr, limit, fn, onDone) {
   return ret;
 }
 
-module.exports = { curlAsync, mapLimit, UA };
+module.exports = { curlAsync, mapLimit, sleep, UA };

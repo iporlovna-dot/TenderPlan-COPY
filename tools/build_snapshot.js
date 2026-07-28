@@ -17,7 +17,10 @@ const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
 
 const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 500);
-const EIS_LIST = Number(process.env.LK_EIS_TAKE || 900);   // сколько ЕИС тянуть списком (дёшево)
+// общий список (без поиска по словам) — сейчас единственный канал ЕИС, который
+// не задет антибот-мерой на поиск (см. plan.md); подняли повыше как страховку,
+// чтобы редкие темы всё же попадали в снапшот хоть по объёму, если поиск глушится
+const EIS_LIST = Number(process.env.LK_EIS_TAKE || 2000);
 const EIS_DOCS = Number(process.env.LK_EIS_DOCS || 150);   // для скольких ближайших качать документы
 // прицельные проходы по темам (полнотекстовый поиск ЕИС), поверх общего списка —
 // иначе узкие темы почти не попадают в топ «последних обновлённых по всей РФ»
