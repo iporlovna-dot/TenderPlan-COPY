@@ -248,6 +248,18 @@ def _to_purchase(t: dict) -> Purchase:
     customer = customers[0].get("name", "") if customers and isinstance(customers[0], dict) else ""
     codes_okpd = _as_str_list(t.get("okpd2")) + _as_str_list(t.get("okpd"))
     region = t.get("region")
+
+    def _place(o):
+        """Первое место поставки как текст (garDeliveryPlaces/deliveryPlaces — списки)."""
+        for key in ("garDeliveryPlaces", "deliveryPlaces"):
+            lst = t.get(key) or []
+            if lst:
+                p0 = lst[0]
+                if isinstance(p0, dict):
+                    return str(p0.get("address") or p0.get("name") or p0.get("fullName") or "")
+                return str(p0)
+        return ""
+
     return Purchase(
         id=str(t.get("_id") or t.get("id") or ""),
         subject=str(t.get("orderName") or ""),
@@ -259,6 +271,19 @@ def _to_purchase(t: dict) -> Purchase:
         attachments=[],
         region=str(region) if region not in (None, "") else None,
         submission_close=t.get("submissionCloseDateTime"),  # epoch ms
+        # обвязка контракта для карточки (§Этап 1); в getlist часть полей нет — полны в fullinfo
+        reg_number=str(t.get("number") or ""),
+        href=str(t.get("href") or ""),
+        publication_date=t.get("publicationDateTime"),
+        submission_start=t.get("submissionStartDateTime"),
+        bidding_date=t.get("biddingDateTime"),
+        summing_up_date=t.get("summingUpDateTime"),
+        guarantee_app=_as_float(t.get("guaranteeApp")),
+        guarantee_contract=_as_float(t.get("guaranteeContract")),
+        prepayment=_as_float(t.get("prepayment")),
+        smp=bool(t.get("smp")),
+        delivery_place=_place(t),
+        placing_way=str(t.get("placingWay") or ""),
     )
 
 

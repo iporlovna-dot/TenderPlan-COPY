@@ -177,6 +177,16 @@ def main():
             print("    текст ТЗ сохранён: %s (%d симв.)" % (tz_path, len(tz_text)))
             continue
 
+        # Обогатить карточку контракта из fullinfo (в getlist нет части полей: итоги,
+        # обеспечения, аванс, ссылка). Один запрос на финалиста — их немного; не критично.
+        try:
+            full = source.get_tender(purchase.id)
+            if full and full.id:
+                full.subject = full.subject or purchase.subject
+                purchase = full
+        except Exception as e:
+            print("    обогащение карточки пропущено: %s" % type(e).__name__)
+
         # Шаг 6: извлечь требования (Claude), СКОУП по позиции товара в многолоте (§3.4a).
         # Иначе товар из одной позиции скорился бы против требований ВСЕГО лота (чужие
         # позиции → «пробелы» → заниженный %). Кэш «индекс позиции → требования»: на лот
@@ -233,6 +243,8 @@ def main():
                     # профиля → API пересчитывает % без повторного извлечения (§Этап 1)
                     "requirements": aligned,
                     "synonyms": profile.get("synonyms") or {},
+                    # наглядная карточка контракта (даты, обеспечения, аванс, ссылка) — §Этап 1
+                    "card": purchase.contract_card(),
                 }, f, ensure_ascii=False, indent=2)
 
     source.close()

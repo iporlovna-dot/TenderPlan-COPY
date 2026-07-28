@@ -126,3 +126,29 @@ class Purchase:
     law: str = ""                          # 44-ФЗ | 223-ФЗ
     region: Optional[str] = None           # код региона (напр. "77" — Москва) — фильтр воронки
     submission_close: Optional[int] = None  # дедлайн подачи заявок, epoch ms — фильтр воронки
+    # --- обвязка контракта для наглядной карточки в ленте (§Этап 1) — все epoch ms / ₽ ---
+    reg_number: str = ""                   # реестровый номер закупки (для ссылки на ЕИС)
+    href: str = ""                         # ссылка на закупку (zakupki.gov.ru)
+    publication_date: Optional[int] = None  # дата публикации извещения
+    submission_start: Optional[int] = None  # начало приёма заявок
+    bidding_date: Optional[int] = None     # дата проведения торгов/аукциона
+    summing_up_date: Optional[int] = None  # дата подведения итогов
+    guarantee_app: Optional[float] = None  # обеспечение заявки, ₽
+    guarantee_contract: Optional[float] = None  # обеспечение исполнения контракта, ₽
+    prepayment: Optional[float] = None     # аванс, ₽ (или %)
+    smp: bool = False                      # закупка только для СМП/СОНКО
+    delivery_place: str = ""               # место поставки (текст)
+    placing_way: str = ""                  # способ определения поставщика (код/название)
+
+    def contract_card(self) -> dict:
+        """Плоская карточка контракта для ленты/API (то, что показываем поставщику)."""
+        return {
+            "reg_number": self.reg_number, "href": self.href, "customer": self.customer,
+            "nmck": self.price, "region": self.region, "delivery_place": self.delivery_place,
+            "placing_way": self.placing_way, "smp": self.smp,
+            "publication_date": self.publication_date, "submission_start": self.submission_start,
+            "submission_close": self.submission_close, "bidding_date": self.bidding_date,
+            "summing_up_date": self.summing_up_date,
+            "guarantee_app": self.guarantee_app, "guarantee_contract": self.guarantee_contract,
+            "prepayment": self.prepayment,
+        }

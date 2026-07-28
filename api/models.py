@@ -75,6 +75,8 @@ class Lead(Base):
     # дозаполнении пробелов клиентом (§Этап 1, фича founder). Пишет ingest из run_auto.
     requirements_json: Mapped[str] = mapped_column(Text, default="[]")
     synonyms_json: Mapped[str] = mapped_column(Text, default="{}")
+    # наглядная карточка контракта (даты, обеспечения, аванс, ссылка) — §Этап 1
+    card_json: Mapped[str] = mapped_column(Text, default="{}")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
     __table_args__ = (UniqueConstraint("product_id", "purchase_id", name="uq_product_purchase"),)

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from api.db import get_db
 from api.deps import get_current_user
 from api.models import Lead, Product, User
-from api.schemas import CheckOut, GapFillIn, LeadDetailOut, LeadOut
+from api.schemas import CheckOut, ContractCard, GapFillIn, LeadDetailOut, LeadOut
 from gapfill import recompute
 
 router = APIRouter(prefix="/products", tags=["leads"])
@@ -24,6 +24,19 @@ def _days_left(submission_close):
     if not submission_close:
         return None
     return round((submission_close / 1000.0 - time.time()) / 86400.0, 1)
+
+
+def _card(lead: Lead):
+    """Карточка контракта из card_json + расчёт «дней до окончания подачи». None, если пусто."""
+    d = json.loads(lead.card_json or "{}")
+    if not d:
+        return None
+    d = {k: v for k, v in d.items() if k in ContractCard.model_fields}
+    d["days_to_submission"] = _days_left(d.get("submission_close"))
+    try:
+        return ContractCard(**d)
+    except Exception:
+        return None
 
 
 def _load_product_lead(product_id: int, purchase_id: str, user: User, db: Session):
@@ -48,6 +61,7 @@ def _detail(lead: Lead, res, attrs: list) -> LeadDetailOut:
                 for c in res.checks],
         gaps=[c.req.key for c in res.checks if c.status.value == "gap"],
         attributes=attrs,
+        card=_card(lead),
     )
 
 
@@ -78,7 +92,7 @@ def product_leads(product_id: int, min_score: int = Query(default=60, ge=0, le=1
         purchase_id=r.purchase_id, subject=r.subject, customer=r.customer, price=r.price,
         region=r.region, submission_close=r.submission_close,
         days_left=_days_left(r.submission_close), url=r.url, score=r.score,
-        verdict=r.verdict, explanation=r.explanation,
+        verdict=r.verdict, explanation=r.explanation, card=_card(r),
     ) for r in rows]
 
 

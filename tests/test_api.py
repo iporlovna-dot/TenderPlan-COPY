@@ -93,7 +93,15 @@ def run():
                     "hardness": "soft", "type": "technical", "raw": "Источник света - LED"},
                    {"key": "угол_обзора", "operator": "gte", "value": 60, "unit": "°",
                     "hardness": "soft", "type": "technical", "raw": "Угол обзора не менее 60"}],
-               "synonyms": {}},
+               "synonyms": {},
+               # наглядная карточка контракта
+               "card": {"reg_number": "0358300081226000236", "href": "https://zakupki.gov.ru/x",
+                        "customer": "ГУЗ КБ СМП №7", "nmck": 489510.0, "region": "64",
+                        "delivery_place": "г. Саратов", "placing_way": "15", "smp": False,
+                        "publication_date": 1785233243000, "submission_start": 1785233245138,
+                        "submission_close": 1785909600000, "bidding_date": 1785916800000,
+                        "summing_up_date": 1786050000000, "guarantee_app": None,
+                        "guarantee_contract": 21363.504, "prepayment": None}},
               open(os.path.join(rdir, "v1.json"), "w"))
     n = ingest_results(db, rdir, cid)
     db.close()
@@ -102,6 +110,15 @@ def run():
     leads = client.get("/products/%d/leads?min_score=60" % pid, headers=_auth(tok_a))
     r.append(check("A видит лид 88%", leads.status_code == 200 and len(leads.json()) == 1
                    and leads.json()[0]["score"] == 88))
+
+    # карточка контракта в ленте (§Этап 1)
+    card = leads.json()[0].get("card")
+    r.append(check("лид несёт карточку контракта", card is not None))
+    r.append(check("реестровый номер в карточке", card and card["reg_number"] == "0358300081226000236"))
+    r.append(check("обеспечение контракта в карточке", card and card["guarantee_contract"] == 21363.504))
+    r.append(check("дата торгов в карточке", card and card["bidding_date"] == 1785916800000))
+    r.append(check("дата подведения итогов в карточке", card and card["summing_up_date"] == 1786050000000))
+    r.append(check("дней до подачи рассчитано", card and card["days_to_submission"] is not None))
     r.append(check("B не видит ленту товара A → 404",
                    client.get("/products/%d/leads" % pid, headers=_auth(tok_b)).status_code == 404))
 
