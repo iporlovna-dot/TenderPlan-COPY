@@ -42,7 +42,7 @@ async function mapItem(it) {
   const aid = it.auctionId;
 
   let documents = [];
-  let lots = [{ name: it.name || "Позиция", qty: "—", price }];
+  let lots = [{ name: it.name || "Позиция", qty: "—", unit: "", price }];
   let okpd = "";
   let deliveryDays = null;
   let deliveryPlace = "";
@@ -54,7 +54,9 @@ async function mapItem(it) {
     if (Array.isArray(card.items) && card.items.length) {
       lots = card.items.map(i => ({
         name: i.name || "Позиция", qty: String(i.currentValue ?? "—"),
-        price: Number(i.costPerUnit) || 0, okpd: i.okpdName || "",
+        unit: i.okeiName || "",           // единица измерения (шт/упак/чел…) из ОКЕИ
+        price: Number(i.costPerUnit) || 0, // costPerUnit = цена за ЕДИНИЦУ, не сумма
+        okpd: i.okpdName || "",
       }));
       okpd = lots[0].okpd || "";
     }

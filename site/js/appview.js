@@ -169,11 +169,34 @@
     document.getElementById("f-source").value = state.filters.source;
   }
 
+  // Регион приводим к субъекту РФ: район/город внутри области сворачиваем до самой
+  // области, чтобы в фильтре не плодились «р-н Боровичский» и т.п. рядом с самой
+  // «Новгородской областью». Клиентская нормализация текущего снапшота; карта
+  // легко расширяется по мере появления новых районов в данных.
+  const REGION_ROLLUP = {
+    "р-н боровичский": "Новгородская область",
+    "р-н хвойнинский": "Новгородская область",
+    "р-н красновишерский": "Пермский край",
+    "г. кемерово": "Кемеровская область - Кузбасс",
+    "г. сургут": "Ханты-Мансийский автономный округ - Югра",
+  };
+  const FED_CITIES_RE = /^г\.?\s*(москва|санкт[- ]петербург|севастополь)$/i;
+  const SUBJECT_RE = /(облас|край|республик|автономн|округ|кузбасс)/i;
+  function canonicalRegion(r) {
+    const s = (r || "").trim();
+    if (!s) return "";
+    const rolled = REGION_ROLLUP[s.toLowerCase()];
+    if (rolled) return rolled;
+    if (FED_CITIES_RE.test(s)) return s.replace(/^г\.?\s*/i, "г. ");
+    if (SUBJECT_RE.test(s)) return s;   // уже субъект РФ — оставляем как есть
+    return "";                          // район/город без известного субъекта → не мусорим фильтр
+  }
+
   // регион и площадка — из реальных данных
   function populateFacets() {
     const all = LK.allPurchases();
     fillSelect("f-region", "all", "Вся РФ",
-      [...new Set(all.map(p => p.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru")));
+      [...new Set(all.map(p => canonicalRegion(p.region)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru")));
     fillSelect("f-source", "all", "Все площадки",
       [...new Set(all.map(p => p.source).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru")));
   }
@@ -358,7 +381,7 @@
       const hay = (p.customer + " " + (p.customerInn || "")).toLowerCase();
       if (!hay.includes(f.customer.toLowerCase())) return false;
     }
-    if (f.region !== "all" && p.region !== f.region) return false;
+    if (f.region !== "all" && canonicalRegion(p.region) !== f.region) return false;
     if (f.delivery !== "all") {
       const max = Number(f.delivery);
       // неизвестный срок поставки не прячем
@@ -395,6 +418,28 @@
     return p.stage;
   }
 
+  // Точный остаток до конца подачи (дни/часы/минуты) — от текущего момента по endDate.
+  function remainingText(p) {
+    if (!p.endDate) return "";
+    const ms = new Date(p.endDate).getTime() - Date.now();
+    if (ms <= 0) return "срок истёк";
+    const d = Math.floor(ms / DAY_MS);
+    const h = Math.floor((ms % DAY_MS) / 3600000);
+    const mi = Math.floor((ms % 3600000) / 60000);
+    if (d >= 1) return `${d} ${lkPlural(d, ["день","дня","дней"])} ${h} ${lkPlural(h, ["час","часа","часов"])}`;
+    if (h >= 1) return `${h} ${lkPlural(h, ["час","часа","часов"])} ${mi} ${lkPlural(mi, ["минуту","минуты","минут"])}`;
+    return `${mi} ${lkPlural(mi, ["минуту","минуты","минут"])}`;
+  }
+
+  // Ссылка «Открыть на площадке». Битые ссылки ЕИС 44-ФЗ, застрявшие в текущем
+  // снапшоте (printForm/listModal.html — модалка печати, не карточка), подменяем на
+  // печатную форму view.html — она хотя бы показывает саму закупку. Новый снапшот
+  // уже отдаёт корректный common-info (см. tools/sources/eis.js).
+  function platformHref(p) {
+    const h = p.href || "";
+    return h.replace(/printForm\/listModal\.html/i, "printForm/view.html");
+  }
+
   function highlight(text) {
     let out = lkEscape(text);
     const plus = tokens(state.query);
@@ -417,6 +462,7 @@
 
   function deadlineText(p) {
     if (liveStage(p) === "active") {
+      if (p.endDate) return `<span class="deadline">до конца подачи: <b>${remainingText(p)}</b></span>`;
       const d = Math.max(1, daysLeft(p));
       return `<span class="deadline"><b>${d}</b> ${lkPlural(d, ["день","дня","дней"])} до конца подачи</span>`;
     }
@@ -473,14 +519,41 @@
       </div>`;
   }
 
+  // количество товара + единица измерения («6 шт», «12 000 пар»); «—» если неизвестно
+  function lotQty(l) {
+    const q = (l.qty == null ? "" : String(l.qty)).trim();
+    if (!q || q === "—") return "—";
+    return l.unit ? `${lkEscape(q)} ${lkEscape(l.unit)}` : lkEscape(q);
+  }
+  // цена за ЕДИНИЦУ: Портал уже отдаёт costPerUnit (l.price = за единицу); у ЕИС и
+  // прочих l.price — сумма строки, делим на количество, если оно числовое; иначе «—».
+  function lotUnitPrice(p, l) {
+    const isPortal = /mos\.ru|Портал/i.test(p.source || "");
+    if (isPortal) return l.price;
+    const qn = parseFloat(String(l.qty).replace(/\s/g, "").replace(",", "."));
+    if (qn > 0 && isFinite(qn)) return l.price / qn;
+    return null;
+  }
+
   function purchaseDetail(p, m) {
-    const lots = p.lots.map((l, i) => `
+    const lotsHead = `
+      <div class="lot-line lot-head">
+        <span class="lot-line__idx"></span>
+        <span class="lot-line__name">Позиция</span>
+        <span class="lot-line__qty">Количество товара</span>
+        <span class="lot-line__price">Цена за единицу</span>
+      </div>`;
+    const lotsRows = p.lots.map((l, i) => {
+      const up = lotUnitPrice(p, l);
+      return `
       <div class="lot-line">
         <span class="lot-line__idx">${p.lots.length > 1 ? (i + 1) + "." : "•"}</span>
         <span class="lot-line__name">${lkEscape(l.name)}</span>
-        <span class="lot-line__qty">${lkEscape(l.qty)}</span>
-        <span class="lot-line__price">${lkFormatMoney(l.price)}</span>
-      </div>`).join("");
+        <span class="lot-line__qty">${lotQty(l)}</span>
+        <span class="lot-line__price">${up == null ? "—" : lkFormatMoney(Math.round(up))}</span>
+      </div>`;
+    }).join("");
+    const lots = lotsHead + lotsRows;
 
     const facts = [
       ["НМЦК", lkFormatMoney(p.price)],
@@ -489,7 +562,7 @@
       ["Аванс", p.prepayment ? p.prepayment + "%" : "нет"],
       ["Срок поставки", p.deliveryDays != null ? `${p.deliveryDays} ${lkPlural(p.deliveryDays, ["день","дня","дней"])}` : "—"],
       ["Опубликована", p.publishedDaysAgo === 0 ? "сегодня" : `${p.publishedDaysAgo} ${lkPlural(p.publishedDaysAgo, ["день","дня","дней"])} назад`],
-      ["Место поставки", p.deliveryPlace || p.region || "—"]
+      ["Место поставки", p.deliveryPlace || canonicalRegion(p.region) || "—"]
     ].map(([k, v]) => `<div class="fact"><span class="fact__k">${k}</span><span class="fact__v">${lkEscape(String(v))}</span></div>`).join("");
 
     const docsHtml = (p.documents && p.documents.length) ? `
@@ -515,9 +588,8 @@
         ${analyticsDetail(p)}
         <div class="tender-actions">
           ${p.href
-            ? `<a class="btn btn-primary btn-sm" href="${lkEscape(p.href)}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
+            ? `<a class="btn btn-primary btn-sm" href="${lkEscape(platformHref(p))}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
             : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:not-allowed;" title="Ссылка на площадку недоступна">Ссылка недоступна</span>`}
-          <a class="btn btn-ghost btn-sm" data-tz="${p.id}" href="#">Сверить своё ТЗ</a>
         </div>
       </div>`;
   }
@@ -547,7 +619,7 @@
           <div class="tender-meta">
             <span><b>№${p.number}</b></span>
             <span>${lkEscape(p.customer)}</span>
-            ${p.region ? `<span>${lkEscape(p.region)}</span>` : ""}
+            ${canonicalRegion(p.region) ? `<span>${lkEscape(canonicalRegion(p.region))}</span>` : ""}
             ${p.okpd ? `<span>ОКПД2 ${lkEscape(p.okpd)}</span>` : ""}
           </div>
           <div class="tender-meta tender-meta--strong">
@@ -614,7 +686,7 @@
     // «Мои конкурсы» — сохранённые (просроченные не прячем); иначе — лента без просроченных
     let list = savedView
       ? LK.getSaved().filter(passesSearch)
-      : LK.allPurchases().filter(p => !isExpired(p)).filter(passesSearch).filter(passesFilters);
+      : LK.allPurchases().filter(p => !isExpired(p) && liveStage(p) !== "completed").filter(passesSearch).filter(passesFilters);
 
     const sortFn = {
       fresh: (a, b) => a.publishedDaysAgo - b.publishedDaysAgo,

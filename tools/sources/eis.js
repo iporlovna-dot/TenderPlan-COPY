@@ -115,7 +115,13 @@ function parseHtmlItems(html) {
   for (const b of blocks) {
     const number = (/regNumber=(\d+)/.exec(b) || [])[1];
     if (!number) continue;
-    let link = (/href="([^"]*(?:common-info|order\/notice|purchase\/info)[^"]*regNumber=\d+[^"]*)"/i.exec(b) || [])[1]
+    // Ссылка на карточку закупки. И у 44-ФЗ (…/notice/<процедура>/view/common-info.html,
+    // процедура разная: ea20/zk20/ezt20…), и у 223-ФЗ (…/purchase/info/common-info.html)
+    // правильная всегда содержит common-info.html — на неё и якоримся. Иначе цеплялась
+    // первая по порядку ссылка «printForm/listModal.html» (модалка печатной формы,
+    // НЕ карточка закупки) — отсюда «кнопка открывает не ту страницу».
+    let link = (/href="([^"]*common-info\.html\?regNumber=\d+[^"]*)"/i.exec(b) || [])[1]
+      || (/href="([^"]*(?:\/view\/|purchase\/info)[^"]*regNumber=\d+[^"]*)"/i.exec(b) || [])[1]
       || (/href="([^"]*regNumber=\d+[^"]*)"/i.exec(b) || [])[1] || "";
     if (link.startsWith("/")) link = "https://zakupki.gov.ru" + link;
     const lawType = stripTags((/registry-entry__header-top__title[^>]*>([\s\S]*?)<\/div>/i.exec(b) || [])[1]);
@@ -212,7 +218,7 @@ function toPurchase(it, documents, region) {
     guaranteeApp: 0, guaranteeContract: 0, prepayment: 0,
     href: it.link,
     deliveryDays: null, deliveryPlace: "",
-    lots: [{ name: it.title, qty: "—", price: it.price }],
+    lots: [{ name: it.title, qty: "—", unit: "", price: it.price }],
     documents: documents || [],
     matches: {},
   };
