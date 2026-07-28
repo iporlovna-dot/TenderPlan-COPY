@@ -27,6 +27,16 @@ scp -i ~/.ssh/nexara_deploy root@186.246.30.213:/root/backups/nexara-*.tgz ./
 apt update && apt install -y python3-venv python3-pip nginx git
 ```
 
+**Gzip для JSON/JS/CSS** — по умолчанию в Ubuntu `nginx.conf` `gzip on;` включён, но
+`gzip_types` закомментирован, а без него сжимается только `text/html`. Снапшот
+(`data/purchases.json`) без этого шёл несжатым — на 4000+ закупках это ~7 МБ и
+заметная задержка первой загрузки ленты. Раскомментировать в `/etc/nginx/nginx.conf`
+(секция `gzip`): `gzip_vary on;`, `gzip_proxied any;`, `gzip_comp_level 6;` и
+`gzip_types text/plain text/css application/json application/javascript text/xml
+application/xml application/xml+rss text/javascript image/svg+xml;`, затем
+`nginx -t && systemctl reload nginx`. Проверка: `curl -sI -H "Accept-Encoding: gzip"
+.../data/purchases.json | grep -i content-encoding` — должно быть `gzip`.
+
 ## 2. Код проекта
 
 ```bash
