@@ -34,6 +34,8 @@ REGISTER_IP_MAX = _int("LK_RL_REGISTER_IP_MAX", 8)    # регистраций �
 REGISTER_IP_WINDOW = _int("LK_RL_REGISTER_IP_WINDOW", 3600)  # за час
 TOTP_MAX = _int("LK_RL_TOTP_MAX", 8)                  # неудачных кодов 2FA
 TOTP_WINDOW = _int("LK_RL_TOTP_WINDOW", 300)          # за 5 минут (код 6 цифр — жёстче, чем пароль)
+ADMIN_MAX = _int("LK_RL_ADMIN_MAX", 10)               # неудачных попыток админ-логина (HTTP Basic)
+ADMIN_WINDOW = _int("LK_RL_ADMIN_WINDOW", 300)        # за 5 минут
 
 # Предохранитель памяти: email в запросе задаёт атакующий, поэтому число ключей
 # ограничиваем — иначе поток разных email раздул бы словарь (DoS через сам лимитер).
@@ -111,6 +113,7 @@ _login_ip = _Window(LOGIN_IP_MAX, LOGIN_IP_WINDOW)
 _login_email = _Window(LOGIN_EMAIL_MAX, LOGIN_EMAIL_WINDOW)
 _register_ip = _Window(REGISTER_IP_MAX, REGISTER_IP_WINDOW)
 _totp_ip = _Window(TOTP_MAX, TOTP_WINDOW)
+_admin_ip = _Window(ADMIN_MAX, ADMIN_WINDOW)
 
 
 def client_ip(request: Request) -> str:
@@ -171,3 +174,18 @@ def record_totp_failure(ip: str) -> None:
 
 def reset_totp(ip: str) -> None:
     _totp_ip.reset("ip:" + ip)
+
+
+def guard_admin(ip: str) -> None:
+    """Вызывать ДО проверки пароля админки — HTTP Basic сам по себе не лимитирует."""
+    key = "ip:" + ip
+    if _admin_ip.over(key):
+        raise _too_many(_admin_ip.retry_after(key))
+
+
+def record_admin_failure(ip: str) -> None:
+    _admin_ip.hit("ip:" + ip)
+
+
+def reset_admin(ip: str) -> None:
+    _admin_ip.reset("ip:" + ip)

@@ -57,7 +57,7 @@
         </div>
         <div class="field">
           <label for="company-password">Пароль</label>
-          <input type="password" id="company-password" placeholder="Минимум 6 символов" required minlength="6">
+          <input type="password" id="company-password" placeholder="Минимум 8 символов" required minlength="8">
         </div>
         <button class="btn btn-primary btn-block" type="submit">Создать компанию →</button>
       </form>
@@ -104,8 +104,8 @@
       errBox.classList.add("is-visible");
       return;
     }
-    if (password.length < 6) {
-      errBox.textContent = "Пароль должен быть не короче 6 символов.";
+    if (password.length < 8) {
+      errBox.textContent = "Пароль должен быть не короче 8 символов.";
       errBox.classList.add("is-visible");
       return;
     }

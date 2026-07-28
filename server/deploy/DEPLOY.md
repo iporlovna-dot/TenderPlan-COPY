@@ -107,6 +107,73 @@ LK_DOMAIN=lekalo.ru LK_LE_EMAIL=me@mail.ru bash enable-https.sh
 настроенные (голый IP и nip.io остаются рабочими) — можно гонять повторно.
 Продление сертификатов автоматическое (systemd-timer certbot).
 
+## 8. Безопасность и эксплуатация
+
+Базовое (HTTPS, secure-cookie, HSTS, CORS-замок, app-rate-limit входа) уже включено.
+Ниже — то, что доводит защиту до «качественной». Всё идемпотентно.
+
+### 8.1. Секреты в `/opt/lekalo/server/.env` (вне git)
+
+Юнит подхватывает `EnvironmentFile=-/opt/lekalo/server/.env`. Держать там:
+```ini
+LK_ADMIN_USER=admin
+LK_ADMIN_PASS=<длинный-случайный-пароль>          # /api/admin (HTTP Basic)
+LK_TOTP_KEY=<ключ Fernet>                          # шифрование 2FA-секретов в БД
+```
+Ключ для 2FA сгенерировать так (один раз) и вписать в `.env`:
+```bash
+/opt/lekalo/server/.venv/bin/python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+systemctl restart tender-api
+```
+Без `LK_TOTP_KEY` 2FA продолжит работать, но секреты лежат в БД открыто (при её
+утечке 2FA обходится). Уже включённые до появления ключа секреты дошифруются
+автоматически при следующей перенастройке 2FA пользователем — старый plaintext
+тоже читается (обратная совместимость).
+
+### 8.2. Сетевые rate-лимиты nginx (чтобы не положили флудом)
+
+App-лимит закрывает только вход/регистрацию/2FA. Волюметрический флуд по любому
+`/api/...` режем на nginx:
+```bash
+cd /opt/lekalo/server/deploy && bash enable-ratelimit.sh
+```
+Ставит зоны в `/etc/nginx/conf.d/lekalo-limits.conf` и вписывает `limit_req`
+(10 r/s, burst 20) + `limit_conn` (20/IP) в оба `location /api/`. Превышение → 429.
+
+### 8.3. Бэкап БД off-site (единственный необратимый риск)
+
+`lekalo.db` (аккаунты, хэши, ИНН, 2FA) существует в одном экземпляре на VPS —
+сбой диска = безвозвратная потеря. Двухступенчато:
+
+**На VPS** — создать ключ шифрования и повесить ежедневный дамп в cron:
+```bash
+openssl rand -base64 48 > /root/.lekalo_backup_key && chmod 600 /root/.lekalo_backup_key
+#  ⚠️ СРАЗУ сохрани копию этого ключа off-site — без него бэкапы не расшифровать!
+(crontab -l 2>/dev/null; echo '0 3 * * * /opt/lekalo/server/deploy/backup-db.sh >> /var/log/lekalo-backup.log 2>&1') | crontab -
+bash /opt/lekalo/server/deploy/backup-db.sh   # проверить руками сейчас
+```
+**На основной машине** — забирать свежий бэкап к себе (Планировщик, ежедневно 04:00):
+```bash
+bash server/deploy/backup-pull.sh             # разовая проверка
+# расписание — см. шапку backup-pull.sh (schtasks LekaloDbBackupPull)
+```
+Восстановление: `openssl enc -d -aes-256-cbc -pbkdf2 -pass file:/root/.lekalo_backup_key -in <файл>.enc | gunzip > restored.sqlite`.
+
+### 8.4. Аудит-лог (детект взлома)
+
+Вход/выход/2FA/админ-доступ пишутся в journald с префиксом `AUDIT`:
+```bash
+journalctl -u tender-api | grep AUDIT                 # всё
+journalctl -u tender-api | grep 'AUDIT login_fail'    # подбор пароля
+journalctl -u tender-api | grep 'AUDIT admin_'        # доступ к админке
+```
+
+### 8.5. Мониторинг аптайма (узнать о падении первым)
+
+Внешний пинг (бесплатно, вне VPS — иначе не заметишь падение самого VPS):
+UptimeRobot → новый HTTP(s)-монитор на `https://186.246.30.213.nip.io/api/health`,
+тип «keyword», ключевое слово `ok`, интервал 5 мин, алерт на почту.
+
 ## Откат к Nexara
 
 ```bash

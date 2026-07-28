@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, EmailStr
 
-from app import auth, db, ratelimit, totp
+from app import audit, auth, db, ratelimit, totp
 
 router = APIRouter(prefix="/api")
 basic = HTTPBasic()
@@ -123,8 +123,8 @@ def _norm_email(email) -> str:
 
 
 def _check_password(password: str) -> None:
-    if len(password) < 6:
-        raise HTTPException(status_code=400, detail="Пароль должен быть не короче 6 символов")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не короче 8 символов")
 
 
 def _plan_label(plan: str) -> str:
@@ -176,6 +176,7 @@ def register(body: RegisterBody, request: Request, response: Response):
 
         token = auth.create_session(conn, user_id)
         auth.set_session_cookie(response, token)
+        audit.log("register_ok", ip=ratelimit.client_ip(request), email=email, user=user_id)
 
         user_row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         company_row = conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,)).fetchone()
@@ -194,16 +195,19 @@ def login(body: LoginBody, request: Request, response: Response):
         user_row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         if not user_row or not auth.verify_password(body.password, user_row["password_hash"]):
             ratelimit.record_login_failure(ip, email)
+            audit.log("login_fail", ip=ip, email=email)
             raise HTTPException(status_code=401, detail="Неверная почта или пароль")
         ratelimit.reset_login(ip, email)  # верный пароль обнуляет счётчик
 
         if user_row["totp_enabled"]:
             # пароль верный, но нужен код 2FA — сессию пока НЕ выдаём
             token = totp.create_pending(user_row["id"])
+            audit.log("login_ok_pending_2fa", ip=ip, user=user_row["id"])
             return {"needsTotp": True, "tempToken": token}
 
         token = auth.create_session(conn, user_row["id"])
         auth.set_session_cookie(response, token)
+        audit.log("login_ok", ip=ip, user=user_row["id"])
 
         company_row = conn.execute("SELECT * FROM companies WHERE id = ?", (user_row["company_id"],)).fetchone()
         return {"user": _row_to_user(user_row), "company": _row_to_company(company_row)}
@@ -219,14 +223,17 @@ def verify_login_totp(body: TotpVerifyLoginBody, request: Request, response: Res
     conn = db.get_conn()
     try:
         user_row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not user_row or not totp.verify_code(user_row["totp_secret"], body.code):
+        if not user_row or not totp.verify_code(totp.reveal_secret(user_row["totp_secret"]), body.code):
             ratelimit.record_totp_failure(ip)
+            totp.fail_pending(body.tempToken)  # N неверных кодов на токен → токен сгорает
+            audit.log("2fa_fail", ip=ip, user=user_id)
             raise HTTPException(status_code=401, detail="Неверный код")
         ratelimit.reset_totp(ip)
         totp.consume_pending(body.tempToken)  # успех — токен больше не нужен
 
         token = auth.create_session(conn, user_row["id"])
         auth.set_session_cookie(response, token)
+        audit.log("2fa_ok", ip=ip, user=user_row["id"])
 
         company_row = conn.execute("SELECT * FROM companies WHERE id = ?", (user_row["company_id"],)).fetchone()
         return {"user": _row_to_user(user_row), "company": _row_to_company(company_row)}
@@ -244,6 +251,21 @@ def logout(response: Response, lekalo_session: str | None = Cookie(default=None)
     finally:
         conn.close()
     auth.clear_session_cookie(response)
+    return {"ok": True}
+
+
+@router.post("/auth/logout-all")
+def logout_all(response: Response, lekalo_session: str | None = Cookie(default=None)):
+    """Выйти на всех устройствах — гасим все сессии пользователя (полезно при
+    подозрении, что cookie утёк)."""
+    conn, user = _require_user(lekalo_session)
+    try:
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+        conn.commit()
+    finally:
+        conn.close()
+    auth.clear_session_cookie(response)
+    audit.log("logout_all", user=user["id"])
     return {"ok": True}
 
 
@@ -266,7 +288,10 @@ def setup_totp(lekalo_session: str | None = Cookie(default=None)):
         # новый секрет пишем сразу, но totp_enabled остаётся 0, пока не подтвердят
         # кодом — так что незавершённая настройка не может внезапно включить 2FA
         secret = totp.generate_secret()
-        conn.execute("UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?", (secret, user["id"]))
+        # в БД кладём защищённую форму (шифр, если задан LK_TOTP_KEY); юзеру
+        # отдаём сырой секрет/QR — он нужен для привязки приложения.
+        conn.execute("UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?",
+                     (totp.protect_secret(secret), user["id"]))
         conn.commit()
         uri = totp.provisioning_uri(secret, user["email"])
         return {"secret": secret, "otpauthUri": uri, "qrSvg": totp.qr_svg(uri)}
@@ -280,10 +305,11 @@ def confirm_totp(body: TotpConfirmBody, lekalo_session: str | None = Cookie(defa
     try:
         if not user["totp_secret"]:
             raise HTTPException(status_code=400, detail="Сначала запросите настройку 2FA")
-        if not totp.verify_code(user["totp_secret"], body.code):
+        if not totp.verify_code(totp.reveal_secret(user["totp_secret"]), body.code):
             raise HTTPException(status_code=400, detail="Неверный код — проверьте время на телефоне и попробуйте ещё раз")
         conn.execute("UPDATE users SET totp_enabled = 1 WHERE id = ?", (user["id"],))
         conn.commit()
+        audit.log("2fa_enabled", user=user["id"])
         return {"ok": True}
     finally:
         conn.close()
@@ -297,6 +323,7 @@ def disable_totp(body: TotpDisableBody, lekalo_session: str | None = Cookie(defa
             raise HTTPException(status_code=401, detail="Неверный пароль")
         conn.execute("UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?", (user["id"],))
         conn.commit()
+        audit.log("2fa_disabled", user=user["id"])
         return {"ok": True}
     finally:
         conn.close()
@@ -503,6 +530,12 @@ def list_searches(lekalo_session: str | None = Cookie(default=None)):
 def create_search(body: SearchCreate, lekalo_session: str | None = Cookie(default=None)):
     conn, user = _require_user(lekalo_session)
     try:
+        # id генерит клиент → строка с таким id может уже принадлежать другому
+        # юзеру. Без этой проверки INSERT OR REPLACE затёр бы чужую запись,
+        # переписав её на себя (межтенантная запись). Заняли — 409.
+        owner = conn.execute("SELECT user_id FROM searches WHERE id = ?", (body.id,)).fetchone()
+        if owner and owner["user_id"] != user["id"]:
+            raise HTTPException(status_code=409, detail="Идентификатор поиска занят")
         conn.execute(
             "INSERT OR REPLACE INTO searches (id, user_id, name, query, minus, filters, new_count, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
@@ -571,8 +604,17 @@ def _check_admin(credentials: HTTPBasicCredentials) -> None:
 
 
 @router.get("/admin", response_class=HTMLResponse)
-def admin_page(credentials: HTTPBasicCredentials = Depends(basic)):
-    _check_admin(credentials)
+def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(basic)):
+    ip = ratelimit.client_ip(request)
+    ratelimit.guard_admin(ip)  # HTTP Basic сам не лимитирует → троттлим перебор
+    try:
+        _check_admin(credentials)
+    except HTTPException:
+        ratelimit.record_admin_failure(ip)
+        audit.log("admin_fail", ip=ip, user=credentials.username)
+        raise
+    ratelimit.reset_admin(ip)
+    audit.log("admin_access", ip=ip)
     conn = db.get_conn()
     try:
         companies = conn.execute("SELECT * FROM companies ORDER BY created_at DESC").fetchall()

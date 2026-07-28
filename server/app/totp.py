@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import io
+import os
 import secrets
 import threading
 import time
@@ -18,8 +19,46 @@ import qrcode
 import qrcode.image.svg
 from fastapi import HTTPException
 
+try:  # cryptography приходит транзитивно с pdfplumber; на всякий — мягкий импорт
+    from cryptography.fernet import Fernet, InvalidToken
+except Exception:  # pragma: no cover
+    Fernet = None  # type: ignore
+    InvalidToken = Exception  # type: ignore
+
 ISSUER = "Лекало"
-PENDING_TTL = 300  # 5 минут на ввод кода после пароля
+PENDING_TTL = 300       # 5 минут на ввод кода после пароля
+MAX_PENDING_FAILS = 5   # столько неверных кодов на ОДИН токен входа — потом токен сгорает
+
+
+# ---------- шифрование TOTP-секрета в БД (at-rest) ----------
+# Если БД утечёт (без сервера), plaintext-секрет позволил бы обойти 2FA.
+# Ключ — в env LK_TOTP_KEY (Fernet, `Fernet.generate_key()`); нет ключа →
+# храним как раньше (обратная совместимость, чтобы 2FA не отвалилась на проде,
+# где ключ ещё не задан). Формат хранения: "enc:<...>" для зашифрованных.
+_ENC_PREFIX = "enc:"
+_key = os.getenv("LK_TOTP_KEY")
+_fernet = Fernet(_key.encode()) if (_key and Fernet) else None
+
+
+def protect_secret(secret: str) -> str:
+    """Подготовить секрет к записи в БД (зашифровать, если задан ключ)."""
+    if not _fernet or not secret:
+        return secret
+    return _ENC_PREFIX + _fernet.encrypt(secret.encode()).decode()
+
+
+def reveal_secret(stored: str | None) -> str:
+    """Достать рабочий секрет из хранимого значения (расшифровать при необходимости)."""
+    if not stored:
+        return ""
+    if not stored.startswith(_ENC_PREFIX):
+        return stored  # старый plaintext-секрет — как есть
+    if not _fernet:
+        return ""       # зашифровано, но ключа нет → верификация честно провалится
+    try:
+        return _fernet.decrypt(stored[len(_ENC_PREFIX):].encode()).decode()
+    except InvalidToken:
+        return ""
 
 
 def generate_secret() -> str:
@@ -47,14 +86,15 @@ def qr_svg(uri: str) -> str:
 
 
 # ---------- краткоживущий токен «пароль верный, ждём код 2FA» ----------
+# Значение: {"uid": user_id, "exp": deadline, "fails": счётчик неверных кодов}.
 
-_pending: dict[str, tuple[int, float]] = {}
+_pending: dict[str, dict] = {}
 _lock = threading.Lock()
 
 
 def _gc(now: float) -> None:
-    for tok, (_, exp) in list(_pending.items()):
-        if exp < now:
+    for tok, e in list(_pending.items()):
+        if e["exp"] < now:
             _pending.pop(tok, None)
 
 
@@ -63,20 +103,34 @@ def create_pending(user_id: int) -> str:
     with _lock:
         _gc(now)
         token = secrets.token_urlsafe(24)
-        _pending[token] = (user_id, now + PENDING_TTL)
+        _pending[token] = {"uid": user_id, "exp": now + PENDING_TTL, "fails": 0}
     return token
 
 
 def peek_pending(token: str) -> int:
     """Вернуть user_id по токену или 401 — НЕ расходует токен (опечатка в коде
-    не должна заставлять вводить пароль заново; лимит попыток — ratelimit.guard_totp)."""
+    не должна заставлять вводить пароль заново; лимит попыток — guard_totp по IP
+    плюс fail_pending: N неверных кодов на этот токен и он сгорает)."""
     now = time.time()
     with _lock:
         _gc(now)
         entry = _pending.get(token)
-    if not entry or entry[1] < now:
+    if not entry or entry["exp"] < now:
         raise HTTPException(status_code=401, detail="Сессия входа истекла, войдите заново")
-    return entry[0]
+    return entry["uid"]
+
+
+def fail_pending(token: str) -> None:
+    """Неверный код: жжём попытки этого токена. После MAX_PENDING_FAILS токен
+    сгорает — даже с пула IP не перебрать 6 цифр по одному входу (нужен новый
+    вход с паролем за каждые 5 догадок)."""
+    with _lock:
+        e = _pending.get(token)
+        if not e:
+            return
+        e["fails"] += 1
+        if e["fails"] >= MAX_PENDING_FAILS:
+            _pending.pop(token, None)
 
 
 def consume_pending(token: str) -> None:

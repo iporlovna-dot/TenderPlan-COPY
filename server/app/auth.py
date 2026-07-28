@@ -28,6 +28,8 @@ def create_session(conn: sqlite3.Connection, user_id: int) -> str:
     token = secrets.token_urlsafe(32)
     now = datetime.now(timezone.utc)
     expires = now + timedelta(days=SESSION_DAYS)
+    # заодно подметаем протухшие сессии — иначе таблица растёт вечно
+    conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now.isoformat(),))
     conn.execute(
         "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
         (token, user_id, now.isoformat(), expires.isoformat()),
