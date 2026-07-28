@@ -29,6 +29,7 @@ from extractor import extract_requirements  # noqa: E402
 from matcher import match  # noqa: E402
 from ktru import ktru_relation, best_position  # noqa: E402
 from keymatch import align_keys, align_values, apply_mapping  # noqa: E402
+from contract_terms import parse_contract_terms, summary as _terms_summary  # noqa: E402
 
 VERDICT_RU = {
     Verdict.ELIGIBLE: "ПОДХОДИТ",
@@ -186,6 +187,9 @@ def main():
                 purchase = full
         except Exception as e:
             print("    обогащение карточки пропущено: %s" % type(e).__name__)
+
+        # Срок исполнения контракта/этапы из текста проекта контракта (детерм., без LLM, §Этап 1).
+        purchase.execution_period = _terms_summary(parse_contract_terms(tz_text))
 
         # Шаг 6: извлечь требования (Claude), СКОУП по позиции товара в многолоте (§3.4a).
         # Иначе товар из одной позиции скорился бы против требований ВСЕГО лота (чужие

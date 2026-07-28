@@ -139,6 +139,7 @@ class Purchase:
     smp: bool = False                      # закупка только для СМП/СОНКО
     delivery_place: str = ""               # место поставки (текст)
     placing_way: str = ""                  # способ определения поставщика (код/название)
+    execution_period: Optional[str] = None  # срок исполнения контракта/этапы (из проекта контракта)
 
     def contract_card(self) -> dict:
         """Плоская карточка контракта для ленты/API (то, что показываем поставщику)."""
@@ -150,5 +151,5 @@ class Purchase:
             "submission_close": self.submission_close, "bidding_date": self.bidding_date,
             "summing_up_date": self.summing_up_date,
             "guarantee_app": self.guarantee_app, "guarantee_contract": self.guarantee_contract,
-            "prepayment": self.prepayment,
+            "prepayment": self.prepayment, "execution_period": self.execution_period,
         }

@@ -101,7 +101,8 @@ def run():
                         "publication_date": 1785233243000, "submission_start": 1785233245138,
                         "submission_close": 1785909600000, "bidding_date": 1785916800000,
                         "summing_up_date": 1786050000000, "guarantee_app": None,
-                        "guarantee_contract": 21363.504, "prepayment": None}},
+                        "guarantee_contract": 21363.504, "prepayment": None,
+                        "execution_period": "Срок исполнения: в течение 30 календарных дней"}},
               open(os.path.join(rdir, "v1.json"), "w"))
     n = ingest_results(db, rdir, cid)
     db.close()
@@ -119,6 +120,8 @@ def run():
     r.append(check("дата торгов в карточке", card and card["bidding_date"] == 1785916800000))
     r.append(check("дата подведения итогов в карточке", card and card["summing_up_date"] == 1786050000000))
     r.append(check("дней до подачи рассчитано", card and card["days_to_submission"] is not None))
+    r.append(check("срок исполнения в карточке",
+                   card and "30 календарных" in (card.get("execution_period") or "")))
     r.append(check("B не видит ленту товара A → 404",
                    client.get("/products/%d/leads" % pid, headers=_auth(tok_b)).status_code == 404))
 
