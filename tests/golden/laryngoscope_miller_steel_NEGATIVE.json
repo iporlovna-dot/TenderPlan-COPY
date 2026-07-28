@@ -1,0 +1,196 @@
+{
+  "id": "laryngoscope_miller_steel_NEGATIVE",
+  "source": "journal 6a622eea: ТЗ требует Миллер СТАЛЬНОЙ, наш Миллер пластиковый (полиамид)",
+  "expected_verdict": "disqualified",
+  "expected_score": 85,
+  "score_tolerance": 0,
+  "synonyms": {
+    "фиброоптический": [
+      "оптоволоконный",
+      "fiberoptic"
+    ],
+    "миллер": [
+      "miller",
+      "прямой"
+    ]
+  },
+  "product": {
+    "id": "kawe-43024-miller-fo-plastic",
+    "name": "Клинок для ларингоскопа KaWe одноразовый пластиковый фиброоптический, тип Миллер (прямой), арт. 03.43024.6XX, Кирхнер энд Вильгельм ГмбХ (Германия)",
+    "ktru": [
+      "32.50.13.190-00007686"
+    ],
+    "attributes": [
+      {
+        "key": "тип_клинка",
+        "value": "миллер",
+        "status": "declared"
+      },
+      {
+        "key": "форма",
+        "value": "прямой",
+        "status": "declared"
+      },
+      {
+        "key": "тип_освещения",
+        "value": "фиброоптический",
+        "status": "declared"
+      },
+      {
+        "key": "материал",
+        "value": "полиамид",
+        "status": "declared"
+      },
+      {
+        "key": "размеры",
+        "value": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "status": "declared"
+      },
+      {
+        "key": "совместимость_iso_7376",
+        "value": "да",
+        "status": "declared",
+        "doc": "маркировка DIN ISO 7376 на клинке"
+      },
+      {
+        "key": "диаметр_световода_мм",
+        "value": 5.5,
+        "status": "declared"
+      },
+      {
+        "key": "одноразовость",
+        "value": "одноразовый",
+        "status": "declared"
+      },
+      {
+        "key": "сменный_световод",
+        "value": "нет",
+        "status": "declared"
+      },
+      {
+        "key": "автоклавирование",
+        "value": "нет",
+        "status": "declared"
+      },
+      {
+        "key": "не_латекс",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "упаковка",
+        "value": "20 шт в полиэтиленовом пакете",
+        "status": "declared"
+      },
+      {
+        "key": "рег_удостоверение",
+        "value": "РУ имеется",
+        "status": "confirmable",
+        "doc": "регистрационное удостоверение"
+      },
+      {
+        "key": "назначение",
+        "value": "интубация трахеи, манипуляции с языком при ИВЛ и анестезии",
+        "status": "declared"
+      },
+      {
+        "key": "новизна",
+        "value": "новый, неиспользованный, серийно выпускаемый",
+        "status": "declared"
+      },
+      {
+        "key": "документы_соответствия",
+        "value": "сертификат/декларация соответствия",
+        "status": "confirmable",
+        "doc": "декларация о соответствии"
+      },
+      {
+        "key": "разрешён_в_рф",
+        "value": "да, зарегистрировано и разрешено к применению в РФ",
+        "status": "confirmable",
+        "doc": "регистрационное удостоверение"
+      },
+      {
+        "key": "маркировка_русский",
+        "value": "да, маркировка на русском языке",
+        "status": "declared"
+      }
+    ]
+  },
+  "requirements": [
+    {
+      "key": "тип_клинка",
+      "operator": "eq",
+      "value": "миллер",
+      "unit": "",
+      "hardness": "hard",
+      "type": "technical",
+      "raw": "Тип клинка - Миллер (прямой)"
+    },
+    {
+      "key": "форма",
+      "operator": "eq",
+      "value": "прямой",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Форма клинка - прямой"
+    },
+    {
+      "key": "тип_освещения",
+      "operator": "eq",
+      "value": "фиброоптический",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Освещение - фиброоптическое"
+    },
+    {
+      "key": "материал",
+      "operator": "eq",
+      "value": "нержавеющая сталь",
+      "unit": "",
+      "hardness": "hard",
+      "type": "technical",
+      "raw": "Материал клинка - медицинская нержавеющая сталь (не может изменяться)"
+    },
+    {
+      "key": "размеры",
+      "operator": "set",
+      "value": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Размеры 0,1,2,3"
+    },
+    {
+      "key": "совместимость_iso_7376",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Совместимость ISO 7376 - наличие"
+    },
+    {
+      "key": "рег_удостоверение",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "documentary",
+      "raw": "РУ - наличие"
+    }
+  ]
+}
