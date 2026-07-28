@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session
 
 from api.db import SessionLocal, init_db
 from api.models import Lead, Product
+from versioning import classify_change, content_fingerprint
+
+# серьёзность статуса изменения: флаг «липкий» и только повышается (material не сбросить formal'ом)
+_RANK = {"unchanged": 0, "formal": 1, "material": 2}
 
 
 def ingest_results(db: Session, results_dir: str, company_id: int) -> int:
@@ -32,9 +36,17 @@ def ingest_results(db: Session, results_dir: str, company_id: int) -> int:
         lead = (db.query(Lead)
                 .filter(Lead.product_id == product.id, Lead.purchase_id == v["purchase_id"])
                 .first())
+        # версионность §6: сравнить с прошлым прогоном ДО перезаписи
+        new_reqs = v.get("requirements", [])
+        new_hash = content_fingerprint(new_reqs)
+        new_ts = v.get("source_updated_at")
         if lead is None:
             lead = Lead(company_id=company_id, product_id=product.id, purchase_id=v["purchase_id"])
             db.add(lead)
+        else:
+            status = classify_change(lead.content_hash, lead.source_updated_at, new_hash, new_ts)
+            if _RANK[status] > _RANK.get(lead.change_status, 0):
+                lead.change_status = status          # флаг липкий, только повышается до перепроверки
         lead.subject = v.get("subject", "")
         lead.customer = v.get("customer", "") or ""
         lead.price = v.get("price")
@@ -45,9 +57,11 @@ def ingest_results(db: Session, results_dir: str, company_id: int) -> int:
         lead.verdict = v.get("verdict", "")
         lead.explanation = v.get("explanation", "")
         # требования + синонимы для дозаполнения пробелов (пересчёт % без повторного извлечения)
-        lead.requirements_json = json.dumps(v.get("requirements", []), ensure_ascii=False)
+        lead.requirements_json = json.dumps(new_reqs, ensure_ascii=False)
         lead.synonyms_json = json.dumps(v.get("synonyms") or {}, ensure_ascii=False)
         lead.card_json = json.dumps(v.get("card") or {}, ensure_ascii=False)
+        lead.content_hash = new_hash            # версионность §6: отпечаток текущих требований
+        lead.source_updated_at = new_ts
         n += 1
     db.commit()
     return n

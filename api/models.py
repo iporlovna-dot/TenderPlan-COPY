@@ -77,6 +77,10 @@ class Lead(Base):
     synonyms_json: Mapped[str] = mapped_column(Text, default="{}")
     # наглядная карточка контракта (даты, обеспечения, аванс, ссылка) — §Этап 1
     card_json: Mapped[str] = mapped_column(Text, default="{}")
+    # версионность §6: детект изменения ТЗ между прогонами
+    content_hash: Mapped[str] = mapped_column(String(32), default="")          # отпечаток требований
+    source_updated_at: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # метка источника
+    change_status: Mapped[str] = mapped_column(String(12), default="unchanged")  # unchanged|formal|material
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
     __table_args__ = (UniqueConstraint("product_id", "purchase_id", name="uq_product_purchase"),)

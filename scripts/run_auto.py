@@ -249,6 +249,8 @@ def main():
                     "synonyms": profile.get("synonyms") or {},
                     # наглядная карточка контракта (даты, обеспечения, аванс, ссылка) — §Этап 1
                     "card": purchase.contract_card(),
+                    # версионность §6: метка обновления источника для детекта изменений ТЗ
+                    "source_updated_at": purchase.source_updated_at,
                 }, f, ensure_ascii=False, indent=2)
 
     source.close()

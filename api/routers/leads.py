@@ -16,6 +16,7 @@ from api.deps import get_current_user
 from api.models import Lead, Product, User
 from api.schemas import CheckOut, ContractCard, GapFillIn, LeadDetailOut, LeadOut
 from gapfill import recompute
+from versioning import change_message
 
 router = APIRouter(prefix="/products", tags=["leads"])
 
@@ -62,6 +63,8 @@ def _detail(lead: Lead, res, attrs: list) -> LeadDetailOut:
         gaps=[c.req.key for c in res.checks if c.status.value == "gap"],
         attributes=attrs,
         card=_card(lead),
+        change_status=lead.change_status,
+        change_note=change_message(lead.change_status),
     )
 
 
@@ -93,6 +96,7 @@ def product_leads(product_id: int, min_score: int = Query(default=60, ge=0, le=1
         region=r.region, submission_close=r.submission_close,
         days_left=_days_left(r.submission_close), url=r.url, score=r.score,
         verdict=r.verdict, explanation=r.explanation, card=_card(r),
+        change_status=r.change_status, change_note=change_message(r.change_status),
     ) for r in rows]
 
 

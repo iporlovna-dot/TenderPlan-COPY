@@ -153,6 +153,40 @@ def run():
                    client.post("/products/%d/leads/6a6372cf/fill" % pid,
                                json={"fills": {"угол_обзора": 70}}, headers=_auth(tok_b)).status_code == 404))
 
+    # --- Версионность (§6): детект изменения ТЗ между прогонами ---
+    rdir2 = os.path.join(_TMP, "results_v")
+    os.makedirs(rdir2, exist_ok=True)
+    RA = [{"key": "a", "operator": "eq", "value": "1", "unit": "", "hardness": "soft",
+           "type": "technical", "raw": ""}]
+    RB = [{"key": "a", "operator": "eq", "value": "2", "unit": "", "hardness": "soft",
+           "type": "technical", "raw": ""}]
+
+    def _dump(purchase_id, reqs, ts, fn):
+        json.dump({"purchase_id": purchase_id, "subject": "v", "product_id": "besdata-1",
+                   "score": 90, "verdict": "eligible", "explanation": "", "requirements": reqs,
+                   "synonyms": {}, "source_updated_at": ts, "card": {}},
+                  open(os.path.join(rdir2, fn), "w"))
+
+    def _ingest_v():
+        d = SessionLocal(); ingest_results(d, rdir2, cid); d.close()
+
+    def _status(purchase_id):
+        L = client.get("/products/%d/leads?min_score=0" % pid, headers=_auth(tok_a)).json()
+        row = next((x for x in L if x["purchase_id"] == purchase_id), None)
+        return row["change_status"] if row else None
+
+    _dump("mat1", RA, 100, "mat1.json"); _ingest_v()
+    r.append(check("первый прогон → unchanged", _status("mat1") == "unchanged"))
+    _dump("mat1", RB, 100, "mat1.json"); _ingest_v()   # требования изменились
+    r.append(check("изменились требования → material", _status("mat1") == "material"))
+    row_mat = next(x for x in client.get("/products/%d/leads?min_score=0" % pid,
+                                         headers=_auth(tok_a)).json() if x["purchase_id"] == "mat1")
+    r.append(check("уведомление про перепроверку", "перепровер" in row_mat["change_note"].lower()))
+
+    _dump("frm1", RA, 100, "frm1.json"); _ingest_v()
+    _dump("frm1", RA, 200, "frm1.json"); _ingest_v()   # те же требования, источник новее
+    r.append(check("та же ТЗ, источник новее → formal", _status("frm1") == "formal"))
+
     # rate-limit: 5 неудач по свежему email → блокировка (429)
     for _ in range(5):
         client.post("/auth/login", json={"email": "ratelimit@x.io", "password": "bad12345"})

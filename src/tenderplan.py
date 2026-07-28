@@ -284,6 +284,7 @@ def _to_purchase(t: dict) -> Purchase:
         smp=bool(t.get("smp")),
         delivery_place=_place(t),
         placing_way=str(t.get("placingWay") or ""),
+        source_updated_at=t.get("updateDateTime"),   # версионность §6: метка обновления источника
     )
 
 

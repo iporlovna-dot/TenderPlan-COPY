@@ -83,6 +83,8 @@ class LeadOut(BaseModel):
     verdict: str
     explanation: str
     card: Optional[ContractCard] = None
+    change_status: str = "unchanged"      # unchanged | formal | material (версионность §6)
+    change_note: str = ""                 # уведомление клиенту, если ТЗ изменилось
 
 
 class CheckOut(BaseModel):
@@ -102,6 +104,8 @@ class LeadDetailOut(BaseModel):
     gaps: List[str]                   # ключи требований-пробелов — их можно дозаполнить
     attributes: List[dict]            # текущая карточка товара (с уже внесёнными дозаполнениями)
     card: Optional[ContractCard] = None  # карточка контракта (даты, обеспечения, аванс)
+    change_status: str = "unchanged"  # версионность §6
+    change_note: str = ""
 
 
 class GapFillIn(BaseModel):

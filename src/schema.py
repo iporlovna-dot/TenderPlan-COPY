@@ -140,6 +140,7 @@ class Purchase:
     delivery_place: str = ""               # место поставки (текст)
     placing_way: str = ""                  # способ определения поставщика (код/название)
     execution_period: Optional[str] = None  # срок исполнения контракта/этапы (из проекта контракта)
+    source_updated_at: Optional[int] = None  # метка обновления в источнике (updateDateTime) — версионность §6
 
     def contract_card(self) -> dict:
         """Плоская карточка контракта для ленты/API (то, что показываем поставщику)."""
