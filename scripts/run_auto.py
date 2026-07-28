@@ -35,7 +35,7 @@ VERDICT_RU = {
     Verdict.ELIGIBLE_WITH_GAPS: "ПОДХОДИТ (есть пробелы)",
     Verdict.DISQUALIFIED: "НЕ ПОДХОДИТ",
 }
-PARSE_EXT = (".docx", ".pdf", ".xlsx", ".xls", ".txt", ".md")  # что умеет parser.py
+PARSE_EXT = (".docx", ".doc", ".pdf", ".xlsx", ".xls", ".txt", ".md", ".zip", ".rar")  # что умеет parser.py
 
 
 def load_products(path):

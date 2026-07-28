@@ -36,7 +36,7 @@ from keymatch import align_keys, align_values, apply_mapping  # noqa: E402
 from matcher import match  # noqa: E402
 from ktru import best_position  # noqa: E402
 
-PARSE_EXT = (".docx", ".doc", ".pdf", ".xlsx", ".xls", ".txt", ".md")
+PARSE_EXT = (".docx", ".doc", ".pdf", ".xlsx", ".xls", ".txt", ".md", ".zip", ".rar")
 VERDICT_RU = {Verdict.ELIGIBLE: "ПРОХОДИТ", Verdict.ELIGIBLE_WITH_GAPS: "ПРОХОДИТ (есть пробелы)",
               Verdict.DISQUALIFIED: "НЕ ПРОХОДИТ"}
 # файлы, где обычно лежат сами требования (а не НМЦК/контракт/заявка) — берём их приоритетно

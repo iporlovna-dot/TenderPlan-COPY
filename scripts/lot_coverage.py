@@ -37,7 +37,7 @@ from matcher import field_kind, match  # noqa: E402
 from ktru import ktru_relation  # noqa: E402
 from tenderplan import TenderplanSource  # noqa: E402
 
-PARSE_EXT = (".docx", ".doc", ".pdf", ".xlsx", ".xls", ".txt")
+PARSE_EXT = (".docx", ".doc", ".pdf", ".xlsx", ".xls", ".txt", ".md", ".zip", ".rar")
 TZ_HINTS = ("описание объекта", "техническ", "задание", "характеристик")
 VR = {Verdict.ELIGIBLE: "✓", Verdict.ELIGIBLE_WITH_GAPS: "✓~", Verdict.DISQUALIFIED: "✗"}
 

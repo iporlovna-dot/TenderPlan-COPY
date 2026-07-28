@@ -27,11 +27,62 @@ def parse(path: str) -> str:
         return _parse_xls(path)
     if ext == ".doc":
         return _parse_doc(path)
+    if ext in (".zip", ".rar"):
+        return _parse_archive(path)
     if ext in (".txt", ".md"):
         with open(path, encoding="utf-8") as f:
             return f.read().strip()
     raise ValueError(
         "Неподдерживаемый формат '%s'. Скан/картинку нужно прогнать через OCR." % ext)
+
+
+# документы, которые умеем читать внутри архива
+_DOC_EXT = (".docx", ".pdf", ".xlsx", ".xls", ".doc", ".txt", ".md", ".zip")
+
+
+def _parse_archive(path: str) -> str:
+    """Архив (.zip/.rar) → текст всех читаемых вложенных документов, склеенный с заголовками.
+    ТЗ часто кладут пачкой в архив. .zip — stdlib; .rar — через rarfile (нужен unrar/unar в
+    системе; если нет — понятная ошибка). Zip-slip не страшен: ZipFile.extract санитизирует пути."""
+    import tempfile
+    ext = os.path.splitext(path)[1].lower()
+    with tempfile.TemporaryDirectory() as tmp:
+        files = _extract_zip(path, tmp) if ext == ".zip" else _extract_rar(path, tmp)
+        parts = []
+        for fp in sorted(files):
+            if os.path.splitext(fp)[1].lower() not in _DOC_EXT:
+                continue
+            try:
+                txt = parse(fp)                 # рекурсия: вложенный документ (в т.ч. .zip)
+            except Exception:
+                continue
+            if txt.strip():
+                parts.append("[ФАЙЛ %s]\n%s" % (os.path.basename(fp), txt))
+        return "\n\n".join(parts).strip()
+
+
+def _extract_zip(path: str, dest: str) -> List[str]:
+    import zipfile
+    out = []
+    with zipfile.ZipFile(path) as z:
+        for info in z.infolist():
+            if info.is_dir():
+                continue
+            out.append(z.extract(info, dest))
+    return out
+
+
+def _extract_rar(path: str, dest: str) -> List[str]:
+    try:
+        import rarfile
+        with rarfile.RarFile(path) as rf:
+            rf.extractall(dest)
+    except Exception as e:
+        raise ValueError(".rar не распакован (нужен системный unrar/unar): %s" % e)
+    out = []
+    for root, _dirs, files in os.walk(dest):
+        out.extend(os.path.join(root, f) for f in files)
+    return out
 
 
 def _render_table(rows: List[List[str]]) -> str:
