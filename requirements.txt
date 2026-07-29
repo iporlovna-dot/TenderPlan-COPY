@@ -20,6 +20,8 @@ fastapi>=0.110.0
 uvicorn>=0.29.0
 sqlalchemy>=2.0.0
 alembic>=1.13          # миграции схемы БД (версионирование, prod-редеплой без потери данных)
+psycopg2-binary>=2.9   # драйвер Postgres (prod-БД; URL через SPECMATCH_DATABASE_URL=postgresql://…)
+redis>=5.0             # опц. общий стор rate-limit логина для многопроцессности (SPECMATCH_REDIS_URL)
 pydantic-settings>=2.2.0
 argon2-cffi>=23.1.0     # хеш паролей (secure by design)
 pyjwt>=2.8.0            # токены сессии

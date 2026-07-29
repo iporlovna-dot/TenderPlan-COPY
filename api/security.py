@@ -96,4 +96,44 @@ class LoginRateLimiter:
             self._state.pop(key, None)
 
 
-login_limiter = LoginRateLimiter(settings.login_max_fails, settings.login_lockout_sec)
+class RedisLoginRateLimiter:
+    """Тот же контракт, но счётчик в Redis — ОБЩИЙ между процессами/воркерами (prod).
+
+    record_fail: INCR ключа неудач с TTL; достиг лимита → ставим lock-ключ на lockout_sec.
+    locked_for: TTL lock-ключа. reset: удалить оба ключа."""
+
+    def __init__(self, url: str, max_fails: int, lockout_sec: int):
+        import redis  # опциональная зависимость — импорт лениво в конструкторе
+        self.r = redis.Redis.from_url(url, socket_connect_timeout=2, decode_responses=True)
+        self.r.ping()  # проверка связи сразу — иначе фабрика поймает и деградирует в in-memory
+        self.max_fails = max_fails
+        self.lockout_sec = lockout_sec
+
+    def locked_for(self, key: str) -> float:
+        ttl = self.r.ttl("specmatch:rll:" + key)
+        return float(ttl) if ttl and ttl > 0 else 0.0
+
+    def record_fail(self, key: str) -> None:
+        fk = "specmatch:rlf:" + key
+        n = self.r.incr(fk)
+        self.r.expire(fk, self.lockout_sec)
+        if n >= self.max_fails:
+            self.r.set("specmatch:rll:" + key, 1, ex=self.lockout_sec)
+
+    def reset(self, key: str) -> None:
+        self.r.delete("specmatch:rlf:" + key, "specmatch:rll:" + key)
+
+
+def _make_login_limiter():
+    """Redis-стор, если задан SPECMATCH_REDIS_URL и доступен; иначе in-memory (мягкая деградация)."""
+    if settings.redis_url:
+        try:
+            return RedisLoginRateLimiter(settings.redis_url, settings.login_max_fails,
+                                         settings.login_lockout_sec)
+        except Exception:
+            import warnings
+            warnings.warn("Redis недоступен — rate-limit логина в in-memory (per-process)")
+    return LoginRateLimiter(settings.login_max_fails, settings.login_lockout_sec)
+
+
+login_limiter = _make_login_limiter()

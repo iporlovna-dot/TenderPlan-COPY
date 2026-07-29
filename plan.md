@@ -43,6 +43,8 @@
   срок исполнения/этапы детерм. парсером (`contract_terms.py`); расчёт масштабирования (§15.1);
   разведка `zakupki.mos.ru` — это ГОСТ-крипто, не CA-бандл (отдельный инфра-эпик, отложено, §6);
   версионность закупки — детект+классификация formal/material (`versioning.py`, §6);
+  прод-бэкенд: лента (пагинация/фильтры/сортировка/сводная), миграции (alembic), refresh-токены
+  (ротация+reuse-detection), харденинг (security-заголовки, redis-стор), Postgres-готовность;
   2 новых скилла (plan-sync, embed-calibrate).
 - Тесты зелёные: matcher 39/39, keymatch 37/37, golden 46/46 (23 фикстуры), semantic_filter 12/12,
   synonym_miner 7/7, gapfill 13/13, contract_terms 14/14, versioning 12/12, api 35/35, +parser/ktru/filter/lot.
@@ -502,7 +504,11 @@
   **МИГРАЦИИ (alembic) — СДЕЛАНО (2026-07-29):** `alembic.ini` + `migrations/` (env берёт `Base` и URL
   из приложения, не хардкодит; `render_as_batch` для ALTER на SQLite). Базовая миграция автогенерирована
   из моделей (все 4 таблицы + 6 колонок этой сессии), `upgrade head`/`downgrade base` обратимы,
-  `migrations/README.md` (prod: только alembic; dev/тесты: `create_all`). Осталось: prod-БД (Postgres).
+  `migrations/README.md` (prod: только alembic; dev/тесты: `create_all`).
+  **Postgres — ДЕПЛОЙ-ГОТОВ (2026-07-29):** драйвер `psycopg2-binary` в requirements; код БД-агностичен
+  (SQLite-специфика — только `check_same_thread`, уже условна; alembic `render_as_batch` на Postgres —
+  no-op). Прод: `SPECMATCH_DATABASE_URL=postgresql://…` + `alembic upgrade head`. Полную проверку на
+  живом Postgres не гоняли (нет инстанса в этой среде) — код готов, инстанс поднимается при деплое.
 - [~] **Защищённая аутентификация — БАЗА ГОТОВА (secure by design, §5):** argon2id хеш паролей,
   rate-limit логина на (IP+email) с ВРЕМЕННОЙ блокировкой (не вечной), единый ответ «неверный логин
   или пароль» (без утечки существования аккаунта), constant-time сверка при отсутствии юзера, JWT
@@ -510,8 +516,11 @@
   вход/регистрация выдают пару access(60мин)+refresh(30дн); `POST /auth/refresh` ротирует (старый гасится),
   `POST /auth/logout` отзывает. Модель `RefreshToken` (в БД только SHA-256, не plaintext) + `family_id`
   для **reuse-detection**: повтор использованного refresh → признак кражи → отзыв ВСЕГО семейства
-  (`tests/test_api.py` 44→51, миграция `refresh_tokens`). Осталось: **2FA через Telegram-бота**, HTTPS-only
-  (терминация на прокси), общий стор rate-limit (redis) для многопроцессности.
+  (`tests/test_api.py` 44→51, миграция `refresh_tokens`). **ХАРДЕНИНГ — СДЕЛАНО (2026-07-29):**
+  security-заголовки middleware (nosniff, X-Frame-Options DENY, Referrer-Policy; HSTS при
+  `SPECMATCH_HTTPS_ONLY=1` за TLS-прокси); общий стор rate-limit — `RedisLoginRateLimiter`
+  (`SPECMATCH_REDIS_URL`, мягкая деградация в in-memory, если redis недоступен). api-тест 51→56.
+  Осталось: **2FA через Telegram-бота** (на паузе).
 - [ ] Личный кабинет (React): завёл товар → лента с % и разбором
 - [~] **Дозаполнение пробелов клиентом (важно, фаундер) — БЭКЕНД ГОТОВ (2026-07-28):** когда движок
   нашёл конкурс, а карточке не хватает данных (вердикт = пробелы GAP) — клиент вносит значение →

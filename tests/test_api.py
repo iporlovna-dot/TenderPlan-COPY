@@ -237,6 +237,17 @@ def run():
     r.append(check("после logout refresh → 401",
                    client.post("/auth/refresh", json={"refresh_token": rt2}).status_code == 401))
 
+    # --- Прод-харденинг: security-заголовки + стор rate-limit ---
+    h = client.get("/health").headers
+    r.append(check("заголовок X-Content-Type-Options: nosniff",
+                   h.get("x-content-type-options") == "nosniff"))
+    r.append(check("заголовок X-Frame-Options: DENY", h.get("x-frame-options") == "DENY"))
+    r.append(check("Referrer-Policy: no-referrer", h.get("referrer-policy") == "no-referrer"))
+    r.append(check("HSTS выключен без https_only", "strict-transport-security" not in h))
+    from api.security import login_limiter as _ll
+    r.append(check("rate-limit по умолчанию in-memory (нет SPECMATCH_REDIS_URL)",
+                   type(_ll).__name__ == "LoginRateLimiter"))
+
     # rate-limit: 5 неудач по свежему email → блокировка (429)
     for _ in range(5):
         client.post("/auth/login", json={"email": "ratelimit@x.io", "password": "bad12345"})

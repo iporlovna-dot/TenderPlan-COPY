@@ -35,9 +35,14 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/app.db"
 
     # Rate-limit логина (защита от перебора): лимит неудач на (IP+email), затем временная
-    # блокировка (НЕ вечная), экспоненциальная задержка. Prod: вынести счётчик в общий стор (redis).
+    # блокировка (НЕ вечная). Многопроцессность: задай SPECMATCH_REDIS_URL — счётчик станет общим
+    # (иначе in-memory на процесс). Redis недоступен → мягкая деградация в in-memory.
     login_max_fails: int = 5
     login_lockout_sec: int = 900          # ~15 минут
+    redis_url: str = ""                   # напр. redis://localhost:6379/0 — общий стор rate-limit
+
+    # Прод-харденинг: за HTTPS-прокси включить → добавляется HSTS (принудительный TLS в браузере).
+    https_only: bool = False
 
     # Каталог, куда CLI-конвейер (run_auto --out) пишет вердикты для ingest в ленту.
     results_dir: str = "data/results"
