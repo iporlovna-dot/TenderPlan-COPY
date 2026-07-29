@@ -152,7 +152,9 @@
   }
 
   function updateSavedCount() {
-    const n = LK.getSaved().length;
+    // считаем только «живые» сохранённые — просроченные/завершённые из «Мои
+    // конкурсы» уже прячутся (notDone в renderFeed), бейдж должен совпадать с лентой
+    const n = LK.getSaved().filter(p => !isExpired(p) && liveStage(p) !== "completed").length;
     const el = document.getElementById("saved-count");
     if (el) { el.textContent = n; el.style.display = n ? "inline-flex" : "none"; }
   }
@@ -909,8 +911,9 @@
     populateFacets();  // регион/площадка из реальных данных
     // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
     selectAllPurchases();
-    // живое устаревание: раз в минуту перерисовываем (без сброса пагинации)
-    setInterval(() => renderFeed(false), 60000);
+    // живое устаревание: раз в минуту перерисовываем (без сброса пагинации) и
+    // пересчитываем бейдж «Мои конкурсы» — чтобы истёкшие уходили и из счётчика
+    setInterval(() => { renderFeed(false); updateSavedCount(); }, 60000);
   });
   // аналитика — необязательный слой, грузится параллельно и не блокирует ленту;
   // если файла нет/не собрался, analyticsFor() просто вернёт null везде
