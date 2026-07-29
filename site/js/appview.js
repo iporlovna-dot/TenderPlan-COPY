@@ -21,6 +21,12 @@
 
   const company = LK.getCompany();
 
+  // доска закупок (общая по компании): статусы воронки и «до-победные» статусы,
+  // для которых истёкший тендер = дохлый лид и убирается с доски (см. boardVisible)
+  const BOARD_STATUSES = LK.BOARD_STATUSES;
+  const PRE_AWARD = new Set(["Интересно", "Участвуем", "В просчёте"]);
+  let employees = [];   // сотрудники компании — для выбора ответственного
+
   const DEFAULT_FILTERS = () => ({
     customer: "", region: "all", delivery: "all",
     law: "all", stage: "active",
@@ -31,7 +37,8 @@
     query: "",
     minus: "",
     searchId: null,          // id сохранённого поиска или null (свободный / «Все закупки»)
-    view: "all",             // all | saved («Мои конкурсы»)
+    view: "all",             // all | saved («Мои закупки»)
+    boardStatus: "all",      // фильтр доски по статусу: all | один из BOARD_STATUSES
     page: 1,
     pageSize: LK.getPageSize(),
     filters: DEFAULT_FILTERS(),
@@ -140,21 +147,56 @@
     renderFeed();
   }
 
-  function selectSaved() {
+  function selectSaved() { selectSavedStatus("all"); }
+
+  function selectSavedStatus(status) {
     state.searchId = null;
     state.view = "saved";
+    state.boardStatus = status;
     state.query = "";
     state.minus = "";
     state.filters = { ...DEFAULT_FILTERS(), stage: "all" };
     syncControlsFromState();
     renderSidebar();
+    renderBoardNav();
     renderFeed();
   }
 
+  // видимость карточки на доске: до-победные статусы с истёкшим сроком — прочь
+  // (дохлый лид), «Заключён контракт»/«Исполнен»/«Ждём оплату» держим независимо
+  // от срока тендера (закупку выиграли — она остаётся в работе).
+  function boardVisible(p) {
+    const st = p.boardStatus || BOARD_STATUSES[0];
+    return PRE_AWARD.has(st) ? (!isExpired(p) && liveStage(p) !== "completed") : true;
+  }
+
+  // sub-навигация в сайдбаре: статусы воронки со счётчиками
+  function renderBoardNav() {
+    const wrap = document.getElementById("board-nav");
+    if (!wrap) return;
+    const counts = {};
+    BOARD_STATUSES.forEach(s => counts[s] = 0);
+    LK.getSaved().filter(boardVisible).forEach(p => {
+      const s = p.boardStatus || BOARD_STATUSES[0];
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    const onSaved = state.view === "saved";
+    wrap.innerHTML = BOARD_STATUSES.map(s => `
+      <a href="#" class="board-nav__item ${onSaved && state.boardStatus === s ? "is-active" : ""}" data-board="${lkEscape(s)}">
+        <span class="board-nav__name">${lkEscape(s)}</span>
+        ${counts[s] ? `<span class="board-nav__count">${counts[s]}</span>` : ""}
+      </a>`).join("");
+    wrap.querySelectorAll("[data-board]").forEach(el => el.addEventListener("click", (e) => {
+      e.preventDefault();
+      selectSavedStatus(el.dataset.board);
+    }));
+  }
+
+  function refreshBoard() { updateSavedCount(); renderBoardNav(); }
+
   function updateSavedCount() {
-    // считаем только «живые» сохранённые — просроченные/завершённые из «Мои
-    // конкурсы» уже прячутся (notDone в renderFeed), бейдж должен совпадать с лентой
-    const n = LK.getSaved().filter(p => !isExpired(p) && liveStage(p) !== "completed").length;
+    // бейдж = сколько закупок реально на доске (по той же логике boardVisible)
+    const n = LK.getSaved().filter(boardVisible).length;
     const el = document.getElementById("saved-count");
     if (el) { el.textContent = n; el.style.display = n ? "inline-flex" : "none"; }
   }
@@ -537,6 +579,49 @@
     return null;
   }
 
+  // компактный селект статуса в шапке карточки (триаж прямо из ленты):
+  // «＋ На доску» = не на доске; выбор статуса добавляет/меняет, пустое — снимает
+  function boardStatusSelect(p) {
+    const st = LK.savedStatus(p.id);
+    return `<select class="board-select ${st ? "is-on" : ""}" data-board-status="${p.id}" title="Статус на доске компании">
+      <option value="" ${st ? "" : "selected"}>＋ На доску</option>
+      ${BOARD_STATUSES.map(s => `<option value="${lkEscape(s)}" ${st === s ? "selected" : ""}>${lkEscape(s)}</option>`).join("")}
+    </select>`;
+  }
+
+  // чип с ответственным в шапке карточки (если назначен)
+  function boardAssigneeChip(p) {
+    const s = LK.getSaved().find(x => x.id === p.id);
+    return s && s.assigneeName ? `<span class="assignee-chip" title="Ответственный за закупку">👤 ${lkEscape(s.assigneeName)}</span>` : "";
+  }
+
+  // блок «Работа с закупкой» в детали — только если закупка на доске: смена
+  // статуса, назначение ответственного (из сотрудников компании), снятие с доски
+  function boardControls(p) {
+    const st = LK.savedStatus(p.id);
+    if (!st) return "";
+    const saved = LK.getSaved().find(x => x.id === p.id);
+    const assigneeId = saved ? saved.assigneeId : null;
+    const assignOpts = `<option value="">— не назначен —</option>` +
+      employees.map(e => `<option value="${e.id}" ${String(assigneeId) === String(e.id) ? "selected" : ""}>${lkEscape(e.name)}</option>`).join("");
+    return `
+      <div class="detail-block detail-board">
+        <div class="detail-block__title">Работа с закупкой</div>
+        <div class="board-row">
+          <label class="board-field"><span>Статус</span>
+            <select class="board-select" data-board-status="${p.id}">
+              ${BOARD_STATUSES.map(s => `<option value="${lkEscape(s)}" ${st === s ? "selected" : ""}>${lkEscape(s)}</option>`).join("")}
+            </select>
+          </label>
+          <label class="board-field"><span>Ответственный</span>
+            <select class="board-assignee" data-assignee="${p.id}" ${employees.length ? "" : "disabled"}>${assignOpts}</select>
+          </label>
+          <button class="btn btn-ghost btn-sm board-remove" data-board-remove="${p.id}">Убрать с доски</button>
+        </div>
+        ${employees.length ? "" : `<div class="board-hint">Чтобы назначать ответственного, добавьте сотрудников в личном кабинете.</div>`}
+      </div>`;
+  }
+
   function purchaseDetail(p, m) {
     const lotsHead = `
       <div class="lot-line lot-head">
@@ -577,6 +662,7 @@
 
     return `
       <div class="tender-detail">
+        ${boardControls(p)}
         ${m ? matchDetail(m) : ""}
         <div class="detail-block">
           <div class="detail-block__title">Позиции лота${p.lots.length > 1 ? ` (${p.lots.length})` : ""}</div>
@@ -613,8 +699,7 @@
             <span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>
             <span class="badge badge-source">${lkEscape(p.source)}</span>
             ${fresh}${lot}
-            <button class="save-btn ${LK.isSaved(p.id) ? "is-saved" : ""}" data-save="${p.id}"
-              title="${LK.isSaved(p.id) ? "В «Моих конкурсах»" : "Сохранить конкурс"}">★</button>
+            <span class="board-head-controls">${boardAssigneeChip(p)}${boardStatusSelect(p)}</span>
           </div>
           <h3 class="tender-title">${highlight(p.title)}</h3>
           <div class="tender-meta">
@@ -681,13 +766,16 @@
 
     const current = state.searchId ? LK.getSearches().find(s => s.id === state.searchId) : null;
     const savedView = state.view === "saved";
-    title.textContent = savedView ? "★ Мои конкурсы"
+    title.textContent = savedView
+      ? (state.boardStatus === "all" ? "★ Мои закупки" : "★ " + state.boardStatus)
       : current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
 
-    // и «Мои конкурсы», и лента — без просроченных/завершённых закупок
+    // лента — без просроченных/завершённых; доска — по boardVisible + выбранному статусу
     const notDone = p => !isExpired(p) && liveStage(p) !== "completed";
     let list = savedView
-      ? LK.getSaved().filter(notDone).filter(passesSearch)
+      ? LK.getSaved().filter(boardVisible)
+          .filter(p => state.boardStatus === "all" || (p.boardStatus || BOARD_STATUSES[0]) === state.boardStatus)
+          .filter(passesSearch)
       : LK.allPurchases().filter(notDone).filter(passesSearch).filter(passesFilters);
 
     const sortFn = {
@@ -705,9 +793,11 @@
     if (!list.length) {
       count.textContent = savedView ? "" : "ничего не найдено";
       feed.innerHTML = `<div class="empty-state">
-        <h3>${savedView ? "Пока нет сохранённых конкурсов" : "Ничего не найдено"}</h3>
+        <h3>${savedView
+          ? (state.boardStatus === "all" ? "Пока нет закупок на доске" : `В статусе «${lkEscape(state.boardStatus)}» пусто`)
+          : "Ничего не найдено"}</h3>
         <p>${savedView
-          ? "Нажмите ★ на карточке закупки, чтобы сохранить её сюда."
+          ? "В карточке закупки выберите статус (＋ На доску), чтобы добавить её в работу."
           : "Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап."}</p>
       </div>`;
       document.getElementById("feed-pagination").innerHTML = "";
@@ -740,17 +830,45 @@
         }
       });
     });
-    // ★ сохранить/убрать
-    feed.querySelectorAll("[data-save]").forEach(btn => {
-      btn.addEventListener("click", (e) => {
+    // доска: перерисовать ленту, сохранив раскрытую карточку (если она осталась)
+    function afterBoardChange(el) {
+      const card = el.closest(".tender-card");
+      const openId = card && card.classList.contains("is-open") ? card.dataset.id : null;
+      refreshBoard();
+      renderFeed(false);
+      if (openId) {
+        const again = feed.querySelector('.tender-card[data-id="' + openId + '"]');
+        if (again) again.classList.add("is-open");
+      }
+    }
+    // статус на доске (селект в шапке и в детали): пусто = снять, статус = добавить/сменить
+    feed.querySelectorAll("[data-board-status]").forEach(sel => {
+      sel.addEventListener("click", (e) => e.stopPropagation());
+      sel.addEventListener("change", (e) => {
         e.stopPropagation();
-        const p = byId[btn.dataset.save];
-        if (!p) return;
-        const added = LK.toggleSaved(p);
-        btn.classList.toggle("is-saved", added);
-        btn.title = added ? "В «Моих конкурсах»" : "Сохранить конкурс";
-        updateSavedCount();
-        if (savedView && !added) renderFeed(false);
+        const id = sel.dataset.boardStatus, p = byId[id], val = sel.value;
+        if (!val) LK.removeSaved(id);
+        else if (LK.isSaved(id)) LK.setBoardStatus(id, val);
+        else if (p) LK.addToBoard(p, val);
+        afterBoardChange(sel);
+      });
+    });
+    // ответственный
+    feed.querySelectorAll("[data-assignee]").forEach(sel => {
+      sel.addEventListener("click", (e) => e.stopPropagation());
+      sel.addEventListener("change", (e) => {
+        e.stopPropagation();
+        const opt = sel.options[sel.selectedIndex];
+        LK.setBoardAssignee(sel.dataset.assignee, sel.value, opt ? opt.textContent : null);
+        afterBoardChange(sel);
+      });
+    });
+    // снять с доски
+    feed.querySelectorAll("[data-board-remove]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        LK.removeSaved(btn.dataset.boardRemove);
+        afterBoardChange(btn);
       });
     });
     // сверить своё ТЗ
@@ -902,6 +1020,9 @@
   renderMatchProducts();
   renderSidebar();
 
+  employees = await LK.getEmployees();  // для селекта ответственного в карточках
+  renderBoardNav();
+
   document.getElementById("feed-count").textContent = "загружаем закупки…";
 
   updateSavedCount();
@@ -911,8 +1032,8 @@
     // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
     selectAllPurchases();
     // живое устаревание: раз в минуту перерисовываем (без сброса пагинации) и
-    // пересчитываем бейдж «Мои конкурсы» — чтобы истёкшие уходили и из счётчика
-    setInterval(() => { renderFeed(false); updateSavedCount(); }, 60000);
+    // обновляем счётчики доски — чтобы истёкшие лиды уходили и из чисел
+    setInterval(() => { renderFeed(false); refreshBoard(); }, 60000);
   });
   // аналитика — необязательный слой, грузится параллельно и не блокирует ленту;
   // если файла нет/не собрался, analyticsFor() просто вернёт null везде

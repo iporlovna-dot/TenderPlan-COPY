@@ -52,8 +52,18 @@ class EmployeeCreate(BaseModel):
     password: str
 
 
+# статусы воронки закупки на общей доске компании (порядок = порядок в UI)
+BOARD_STATUSES = ["Интересно", "Участвуем", "В просчёте", "Заключён контракт", "Исполнен", "Ждём оплату"]
+
+
 class SavedBody(BaseModel):
     purchase: dict
+    status: str | None = None
+
+
+class BoardPatch(BaseModel):
+    status: str | None = None
+    assignee_id: int | None = None
 
 
 class TzCheckBody(BaseModel):
@@ -429,40 +439,106 @@ def delete_employee(employee_id: int, lekalo_session: str | None = Cookie(defaul
         conn.close()
 
 
-# ---------- избранное (личное, привязано к user_id) ----------
+# ---------- доска закупок (общая по компании: статус воронки + ответственный) ----------
 
 @router.get("/saved")
 def list_saved(lekalo_session: str | None = Cookie(default=None)):
     conn, user = _require_user(lekalo_session)
     try:
         rows = conn.execute(
-            "SELECT data FROM saved_purchases WHERE user_id = ? ORDER BY created_at DESC", (user["id"],)
+            "SELECT sp.data, sp.status, sp.assignee_id, u.name AS assignee_name "
+            "FROM saved_purchases sp LEFT JOIN users u ON u.id = sp.assignee_id "
+            "WHERE sp.company_id = ? ORDER BY sp.created_at DESC",
+            (user["company_id"],),
         ).fetchall()
-        return [json.loads(r["data"]) for r in rows]
+        out = []
+        for r in rows:
+            p = json.loads(r["data"])
+            p["boardStatus"] = r["status"] or BOARD_STATUSES[0]
+            p["assigneeId"] = r["assignee_id"]
+            p["assigneeName"] = r["assignee_name"]
+            out.append(p)
+        return out
     finally:
         conn.close()
 
 
 @router.post("/saved")
-def toggle_saved(body: SavedBody, lekalo_session: str | None = Cookie(default=None)):
+def add_saved(body: SavedBody, lekalo_session: str | None = Cookie(default=None)):
+    """Добавить закупку на общую доску компании (или обновить статус, если уже там).
+    Снятие с доски — DELETE /saved/{purchase_id}."""
     conn, user = _require_user(lekalo_session)
     try:
         pid = str(body.purchase.get("id") or "")
         if not pid:
             raise HTTPException(status_code=400, detail="У закупки нет id")
+        status = body.status if body.status in BOARD_STATUSES else BOARD_STATUSES[0]
         existing = conn.execute(
-            "SELECT id FROM saved_purchases WHERE user_id = ? AND purchase_id = ?", (user["id"], pid)
+            "SELECT id FROM saved_purchases WHERE company_id = ? AND purchase_id = ?",
+            (user["company_id"], pid),
         ).fetchone()
         if existing:
-            conn.execute("DELETE FROM saved_purchases WHERE id = ?", (existing["id"],))
-            conn.commit()
-            return {"added": False}
+            if body.status in BOARD_STATUSES:
+                conn.execute("UPDATE saved_purchases SET status = ? WHERE id = ?", (status, existing["id"]))
+                conn.commit()
+            return {"added": True, "boardStatus": status}
         conn.execute(
-            "INSERT INTO saved_purchases (user_id, purchase_id, data, created_at) VALUES (?, ?, ?, ?)",
-            (user["id"], pid, json.dumps(body.purchase, ensure_ascii=False), datetime.now(timezone.utc).isoformat()),
+            "INSERT INTO saved_purchases (user_id, company_id, purchase_id, data, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (user["id"], user["company_id"], pid, json.dumps(body.purchase, ensure_ascii=False),
+             status, datetime.now(timezone.utc).isoformat()),
         )
         conn.commit()
-        return {"added": True}
+        audit.log("saved_add", user=user["id"], company=user["company_id"], purchase=pid, status=status)
+        return {"added": True, "boardStatus": status}
+    finally:
+        conn.close()
+
+
+@router.patch("/saved/{purchase_id}")
+def patch_saved(purchase_id: str, body: BoardPatch, lekalo_session: str | None = Cookie(default=None)):
+    """Сменить статус и/или ответственного у карточки на доске компании."""
+    conn, user = _require_user(lekalo_session)
+    try:
+        row = conn.execute(
+            "SELECT id FROM saved_purchases WHERE company_id = ? AND purchase_id = ?",
+            (user["company_id"], purchase_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Закупка не на доске")
+        fields = body.model_fields_set
+        if "status" in fields:
+            if body.status not in BOARD_STATUSES:
+                raise HTTPException(status_code=400, detail="Неизвестный статус")
+            conn.execute("UPDATE saved_purchases SET status = ? WHERE id = ?", (body.status, row["id"]))
+        if "assignee_id" in fields:
+            aid = body.assignee_id
+            if aid is not None:
+                ok = conn.execute(
+                    "SELECT 1 FROM users WHERE id = ? AND company_id = ?", (aid, user["company_id"])
+                ).fetchone()
+                if not ok:
+                    raise HTTPException(status_code=400, detail="Ответственный не из вашей компании")
+            conn.execute("UPDATE saved_purchases SET assignee_id = ? WHERE id = ?", (aid, row["id"]))
+        conn.commit()
+        audit.log("saved_patch", user=user["id"], company=user["company_id"], purchase=purchase_id,
+                  status=(body.status if "status" in fields else None),
+                  assignee=(body.assignee_id if "assignee_id" in fields else None))
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+@router.delete("/saved/{purchase_id}")
+def delete_saved(purchase_id: str, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_user(lekalo_session)
+    try:
+        conn.execute(
+            "DELETE FROM saved_purchases WHERE company_id = ? AND purchase_id = ?",
+            (user["company_id"], purchase_id),
+        )
+        conn.commit()
+        return {"ok": True}
     finally:
         conn.close()
 

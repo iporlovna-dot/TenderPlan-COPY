@@ -1083,6 +1083,67 @@ section { padding: 78px 0; }
 .save-btn:hover { color: var(--brass); transform: scale(1.15); }
 .save-btn.is-saved { color: var(--brass); }
 
+/* ---------- доска закупок (статусы воронки + ответственный) ---------- */
+
+/* контролы в правой части шапки карточки */
+.board-head-controls {
+  margin-left: auto; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.assignee-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.74rem; color: var(--ink-soft);
+  background: var(--paper-alt); border: 1px solid var(--line-soft);
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+}
+/* компактный селект статуса в шапке; на доске подсвечен ржавчиной */
+.board-select {
+  font: inherit; font-size: 0.78rem; font-weight: 600;
+  color: var(--ink-soft); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 3px 8px; cursor: pointer; max-width: 190px;
+}
+.board-select:hover { border-color: var(--ink-faint); }
+.board-select.is-on { color: var(--rust); border-color: var(--rust); background: var(--rust-tint); }
+
+/* sub-навигация статусов в сайдбаре */
+.board-nav { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 0 6px; }
+.board-nav__item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 5px 10px; border-radius: 7px; cursor: pointer;
+  font-size: 0.82rem; color: var(--ink-soft);
+  border-left: 2px solid var(--line-soft);
+}
+.board-nav__item:hover { background: var(--paper-alt); color: var(--ink); }
+.board-nav__item.is-active { background: var(--rust-tint); color: var(--rust); border-left-color: var(--rust); font-weight: 600; }
+.board-nav__count {
+  flex-shrink: 0; min-width: 18px; height: 18px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--paper-deep); color: var(--ink-soft);
+  font-size: 0.7rem; font-weight: 700; border-radius: 999px;
+}
+.board-nav__item.is-active .board-nav__count { background: var(--rust); color: var(--white); }
+
+/* блок «Работа с закупкой» в детали */
+.detail-board .board-row {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px;
+}
+.board-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--ink-faint); }
+.board-field select {
+  font: inherit; font-size: 0.86rem; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 10px; min-width: 190px; cursor: pointer;
+}
+.board-field select:hover { border-color: var(--ink-faint); }
+.board-remove { color: var(--bad); border-color: var(--line); }
+.board-remove:hover { border-color: var(--bad); background: var(--rust-tint); }
+.board-hint { margin-top: 8px; font-size: 0.8rem; color: var(--ink-faint); }
+
+@media (max-width: 640px) {
+  .board-field select, .board-select { min-width: 0; width: 100%; max-width: none; }
+  .detail-board .board-row { flex-direction: column; align-items: stretch; }
+}
+
 /* модалка сверки ТЗ */
 #tz-modal .modal-box { max-width: 720px; }
 .tz-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }

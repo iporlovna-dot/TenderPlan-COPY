@@ -82,6 +82,13 @@ MIGRATIONS = [
         ("totp_secret", "TEXT"),
         ("totp_enabled", "INTEGER NOT NULL DEFAULT 0"),
     ]),
+    # избранное стало общей доской компании: статус воронки + ответственный +
+    # привязка карточки к компании (а не только к добавившему пользователю).
+    ("saved_purchases", [
+        ("company_id", "INTEGER"),
+        ("status", "TEXT NOT NULL DEFAULT 'Интересно'"),
+        ("assignee_id", "INTEGER"),
+    ]),
 ]
 
 
@@ -93,12 +100,37 @@ def _migrate(conn: sqlite3.Connection) -> None:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
 
 
+def _migrate_saved_to_company(conn: sqlite3.Connection) -> None:
+    """Доска избранного — общая по компании. Старым личным строкам проставляем
+    company_id по их пользователю, схлопываем возможные дубли (одна карточка на
+    закупку в компании — берём самую свежую) и вешаем уникальный индекс, чтобы
+    два сотрудника не плодили две карточки одной закупки."""
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(saved_purchases)")}
+    if "company_id" not in cols:
+        return
+    conn.execute(
+        "UPDATE saved_purchases SET company_id = "
+        "(SELECT company_id FROM users WHERE users.id = saved_purchases.user_id) "
+        "WHERE company_id IS NULL"
+    )
+    conn.execute(
+        "DELETE FROM saved_purchases WHERE company_id IS NOT NULL AND id NOT IN "
+        "(SELECT MAX(id) FROM saved_purchases WHERE company_id IS NOT NULL "
+        "GROUP BY company_id, purchase_id)"
+    )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_company_purchase "
+        "ON saved_purchases(company_id, purchase_id)"
+    )
+
+
 def init_db() -> None:
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = get_conn()
     try:
         conn.executescript(SCHEMA)
         _migrate(conn)
+        _migrate_saved_to_company(conn)
         conn.commit()
     finally:
         conn.close()

@@ -41,19 +41,60 @@ const LK = (() => {
   }
   function setPageSize(n) { localStorage.setItem(KEY_PAGE_SIZE, String(n)); }
 
-  // ---------- сохранённые конкурсы (избранное) ----------
+  // ---------- доска закупок (общая по компании: статус воронки + ответственный) ----------
+  // Кэш в localStorage — массив закупок с полями boardStatus/assigneeId/assigneeName
+  // (их отдаёт GET /api/saved). В демо/локально всё живёт только в этом кэше; при
+  // серверной сессии мутаторы дополнительно шлют POST/PATCH/DELETE на /api/saved.
+
+  const BOARD_STATUSES = ["Интересно", "Участвуем", "В просчёте", "Заключён контракт", "Исполнен", "Ждём оплату"];
 
   function getSaved() {
     try { return JSON.parse(localStorage.getItem(KEY_SAVED)) || []; } catch { return []; }
   }
+  function _setSaved(list) { localStorage.setItem(KEY_SAVED, JSON.stringify(list)); }
   function isSaved(id) { return getSaved().some(p => p.id === id); }
-  function toggleSaved(p) {
+  function savedStatus(id) {  // текущий статус карточки на доске или null, если её там нет
+    const p = getSaved().find(x => x.id === id);
+    return p ? (p.boardStatus || BOARD_STATUSES[0]) : null;
+  }
+
+  function addToBoard(p, status) {
+    status = BOARD_STATUSES.includes(status) ? status : BOARD_STATUSES[0];
     const list = getSaved();
     const i = list.findIndex(x => x.id === p.id);
-    if (i >= 0) list.splice(i, 1); else list.unshift(p);
-    localStorage.setItem(KEY_SAVED, JSON.stringify(list));
-    if (hasServerSession) apiSend("POST", "/api/saved", { purchase: p }).catch(() => {});
-    return i < 0;  // true = добавили в избранное
+    if (i >= 0) list[i].boardStatus = status;
+    else list.unshift({ ...p, boardStatus: status, assigneeId: null, assigneeName: null });
+    _setSaved(list);
+    if (hasServerSession) apiSend("POST", "/api/saved", { purchase: p, status }).catch(() => {});
+    return status;
+  }
+  function setBoardStatus(id, status) {
+    if (!BOARD_STATUSES.includes(status)) return;
+    const list = getSaved(); const p = list.find(x => x.id === id);
+    if (!p) return;
+    p.boardStatus = status; _setSaved(list);
+    if (hasServerSession) apiSend("PATCH", "/api/saved/" + encodeURIComponent(id), { status }).catch(() => {});
+  }
+  function setBoardAssignee(id, assigneeId, assigneeName) {
+    const list = getSaved(); const p = list.find(x => x.id === id);
+    if (!p) return;
+    p.assigneeId = (assigneeId == null || assigneeId === "") ? null : Number(assigneeId);
+    p.assigneeName = p.assigneeId == null ? null : (assigneeName || null);
+    _setSaved(list);
+    if (hasServerSession) apiSend("PATCH", "/api/saved/" + encodeURIComponent(id), { assignee_id: p.assigneeId }).catch(() => {});
+  }
+  function removeSaved(id) {
+    _setSaved(getSaved().filter(x => x.id !== id));
+    if (hasServerSession) apiSend("DELETE", "/api/saved/" + encodeURIComponent(id)).catch(() => {});
+  }
+
+  // сотрудники компании — для выбора ответственного (кэш на сессию)
+  let _employees = null;
+  async function getEmployees() {
+    if (_employees) return _employees;
+    if (!hasServerSession) { _employees = []; return _employees; }
+    try { _employees = await apiGet("/api/employees"); } catch { _employees = []; }
+    return _employees;
   }
 
   // ---------- просмотренные закупки (чтобы не путаться в ленте) ----------
@@ -76,7 +117,8 @@ const LK = (() => {
   // Демо (?demo=1, LK.seedDemo) работает целиком в localStorage, без сервера —
   // это НЕ трогаем. Если на бэкенде (см. server/app/accounts.py) есть настоящая
   // сессия по cookie, initSession() подтягивает компанию + избранное в тот же
-  // localStorage-кэш, а toggleSaved/сверка ТЗ дополнительно шлют изменения на сервер.
+  // localStorage-кэш, а мутаторы доски (addToBoard/setBoardStatus/…) и сверка ТЗ
+  // дополнительно шлют изменения на сервер.
 
   let hasServerSession = false;
 
@@ -576,7 +618,8 @@ const LK = (() => {
     getProducts, setProducts, addProduct,
     getSearches, setSearches, addSearch, updateSearch, deleteSearch,
     getCurrentSearchId, setCurrentSearchId,
-    getSaved, isSaved, toggleSaved,
+    getSaved, isSaved, savedStatus, addToBoard, setBoardStatus, setBoardAssignee, removeSaved,
+    getEmployees, BOARD_STATUSES,
     getViewed, isViewed, markViewed,
     getPageSize, setPageSize,
     initSession, apiLogout, isServerSession, apiGet, apiSend,
