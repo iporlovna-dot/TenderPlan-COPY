@@ -102,10 +102,12 @@ class LeadPage(BaseModel):
 
 
 class CheckOut(BaseModel):
-    req: str
+    req: str                          # ключ характеристики
     status: str                       # pass | violation | gap
     note: str = ""
     action: str = ""                  # что сделать (для gap) — подсказка клиенту
+    req_text: str = ""                # что просит ТЗ заказчика (дословная формулировка/значение)
+    product_value: Optional[str] = None  # что в карточке ВАШЕГО товара по этому полю
 
 
 class LeadDetailOut(BaseModel):

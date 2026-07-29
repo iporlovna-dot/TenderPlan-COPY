@@ -55,3 +55,26 @@ def get_product(product_id: int, user: User = Depends(get_current_user),
     if p is None:  # чужой товар отдаём как 404 — не подтверждаем существование
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
     return _to_out(p)
+
+
+@router.put("/{product_id}", response_model=ProductOut)
+def update_product(product_id: int, data: ProductIn, user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)):
+    """Обновить карточку товара (название, коды, характеристики). Изоляция по компании."""
+    p = db.query(Product).filter(Product.id == product_id,
+                                 Product.company_id == user.company_id).first()
+    if p is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
+    p.product_key = data.product_key
+    p.name = data.name
+    p.ktru_json = json.dumps(data.ktru, ensure_ascii=False)
+    p.attributes_json = json.dumps([a.model_dump(exclude_none=True) for a in data.attributes],
+                                   ensure_ascii=False)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="Товар с таким product_key уже есть у компании")
+    db.refresh(p)
+    return _to_out(p)

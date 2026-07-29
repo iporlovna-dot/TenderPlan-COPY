@@ -55,11 +55,37 @@ def _load_product_lead(product_id: int, purchase_id: str, user: User, db: Sessio
     return p, lead
 
 
+_OP_WORD = {"gte": "не менее", "lte": "не более", "range": "в диапазоне", "one_of": "одно из",
+            "set": "набор", "eq": "", "present": "наличие"}
+
+
+def _req_text(req) -> str:
+    """Человекочитаемая формулировка требования ТЗ: дословная (raw) или собранная из оператора+значения."""
+    if getattr(req, "raw", ""):
+        return req.raw
+    op = req.operator.value if hasattr(req.operator, "value") else str(req.operator)
+    if op == "present":
+        return "наличие"
+    v = req.value
+    if isinstance(v, list):
+        v = ", ".join(str(x) for x in v)
+    return (" ".join(x for x in [_OP_WORD.get(op, ""), str(v), req.unit or ""] if x)).strip()
+
+
 def _detail(lead: Lead, res, attrs: list) -> LeadDetailOut:
+    amap = {a["key"]: a.get("value") for a in (attrs or [])}
+
+    def _mine(key):
+        v = amap.get(key)
+        if v is None:
+            return None
+        return ", ".join(str(x) for x in v) if isinstance(v, list) else str(v)
+
     return LeadDetailOut(
         purchase_id=lead.purchase_id, subject=lead.subject, score=res.score,
         verdict=res.verdict.value, explanation=res.explanation,
-        checks=[CheckOut(req=c.req.key, status=c.status.value, note=c.note, action=c.action)
+        checks=[CheckOut(req=c.req.key, status=c.status.value, note=c.note, action=c.action,
+                         req_text=_req_text(c.req), product_value=_mine(c.req.key))
                 for c in res.checks],
         gaps=[c.req.key for c in res.checks if c.status.value == "gap"],
         attributes=attrs,

@@ -34,7 +34,8 @@ body{
 button{font-family:inherit; cursor:pointer}
 input,select,textarea{font-family:inherit; font-size:15px}
 a{color:var(--brand-ink); text-decoration:none}
-.mono{font-family:var(--mono); font-feature-settings:"tnum" 1; letter-spacing:-.01em}
+.mono{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1,"ss01" 1; letter-spacing:0}
+.code{font-family:var(--mono); font-size:.92em; letter-spacing:-.01em}
 
 /* ---------- top bar ---------- */
 .topbar{
@@ -88,7 +89,8 @@ select:focus,input:focus,textarea:focus{border-color:var(--brand); box-shadow:0 
 @keyframes rise{to{opacity:1; transform:none}}
 .lead:hover{border-color:#D6D9D0; box-shadow:var(--shadow-md); transform:translateY(-2px)}
 .score{display:flex; flex-direction:column; align-items:flex-start; gap:6px}
-.score .num{font-family:var(--mono); font-size:27px; font-weight:600; line-height:1; letter-spacing:-.03em}
+.score .num{font-family:var(--ui); font-variant-numeric:tabular-nums; font-size:30px; font-weight:800; line-height:1; letter-spacing:-.035em}
+.score .num small{font-size:.5em; font-weight:700; opacity:.6; margin-left:1px}
 .score .bar{width:100%; height:5px; border-radius:99px; background:var(--line); overflow:hidden}
 .score .bar i{display:block; height:100%; border-radius:99px}
 .v-ok .num{color:var(--ok)} .v-ok .bar i{background:var(--ok)}
@@ -166,6 +168,29 @@ select:focus,input:focus,textarea:focus{border-color:var(--brand); box-shadow:0 
 .fillrow{display:flex; gap:8px; margin-top:8px}
 .fillrow input{flex:1}
 .fillrow .btn{padding:8px 14px}
+/* сравнение «требует ТЗ» ↔ «ваш товар» */
+.cmp{display:grid; grid-template-columns:1fr 1fr; gap:1px; margin-top:7px; background:var(--line-soft);
+  border:1px solid var(--line-soft); border-radius:8px; overflow:hidden}
+.cmp-col{background:var(--surface-2); padding:7px 10px; min-width:0}
+.cmp-col .cl{display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); margin-bottom:2px}
+.cmp-col .cv{font-size:13.5px; color:var(--ink); word-break:break-word}
+.cmp-col.mine{background:#fff}
+.check.pass .cmp-col.mine .cv{color:var(--ok); font-weight:600}
+.check.violation .cmp-col.mine .cv{color:var(--bad); font-weight:600}
+.cmp-col.mine .cv.none{color:var(--warn); font-weight:500}
+/* строки характеристик товара в форме */
+.attr-row{display:grid; grid-template-columns:1fr 1fr 34px; gap:8px; margin-bottom:8px}
+.attr-row input{width:100%}
+.attr-row .rm{border:1px solid var(--line); background:var(--surface); border-radius:var(--r-sm); color:var(--ink-faint); font-size:16px}
+.attr-row .rm:hover{color:var(--bad); border-color:var(--bad-bg); background:var(--bad-bg)}
+.addrow{border:1px dashed var(--line); background:none; color:var(--ink-soft); font-weight:600; font-size:13.5px; padding:9px; border-radius:var(--r-sm); width:100%; transition:.15s}
+.addrow:hover{border-color:var(--brand); color:var(--brand-ink); background:var(--brand-soft)}
+.form-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px}
+.form-head h3{margin:0}
+.pcard{cursor:pointer; transition:.16s}
+.pcard:hover{border-color:#D6D9D0; box-shadow:var(--shadow-md); transform:translateY(-2px)}
+.pcard .edit-hint{font-size:12px; color:var(--brand-ink); font-weight:600; margin-top:8px; opacity:0; transition:.15s}
+.pcard:hover .edit-hint{opacity:1}
 
 /* ---------- products ---------- */
 .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px}
@@ -281,7 +306,7 @@ function toast(msg,err){ const t=document.getElementById('toast'); t.textContent
 
 // ---- App ----
 const App = {
-  regMode:false, feed:{offset:0, limit:10, total:0, params:{}}, _deb:null, _detail:null,
+  regMode:false, feed:{offset:0, limit:10, total:0, params:{}}, _deb:null, _detail:null, editId:null, _products:[],
 
   init(){ if(T.a){ this.enter(); } else { document.getElementById('authScreen').classList.remove('hidden'); } },
 
@@ -379,7 +404,7 @@ const App = {
       : l.change_status==='formal' ? '<span class="badge formal">Обновлено</span>' : '';
     const dl = dleft!=null ? `<span class="mono">${daysWord(dleft)} до подачи</span>` : '';
     return `<button class="lead ${vc}" style="animation-delay:${i*45}ms" onclick="App.openLead(${l.product_id},'${encodeURIComponent(l.purchase_id)}')">
-      <div class="score"><span class="num">${l.score}%</span><span class="bar"><i style="width:${Math.max(4,l.score)}%"></i></span></div>
+      <div class="score"><span class="num">${l.score}<small>%</small></span><span class="bar"><i style="width:${Math.max(4,l.score)}%"></i></span></div>
       <div>
         <p class="title">${esc(l.subject||'Без названия')}</p>
         <div class="meta">
@@ -436,9 +461,14 @@ const App = {
     </div>`;
     const checks = (d.checks||[]).map(ch=>{
       const map={pass:['pass','✓'],violation:['violation','✕'],gap:['gap','⚠']}; const [cl,ic]=map[ch.status]||['gap','·'];
+      const has = ch.product_value!=null && ch.product_value!=='';
+      const cmp = `<div class="cmp">
+        <div class="cmp-col"><span class="cl">Требует ТЗ заказчика</span><span class="cv">${esc(ch.req_text||ch.req)}</span></div>
+        <div class="cmp-col mine"><span class="cl">Ваш товар</span><span class="cv ${has?'':'none'}">${has?esc(ch.product_value):'нет данных'}</span></div>
+      </div>`;
       let fill='';
       if(ch.status==='gap'){ fill=`<div class="fillrow"><input type="text" data-fill="${esc(ch.req)}" placeholder="${esc(ch.action||'указать значение')}"><button class="btn" onclick="App.fillGap(this,'${esc(ch.req)}')">Указать</button></div>`; }
-      return `<div class="check ${cl}"><span class="ic">${ic}</span><div class="body"><div class="rk">${esc(ch.req)}</div>${ch.note?`<div class="rn">${esc(ch.note)}</div>`:''}${fill}</div></div>`;
+      return `<div class="check ${cl}"><span class="ic">${ic}</span><div class="body"><div class="rk">${esc(ch.req).replace(/_/g,' ')}</div>${cmp}${fill}</div></div>`;
     }).join('');
     document.getElementById('drawer').innerHTML=`
       <div class="dh">
@@ -469,37 +499,58 @@ const App = {
 
   // ----- products -----
   renderProducts(){
-    document.getElementById('view').innerHTML=`<div class="page-head"><h1>Товары</h1><span class="sub">карточки, по которым ищем закупки</span></div>
-      <div class="card-form">
-        <h3>Добавить товар</h3>
-        <div class="frow"><label>Название</label><input id="pName" type="text" placeholder="Перчатки смотровые нитриловые, неопудренные"></div>
-        <div class="frow"><label>Артикул (product_key)</label><input id="pKey" type="text" placeholder="gloves-nitrile-blue"></div>
-        <div class="frow"><label>Коды КТРУ / ОКПД2 (через запятую)</label><input id="pKtru" type="text" placeholder="32.50.13.190-00007689"></div>
-        <div class="frow"><label>Характеристики (JSON-массив)</label>
-          <textarea id="pAttrs" placeholder='[{"key":"материал","value":"нитрил"},{"key":"стерильность","value":"нет"}]'></textarea>
-          <span class="hint">Формат карточки товара — как в data/products/*.json.</span></div>
-        <button class="btn primary" onclick="App.createProduct()">Создать товар</button>
+    document.getElementById('view').innerHTML=`<div class="page-head"><h1>Товары</h1><span class="sub">карточки, по которым ищем закупки — нажмите на товар, чтобы изменить</span></div>
+      <div class="card-form" id="pform">
+        <div class="form-head"><h3 id="formTitle">Добавить товар</h3>
+          <button class="linkbtn" id="cancelEdit" style="display:none" onclick="App.resetForm()">Отмена</button></div>
+        <div class="frow"><label>Название товара</label><input id="pName" type="text" placeholder="Перчатки смотровые нитриловые, неопудренные"></div>
+        <div class="frow"><label>Артикул <span class="hint">— ваш внутренний код товара</span></label><input id="pKey" type="text" placeholder="gloves-nitrile-blue"></div>
+        <div class="frow"><label>Коды КТРУ / ОКПД2 <span class="hint">— через запятую, по ним отсеиваем чужие закупки</span></label><input id="pKtru" type="text" placeholder="32.50.13.190-00007689"></div>
+        <div class="frow"><label>Характеристики товара <span class="hint">— по ним движок сверяет ваш товар с требованиями ТЗ</span></label>
+          <div id="attrRows"></div>
+          <button class="addrow" onclick="App.addAttrRow()">+ добавить характеристику</button></div>
+        <button class="btn primary" id="saveBtn" onclick="App.saveProduct()" style="margin-top:6px">Создать товар</button>
       </div>
       <div id="plist" class="grid"><div class="empty">Загрузка…</div></div>`;
-    this.loadProducts();
+    this.resetForm(); this.loadProducts();
+  },
+  attrRow(k='',v=''){ return `<div class="attr-row"><input placeholder="характеристика (напр. материал)" value="${esc(k)}"><input placeholder="значение (напр. нитрил)" value="${esc(v)}"><button class="rm" title="удалить" onclick="this.parentElement.remove()">×</button></div>`; },
+  addAttrRow(k='',v=''){ document.getElementById('attrRows').insertAdjacentHTML('beforeend', this.attrRow(k,v)); },
+  collectAttrs(){ const out=[]; document.querySelectorAll('#attrRows .attr-row').forEach(row=>{
+      const ins=row.querySelectorAll('input'); const k=ins[0].value.trim(), v=ins[1].value.trim();
+      if(k) out.push({key:k.toLowerCase().replace(/\s+/g,'_'), value:v}); }); return out; },
+  resetForm(){ this.editId=null;
+    const g=id=>document.getElementById(id);
+    g('formTitle').textContent='Добавить товар'; g('saveBtn').textContent='Создать товар'; g('cancelEdit').style.display='none';
+    g('pName').value=''; g('pKey').value=''; g('pKtru').value=''; g('attrRows').innerHTML=''; this.addAttrRow(); this.addAttrRow();
+  },
+  editProduct(id){ const p=(this._products||[]).find(x=>x.id===id); if(!p) return; this.editId=id;
+    const g=id=>document.getElementById(id);
+    g('formTitle').textContent='Изменить товар'; g('saveBtn').textContent='Сохранить изменения'; g('cancelEdit').style.display='inline';
+    g('pName').value=p.name||''; g('pKey').value=p.product_key||''; g('pKtru').value=(p.ktru||[]).join(', ');
+    g('attrRows').innerHTML=''; (p.attributes||[]).forEach(a=>this.addAttrRow(a.key,a.value)); if(!(p.attributes||[]).length) this.addAttrRow();
+    g('pform').scrollIntoView({behavior:'smooth',block:'start'});
+  },
+  async saveProduct(){
+    const name=document.getElementById('pName').value.trim(), key=document.getElementById('pKey').value.trim(),
+      ktru=document.getElementById('pKtru').value.split(',').map(s=>s.trim()).filter(Boolean), attrs=this.collectAttrs();
+    if(!name||!key) return toast('Заполните название и артикул',true);
+    const body={product_key:key,name,ktru,attributes:attrs};
+    try{
+      if(this.editId){ await api('/products/'+this.editId,{method:'PUT',body}); toast('Товар обновлён'); }
+      else{ await api('/products',{method:'POST',body}); toast('Товар создан'); }
+      this.resetForm(); this.loadProducts();
+    }catch(e){ toast(e.message,true); }
   },
   async loadProducts(){
-    try{ const items=await api('/products');
+    try{ const items=await api('/products'); this._products=items;
       const el=document.getElementById('plist');
       if(!items.length){ el.innerHTML='<div class="empty"><div class="big">Товаров пока нет</div>Заведите первый — и лента начнёт наполняться.</div>'; return; }
-      el.innerHTML=items.map(p=>`<div class="pcard"><h3>${esc(p.name)}</h3>
+      el.innerHTML=items.map(p=>`<div class="pcard" onclick="App.editProduct(${p.id})"><h3>${esc(p.name)}</h3>
         ${(p.ktru||[]).map(k=>`<span class="ktru">${esc(k)}</span>`).join(' ')}
-        <div class="attrs">${(p.attributes||[]).slice(0,6).map(a=>`${esc(a.key)}: <b>${esc(a.value)}</b>`).join('<br>')}${(p.attributes||[]).length>6?'<br>…':''}</div></div>`).join('');
+        <div class="attrs">${(p.attributes||[]).slice(0,6).map(a=>`${esc(a.key).replace(/_/g,' ')}: <b>${esc(a.value)}</b>`).join('<br>')}${(p.attributes||[]).length>6?'<br>…':''}</div>
+        <div class="edit-hint">Нажмите, чтобы изменить →</div></div>`).join('');
     }catch(e){ document.getElementById('plist').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
-  },
-  async createProduct(){
-    const name=document.getElementById('pName').value.trim(), key=document.getElementById('pKey').value.trim(),
-      ktru=document.getElementById('pKtru').value.split(',').map(s=>s.trim()).filter(Boolean);
-    let attrs=[]; try{ attrs=JSON.parse(document.getElementById('pAttrs').value||'[]'); }catch(e){ return toast('Характеристики: неверный JSON',true); }
-    if(!name||!key) return toast('Заполните название и артикул',true);
-    try{ await api('/products',{method:'POST',body:{product_key:key,name,ktru,attributes:attrs}});
-      toast('Товар создан'); ['pName','pKey','pKtru','pAttrs'].forEach(id=>document.getElementById(id).value=''); this.loadProducts(); }
-    catch(e){ toast(e.message,true); }
   },
 };
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') App.closeDrawer(); });

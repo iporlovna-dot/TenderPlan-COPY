@@ -68,6 +68,20 @@ def run():
                    client.get("/products/%d" % pid, headers=_auth(tok_b)).status_code == 404))
     r.append(check("без токена → 401", client.get("/products").status_code == 401))
 
+    # обновление карточки товара (PUT) — изолированный черновик
+    pid2 = client.post("/products", json={"product_key": "puttest", "name": "Черновик",
+                       "ktru": [], "attributes": []}, headers=_auth(tok_a)).json()["id"]
+    upd = client.put("/products/%d" % pid2, headers=_auth(tok_a),
+                     json={"product_key": "puttest", "name": "Готовый товар", "ktru": ["11.11"],
+                           "attributes": [{"key": "цвет", "value": "синий"}]})
+    r.append(check("PUT товара → 200, имя+характеристики обновлены",
+                   upd.status_code == 200 and upd.json()["name"] == "Готовый товар"
+                   and any(a["key"] == "цвет" for a in upd.json()["attributes"])))
+    r.append(check("B не может обновить товар A → 404",
+                   client.put("/products/%d" % pid2, headers=_auth(tok_b),
+                              json={"product_key": "x", "name": "y", "ktru": [], "attributes": []}
+                              ).status_code == 404))
+
     # логин: неверный пароль → единый 401; верный → 200
     r.append(check("логин неверный пароль → 401",
                    client.post("/auth/login", json={"email": "a@x.io", "password": "wrong"}).status_code == 401))
@@ -135,6 +149,9 @@ def run():
     r.append(check("источник_света прошёл",
                    any(c["req"] == "источник_света" and c["status"] == "pass"
                        for c in det.json()["checks"])))
+    _chk = next(c for c in det.json()["checks"] if c["req"] == "источник_света")
+    r.append(check("разбор несёт формулировку ТЗ (req_text)", bool(_chk["req_text"])))
+    r.append(check("разбор несёт значение товара (product_value)", _chk["product_value"] == "LED"))
     score0 = det.json()["score"]
 
     # честность: значение НИЖЕ порога не «зачитывается»
