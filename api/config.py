@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     secret_key: str = _dev_secret()
     jwt_algorithm: str = "HS256"
     access_token_ttl_min: int = 60
+    refresh_token_ttl_days: int = 30      # refresh живёт долго, но отзываем (ротация + reuse-detection)
 
     database_url: str = "sqlite:///./data/app.db"
 

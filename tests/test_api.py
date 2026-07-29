@@ -215,6 +215,28 @@ def run():
                    client.get("/products/%d/leads?sort=bogus" % pid,
                               headers=_auth(tok_a)).status_code == 422))
 
+    # --- Refresh-токены: ротация + reuse-detection ---
+    rr = client.post("/auth/register", json={"email": "ref@x.io", "password": "supersecret9",
+                                             "company_name": "RefCo"}).json()
+    r.append(check("register выдаёт refresh_token", bool(rr.get("refresh_token"))))
+    rt0 = rr["refresh_token"]
+    resp1 = client.post("/auth/refresh", json={"refresh_token": rt0})
+    rt1 = resp1.json().get("refresh_token")
+    r.append(check("refresh валидным → 200 + новая пара",
+                   resp1.status_code == 200 and rt1 and rt1 != rt0))
+    r.append(check("reuse-detection: повтор использованного refresh → 401",
+                   client.post("/auth/refresh", json={"refresh_token": rt0}).status_code == 401))
+    r.append(check("семейство отозвано: выданный по нему refresh тоже мёртв → 401",
+                   client.post("/auth/refresh", json={"refresh_token": rt1}).status_code == 401))
+    r.append(check("мусорный refresh → 401",
+                   client.post("/auth/refresh", json={"refresh_token": "garbage"}).status_code == 401))
+    rt2 = client.post("/auth/login", json={"email": "ref@x.io",
+                                           "password": "supersecret9"}).json()["refresh_token"]
+    r.append(check("logout → 204",
+                   client.post("/auth/logout", json={"refresh_token": rt2}).status_code == 204))
+    r.append(check("после logout refresh → 401",
+                   client.post("/auth/refresh", json={"refresh_token": rt2}).status_code == 401))
+
     # rate-limit: 5 неудач по свежему email → блокировка (429)
     for _ in range(5):
         client.post("/auth/login", json={"email": "ratelimit@x.io", "password": "bad12345"})

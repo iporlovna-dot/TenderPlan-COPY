@@ -19,7 +19,12 @@ class LoginIn(BaseModel):
 
 class TokenOut(BaseModel):
     access_token: str
+    refresh_token: str = ""               # долгоживущий, отзываемый (ротация)
     token_type: str = "bearer"
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=1, max_length=200)
 
 
 class AttributeIn(BaseModel):

@@ -5,10 +5,12 @@ Secure by design (plan §5): argon2id для паролей, короткожи�
 """
 from __future__ import annotations
 
+import hashlib
+import secrets
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
 import jwt
 from argon2 import PasswordHasher
@@ -17,6 +19,22 @@ from argon2.exceptions import VerifyMismatchError
 from api.config import settings
 
 _ph = PasswordHasher()
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 refresh-токена: в БД храним только хэш (утечка БД ≠ действующие токены)."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def new_refresh_token() -> Tuple[str, str]:
+    """(plaintext, hash) нового refresh-токена. Plaintext уходит клиенту ОДИН раз, в БД — хэш."""
+    token = secrets.token_urlsafe(48)
+    return token, hash_token(token)
+
+
+def refresh_expiry() -> datetime:
+    """Срок годности refresh-токена (наивный UTC — сравнимо с тем, как SQLite отдаёт datetime)."""
+    return datetime.utcnow() + timedelta(days=settings.refresh_token_ttl_days)
 
 
 def hash_password(password: str) -> str:
