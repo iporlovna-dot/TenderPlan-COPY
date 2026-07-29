@@ -587,7 +587,6 @@
           <div class="facts-grid">${facts}</div>
         </div>
         ${docsHtml}
-        ${analyticsDetail(p)}
         <div class="tender-actions">
           ${p.href
             ? `<a class="btn btn-primary btn-sm" href="${lkEscape(platformHref(p))}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
