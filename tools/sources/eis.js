@@ -188,7 +188,10 @@ function cardField(html, titleRe) {
 function extractDeliveryDays(html) {
   const val = cardField(html, /^Срок исполнения контракта$/i);
   if (!val) return null;
-  const d = /(\d+)\s*(?:рабоч|календарн)\w*\s*дн/i.exec(val);
+  // ВНИМАНИЕ: класс кириллицы задаём явно [а-яё], а НЕ \w — в JS \w это только
+  // [A-Za-z0-9_] и «рабочих»/«календарных» им не матчатся (в Python \w — Unicode,
+  // из-за чего баг сначала не выявился: тест зелёный, а в проде срок выходил null).
+  const d = /(\d+)\s*(?:рабоч|календарн)[а-яё]*\s*дн/i.exec(val);
   return d ? Number(d[1]) : null;
 }
 
