@@ -498,7 +498,11 @@
   внимания», `region`, `deadline_max_days`), сортировка (`score`/`deadline`/`updated`) — общий билдер
   `_leads_page`. Новая **СВОДНАЯ лента компании** `GET /leads` по ВСЕМ товарам (сценарий «поставщик с N
   позициями», §9) + per-товар `GET /products/{id}/leads`. `tests/test_api.py` 35→44 (пагинация/фильтры/
-  сортировка/сводная/изоляция). Осталось: миграции (alembic), prod-БД (Postgres).
+  сортировка/сводная/изоляция).
+  **МИГРАЦИИ (alembic) — СДЕЛАНО (2026-07-29):** `alembic.ini` + `migrations/` (env берёт `Base` и URL
+  из приложения, не хардкодит; `render_as_batch` для ALTER на SQLite). Базовая миграция автогенерирована
+  из моделей (все 4 таблицы + 6 колонок этой сессии), `upgrade head`/`downgrade base` обратимы,
+  `migrations/README.md` (prod: только alembic; dev/тесты: `create_all`). Осталось: prod-БД (Postgres).
 - [~] **Защищённая аутентификация — БАЗА ГОТОВА (secure by design, §5):** argon2id хеш паролей,
   rate-limit логина на (IP+email) с ВРЕМЕННОЙ блокировкой (не вечной), единый ответ «неверный логин
   или пароль» (без утечки существования аккаунта), constant-time сверка при отсутствии юзера, JWT

@@ -19,6 +19,7 @@ pytesseract>=0.3.10     # обёртка к системному tesseract (ес
 fastapi>=0.110.0
 uvicorn>=0.29.0
 sqlalchemy>=2.0.0
+alembic>=1.13          # миграции схемы БД (версионирование, prod-редеплой без потери данных)
 pydantic-settings>=2.2.0
 argon2-cffi>=23.1.0     # хеш паролей (secure by design)
 pyjwt>=2.8.0            # токены сессии
