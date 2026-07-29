@@ -550,7 +550,7 @@
         <span class="lot-line__idx">${p.lots.length > 1 ? (i + 1) + "." : "•"}</span>
         <span class="lot-line__name">${lkEscape(l.name)}</span>
         <span class="lot-line__qty">${lotQty(l)}</span>
-        <span class="lot-line__price">${up == null ? "—" : lkFormatMoney(Math.round(up))}</span>
+        <span class="lot-line__price">${up == null ? "—" : lkFormatMoney(up)}</span>
       </div>`;
     }).join("");
     const lots = lotsHead + lotsRows;
@@ -683,10 +683,11 @@
     title.textContent = savedView ? "★ Мои конкурсы"
       : current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
 
-    // «Мои конкурсы» — сохранённые (просроченные не прячем); иначе — лента без просроченных
+    // и «Мои конкурсы», и лента — без просроченных/завершённых закупок
+    const notDone = p => !isExpired(p) && liveStage(p) !== "completed";
     let list = savedView
-      ? LK.getSaved().filter(passesSearch)
-      : LK.allPurchases().filter(p => !isExpired(p) && liveStage(p) !== "completed").filter(passesSearch).filter(passesFilters);
+      ? LK.getSaved().filter(notDone).filter(passesSearch)
+      : LK.allPurchases().filter(notDone).filter(passesSearch).filter(passesFilters);
 
     const sortFn = {
       fresh: (a, b) => a.publishedDaysAgo - b.publishedDaysAgo,
