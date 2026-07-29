@@ -109,11 +109,14 @@ def run():
     r.append(check("ingest загрузил 1 вердикт", n == 1))
 
     leads = client.get("/products/%d/leads?min_score=60" % pid, headers=_auth(tok_a))
-    r.append(check("A видит лид 88%", leads.status_code == 200 and len(leads.json()) == 1
-                   and leads.json()[0]["score"] == 88))
+    body = leads.json()
+    r.append(check("A видит лид 88% (конверт-страница)", leads.status_code == 200
+                   and body["total"] == 1 and body["items"][0]["score"] == 88))
+    r.append(check("страница несёт total/limit/offset",
+                   set(body) >= {"total", "limit", "offset", "items"}))
 
     # карточка контракта в ленте (§Этап 1)
-    card = leads.json()[0].get("card")
+    card = body["items"][0].get("card")
     r.append(check("лид несёт карточку контракта", card is not None))
     r.append(check("реестровый номер в карточке", card and card["reg_number"] == "0358300081226000236"))
     r.append(check("обеспечение контракта в карточке", card and card["guarantee_contract"] == 21363.504))
@@ -171,7 +174,7 @@ def run():
         d = SessionLocal(); ingest_results(d, rdir2, cid); d.close()
 
     def _status(purchase_id):
-        L = client.get("/products/%d/leads?min_score=0" % pid, headers=_auth(tok_a)).json()
+        L = client.get("/products/%d/leads?min_score=0" % pid, headers=_auth(tok_a)).json()["items"]
         row = next((x for x in L if x["purchase_id"] == purchase_id), None)
         return row["change_status"] if row else None
 
@@ -180,12 +183,37 @@ def run():
     _dump("mat1", RB, 100, "mat1.json"); _ingest_v()   # требования изменились
     r.append(check("изменились требования → material", _status("mat1") == "material"))
     row_mat = next(x for x in client.get("/products/%d/leads?min_score=0" % pid,
-                                         headers=_auth(tok_a)).json() if x["purchase_id"] == "mat1")
+                   headers=_auth(tok_a)).json()["items"] if x["purchase_id"] == "mat1")
     r.append(check("уведомление про перепроверку", "перепровер" in row_mat["change_note"].lower()))
 
     _dump("frm1", RA, 100, "frm1.json"); _ingest_v()
     _dump("frm1", RA, 200, "frm1.json"); _ingest_v()   # те же требования, источник новее
     r.append(check("та же ТЗ, источник новее → formal", _status("frm1") == "formal"))
+
+    # --- Прод-готовая лента: пагинация, фильтры, сортировка, сводная лента компании ---
+    allp = client.get("/products/%d/leads?min_score=0" % pid, headers=_auth(tok_a)).json()
+    r.append(check("в ленте товара ≥3 лида (6a6372cf+mat1+frm1)", allp["total"] >= 3))
+    p1 = client.get("/products/%d/leads?min_score=0&limit=1&offset=0" % pid, headers=_auth(tok_a)).json()
+    p2 = client.get("/products/%d/leads?min_score=0&limit=1&offset=1" % pid, headers=_auth(tok_a)).json()
+    r.append(check("пагинация: limit=1 → 1 элемент, total полный",
+                   len(p1["items"]) == 1 and p1["total"] == allp["total"]))
+    r.append(check("offset сдвигает окно (разные лиды)",
+                   p1["items"][0]["purchase_id"] != p2["items"][0]["purchase_id"]))
+    att = client.get("/products/%d/leads?min_score=0&changed_only=true" % pid, headers=_auth(tok_a)).json()
+    r.append(check("changed_only → только material (mat1)",
+                   [x["purchase_id"] for x in att["items"]] == ["mat1"]))
+    # сводная лента компании (все товары)
+    feed = client.get("/leads?min_score=0", headers=_auth(tok_a)).json()
+    r.append(check("сводная лента компании /leads возвращает конверт",
+                   set(feed) >= {"total", "items"} and feed["total"] >= 3))
+    r.append(check("B видит пустую сводную ленту (изоляция)",
+                   client.get("/leads", headers=_auth(tok_b)).json()["total"] == 0))
+    r.append(check("сортировка sort=deadline валидна (200)",
+                   client.get("/products/%d/leads?sort=deadline" % pid,
+                              headers=_auth(tok_a)).status_code == 200))
+    r.append(check("невалидный sort → 422",
+                   client.get("/products/%d/leads?sort=bogus" % pid,
+                              headers=_auth(tok_a)).status_code == 422))
 
     # rate-limit: 5 неудач по свежему email → блокировка (429)
     for _ in range(5):

@@ -37,3 +37,4 @@ def cabinet():
 app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(leads.router)
+app.include_router(leads.feed_router)   # сводная лента компании (GET /leads)

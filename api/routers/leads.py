@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import time
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session
 from api.db import get_db
 from api.deps import get_current_user
 from api.models import Lead, Product, User
-from api.schemas import CheckOut, ContractCard, GapFillIn, LeadDetailOut, LeadOut
+from api.schemas import CheckOut, ContractCard, GapFillIn, LeadDetailOut, LeadOut, LeadPage
 from gapfill import recompute
 from versioning import change_message
 
@@ -77,27 +78,67 @@ def _recompute_lead(p: Product, lead: Lead, fills=None):
     return recompute(product, reqs, lead.purchase_id, fills=fills, synonyms=syn)
 
 
-@router.get("/{product_id}/leads", response_model=list[LeadOut])
-def product_leads(product_id: int, min_score: int = Query(default=60, ge=0, le=100),
-                  user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # товар должен принадлежать компании пользователя
-    p = db.query(Product).filter(Product.id == product_id,
-                                 Product.company_id == user.company_id).first()
-    if p is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
-
-    rows = (db.query(Lead)
-            .filter(Lead.company_id == user.company_id, Lead.product_id == product_id,
-                    Lead.verdict != "disqualified", Lead.score >= min_score)
-            .order_by(Lead.score.desc())
-            .all())
-    return [LeadOut(
+def _to_leadout(r: Lead) -> LeadOut:
+    return LeadOut(
         purchase_id=r.purchase_id, subject=r.subject, customer=r.customer, price=r.price,
         region=r.region, submission_close=r.submission_close,
         days_left=_days_left(r.submission_close), url=r.url, score=r.score,
         verdict=r.verdict, explanation=r.explanation, card=_card(r),
         change_status=r.change_status, change_note=change_message(r.change_status),
-    ) for r in rows]
+    )
+
+
+def _leads_page(db, company_id, product_id, min_score, include_disqualified, changed_only,
+                region, deadline_max_days, sort, limit, offset):
+    """Общий построитель ленты: фильтры → счётчик → сортировка → окно. Изоляция по company_id."""
+    q = db.query(Lead).filter(Lead.company_id == company_id, Lead.score >= min_score)
+    if product_id is not None:
+        q = q.filter(Lead.product_id == product_id)
+    if not include_disqualified:
+        q = q.filter(Lead.verdict != "disqualified")
+    if changed_only:                                 # «требуют внимания»: ТЗ изменилось по сути
+        q = q.filter(Lead.change_status == "material")
+    if region:
+        q = q.filter(Lead.region == region)
+    if deadline_max_days is not None:                # только закрывающиеся в окне [сейчас, +N дней]
+        now_ms = int(time.time() * 1000)
+        q = q.filter(Lead.submission_close.isnot(None), Lead.submission_close >= now_ms,
+                     Lead.submission_close <= now_ms + int(deadline_max_days * 86_400_000))
+    total = q.count()
+    if sort == "deadline":                           # срочные выше (nulls в конец)
+        q = q.order_by(Lead.submission_close.is_(None), Lead.submission_close.asc())
+    elif sort == "updated":
+        q = q.order_by(Lead.updated_at.desc())
+    else:                                            # score (дефолт) — по убыванию %
+        q = q.order_by(Lead.score.desc())
+    rows = q.offset(offset).limit(limit).all()
+    return total, rows
+
+
+# --- общие query-параметры ленты (пагинация/фильтры/сортировка) ---
+def _lead_params(min_score: int = Query(0, ge=0, le=100),
+                 include_disqualified: bool = Query(False),
+                 changed_only: bool = Query(False, description="только material-изменения (внимание)"),
+                 region: Optional[str] = Query(None),
+                 deadline_max_days: Optional[float] = Query(None, ge=0),
+                 sort: str = Query("score", pattern="^(score|deadline|updated)$"),
+                 limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return dict(min_score=min_score, include_disqualified=include_disqualified,
+                changed_only=changed_only, region=region, deadline_max_days=deadline_max_days,
+                sort=sort, limit=limit, offset=offset)
+
+
+@router.get("/{product_id}/leads", response_model=LeadPage)
+def product_leads(product_id: int, params: dict = Depends(_lead_params),
+                  user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Лента по одному товару — пагинация/фильтры/сортировка. Товар должен быть компании."""
+    p = db.query(Product).filter(Product.id == product_id,
+                                 Product.company_id == user.company_id).first()
+    if p is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
+    total, rows = _leads_page(db, user.company_id, product_id, **params)
+    return LeadPage(total=total, limit=params["limit"], offset=params["offset"],
+                    items=[_to_leadout(r) for r in rows])
 
 
 @router.get("/{product_id}/leads/{purchase_id}", response_model=LeadDetailOut)
@@ -124,3 +165,17 @@ def lead_fill(product_id: int, purchase_id: str, body: GapFillIn,
     lead.score, lead.verdict, lead.explanation = res.score, res.verdict.value, res.explanation
     db.commit()
     return _detail(lead, res, attrs)
+
+
+# --- Сводная лента ПО ВСЕЙ КОМПАНИИ (агрегирует все товары, §9) ---
+feed_router = APIRouter(prefix="/leads", tags=["feed"])
+
+
+@feed_router.get("", response_model=LeadPage)
+def company_feed(params: dict = Depends(_lead_params),
+                 user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Единая лента компании по ВСЕМ товарам (сценарий «поставщик с N позициями»). Те же
+    пагинация/фильтры/сортировка. `changed_only=true` → «требуют внимания» (ТЗ изменилось)."""
+    total, rows = _leads_page(db, user.company_id, None, **params)
+    return LeadPage(total=total, limit=params["limit"], offset=params["offset"],
+                    items=[_to_leadout(r) for r in rows])

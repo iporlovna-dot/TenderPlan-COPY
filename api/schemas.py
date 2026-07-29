@@ -87,6 +87,14 @@ class LeadOut(BaseModel):
     change_note: str = ""                 # уведомление клиенту, если ТЗ изменилось
 
 
+class LeadPage(BaseModel):
+    """Страница ленты: сколько всего + окно. Лента растёт (§15.1) — отдаём порциями."""
+    total: int
+    limit: int
+    offset: int
+    items: List[LeadOut]
+
+
 class CheckOut(BaseModel):
     req: str
     status: str                       # pass | violation | gap

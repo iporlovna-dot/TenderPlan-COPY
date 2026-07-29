@@ -492,10 +492,13 @@
 - [~] Старые форматы: `.doc` ✓, `.xls` ✓ (xlrd), **`.zip` ✓** (stdlib, рекурсивный разбор вложенных
   документов, `test_parser_archive.py` 4/4), **`.rar` ~** (rarfile — нужен системный unrar/unar, мягко
   деградирует). PARSE_EXT в 3 скриптах дополнен архивами (+`.doc` в run_auto). Осталось: многопозиц. лоты.
-- [~] **Бэкенд FastAPI — КАРКАС ГОТОВ (2026-07-27), `api/`:** регистрация+компании, изоляция по
-  `company_id` (данные каждой компании не видны другим), CRUD товаров, лента `GET /products/{id}/leads`,
-  мост `ingest` (вердикты run_auto → БД). SQLAlchemy+SQLite, `tests/test_api.py` 16/16, живой uvicorn-smoke
-  прошёл. Осталось: миграции (alembic), пагинация, prod-БД (Postgres).
+- [~] **Бэкенд FastAPI — КАРКАС + ПРОД-ЛЕНТА (2026-07-29), `api/`:** регистрация+компании, изоляция по
+  `company_id`, CRUD товаров, мост `ingest`. **Лента прод-готова:** пагинация (конверт `LeadPage`
+  total/limit/offset/items), фильтры (`min_score`, `include_disqualified`, `changed_only`=«требуют
+  внимания», `region`, `deadline_max_days`), сортировка (`score`/`deadline`/`updated`) — общий билдер
+  `_leads_page`. Новая **СВОДНАЯ лента компании** `GET /leads` по ВСЕМ товарам (сценарий «поставщик с N
+  позициями», §9) + per-товар `GET /products/{id}/leads`. `tests/test_api.py` 35→44 (пагинация/фильтры/
+  сортировка/сводная/изоляция). Осталось: миграции (alembic), prod-БД (Postgres).
 - [~] **Защищённая аутентификация — БАЗА ГОТОВА (secure by design, §5):** argon2id хеш паролей,
   rate-limit логина на (IP+email) с ВРЕМЕННОЙ блокировкой (не вечной), единый ответ «неверный логин
   или пароль» (без утечки существования аккаунта), constant-time сверка при отсутствии юзера, JWT
