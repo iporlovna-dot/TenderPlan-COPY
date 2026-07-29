@@ -165,14 +165,47 @@ function extractRegion(html) {
   return subj ? tidyRegion(subj) : "";
 }
 
-// со страницы карточки: ссылка на вкладку документов + регион (один заход)
+// Значение поля карточки по заголовку: на common-info поля идут парами
+// section__title → section__info. Возвращаем текст первого section__info, чей
+// заголовок подошёл под titleRe (пустая строка, если не нашли).
+function cardField(html, titleRe) {
+  const re = /section__title[^>]*>([\s\S]*?)<\/span>[\s\S]*?section__info[^>]*>([\s\S]*?)<\/span>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    if (titleRe.test(stripTags(m[1]))) return stripTags(m[2]);
+  }
+  return "";
+}
+
+// Срок поставки/исполнения из карточки → в днях. ЕИС на common-info стабильно
+// показывает его в поле «Срок исполнения контракта» в двух видах:
+//   • «N (рабочих|календарных) дней» — длительность, берём N;
+//   • дата «дд.мм.гггг» (плановое завершение) — считаем календарные дни от момента
+//     сбора (как у Портала для periodDateTo; значение замораживается на час сбора).
+// Иначе (срок только во вложенном проекте контракта) — null, как раньше. Заполняется
+// лишь для тех закупок, для которых и так заходим в карточку (ближайшие docsLimit).
+function extractDeliveryDays(html) {
+  const val = cardField(html, /^Срок исполнения контракта$/i);
+  if (!val) return null;
+  const d = /(\d+)\s*(?:рабоч|календарн)\w*\s*дн/i.exec(val);
+  if (d) return Number(d[1]);
+  const dt = /(\d{2})\.(\d{2})\.(\d{4})/.exec(val);
+  if (dt) {
+    const t = new Date(`${dt[3]}-${dt[2]}-${dt[1]}T23:59:00`).getTime();
+    const days = Math.ceil((t - Date.now()) / DAY);
+    return days >= 0 ? days : null;
+  }
+  return null;
+}
+
+// со страницы карточки: ссылка на вкладку документов + регион + срок (один заход)
 async function fetchCardMeta(link) {
   try {
     const html = await curlText(link);
     let u = (/href="([^"]*documents\.html[^"]*)"/i.exec(html) || [])[1];
     if (u && u.startsWith("/")) u = "https://zakupki.gov.ru" + u;
-    return { docsUrl: u || null, region: extractRegion(html) };
-  } catch (e) { return { docsUrl: null, region: "" }; }
+    return { docsUrl: u || null, region: extractRegion(html), deliveryDays: extractDeliveryDays(html) };
+  } catch (e) { return { docsUrl: null, region: "", deliveryDays: null }; }
 }
 async function fetchDocs(docsUrl) {
   try {
@@ -199,7 +232,7 @@ async function fetchDocs(docsUrl) {
   } catch (e) { return []; }
 }
 
-function toPurchase(it, documents, region) {
+function toPurchase(it, documents, region, deliveryDays) {
   const now = Date.now();
   const end = it.endIso ? new Date(it.endIso).getTime() : null;
   return {
@@ -217,7 +250,7 @@ function toPurchase(it, documents, region) {
     publishedDaysAgo: it.pubIso ? Math.max(0, Math.round((now - new Date(it.pubIso).getTime()) / DAY)) : 0,
     guaranteeApp: 0, guaranteeContract: 0, prepayment: 0,
     href: it.link,
-    deliveryDays: null, deliveryPlace: "",
+    deliveryDays: deliveryDays ?? null, deliveryPlace: "",
     lots: [{ name: it.title, qty: "—", unit: "", price: it.price }],
     documents: documents || [],
     matches: {},
@@ -295,13 +328,14 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     metaById[it.number] = {
       docs: meta.docsUrl ? await fetchDocs(meta.docsUrl) : [],
       region: meta.region || "",
+      deliveryDays: meta.deliveryDays ?? null,
     };
   }, (k, t) => process.stdout.write(`\r  ЕИС документы: ${k}/${t}`));
   if (withDocs.length) process.stdout.write("\n");
 
   return items.map(it => {
     const m = metaById[it.number] || {};
-    return toPurchase(it, m.docs || [], m.region || "");
+    return toPurchase(it, m.docs || [], m.region || "", m.deliveryDays ?? null);
   });
 }
 
