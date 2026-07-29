@@ -76,6 +76,7 @@ class ContractCard(BaseModel):
 
 
 class LeadOut(BaseModel):
+    product_id: int                   # чтобы UI открыл деталь (/products/{product_id}/leads/{purchase_id})
     purchase_id: str
     subject: str
     customer: str

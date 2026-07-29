@@ -80,6 +80,7 @@ def _recompute_lead(p: Product, lead: Lead, fills=None):
 
 def _to_leadout(r: Lead) -> LeadOut:
     return LeadOut(
+        product_id=r.product_id,
         purchase_id=r.purchase_id, subject=r.subject, customer=r.customer, price=r.price,
         region=r.region, submission_close=r.submission_close,
         days_left=_days_left(r.submission_close), url=r.url, score=r.score,
