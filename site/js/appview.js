@@ -461,6 +461,9 @@
     if (p.endDate) return isExpired(p) ? "completed" : "active";
     return p.stage;
   }
+  // Неконкурентная закупка (223-ФЗ «Иной способ» / единственный поставщик): дата
+  // окончания подачи формальная, реальных торгов нет — не показываем ложный отсчёт.
+  function isCompetitive(p) { return p.competitive !== false; }
 
   // Точный остаток до конца подачи (дни/часы/минуты) — от текущего момента по endDate.
   function remainingText(p) {
@@ -505,6 +508,8 @@
   function checkIcon(s) { return s === "pass" ? "✓" : s === "gap" ? "⚠" : "✕"; }
 
   function deadlineText(p) {
+    // у неконкурентных «до конца подачи» вводит в заблуждение — торгов нет
+    if (!isCompetitive(p)) return `<span class="deadline muted">неконкурентная закупка</span>`;
     if (liveStage(p) === "active") {
       if (p.endDate) return `<span class="deadline">до конца подачи: <b>${remainingText(p)}</b></span>`;
       const d = Math.max(1, daysLeft(p));
@@ -647,6 +652,7 @@
       ["Обеспечение заявки", p.guaranteeApp ? lkFormatMoney(p.guaranteeApp) : "не требуется"],
       ["Обеспечение контракта", p.guaranteeContract ? lkFormatMoney(p.guaranteeContract) : "не требуется"],
       ["Аванс", p.prepayment ? p.prepayment + "%" : "нет"],
+      ...(p.procedureType ? [["Способ закупки", p.procedureType + (isCompetitive(p) ? "" : " · неконкурентная")]] : []),
       ["Срок поставки", p.deliveryDays != null ? `${p.deliveryDays} ${lkPlural(p.deliveryDays, ["день","дня","дней"])}` : "—"],
       ["Опубликована", p.publishedDaysAgo === 0 ? "сегодня" : `${p.publishedDaysAgo} ${lkPlural(p.publishedDaysAgo, ["день","дня","дней"])} назад`],
       ["Место поставки", p.deliveryPlace || canonicalRegion(p.region) || "—"]
@@ -696,7 +702,9 @@
         <div class="tender-body">
           <div class="tender-body__top">
             <span class="badge badge-law ${p.law === "223-ФЗ" ? "is-223" : ""}">${p.law}</span>
-            <span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>
+            ${isCompetitive(p)
+              ? `<span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>`
+              : `<span class="badge badge-stage stage-noncomp" title="${lkEscape(p.procedureType || "неконкурентная закупка")}">Неконкурентная</span>`}
             <span class="badge badge-source">${lkEscape(p.source)}</span>
             ${fresh}${lot}
             <span class="board-head-controls">${boardAssigneeChip(p)}${boardStatusSelect(p)}</span>

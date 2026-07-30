@@ -130,9 +130,17 @@ function parseHtmlItems(html) {
     const endRaw = (/Окончание подачи заявок[\s\S]*?data-block__value[^>]*>([\s\S]*?)<\/div>/i.exec(b) || [])[1];
     const pubRaw = (/Размещено[\s\S]*?data-block__value[^>]*>([\s\S]*?)<\/div>/i.exec(b) || [])[1];
     const customer = stripTags((/registry-entry__body-href[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i.exec(b) || [])[1]) || "—";
+    // Способ закупки — из шапки блока (header-top__title). Неконкурентные 223-ФЗ
+    // («Иной способ», единственный поставщик) — почти половина ленты 223: у них
+    // «Окончание подачи заявок» стоит формальной датой в будущем, но реальных
+    // торгов нет — договор часто заключён сразу, на ЕИС «завершена». Помечаем
+    // competitive=false, чтобы фронт не крутил у них ложный отсчёт «до конца подачи».
+    const procedureType = lawType;
+    const competitive = !/иной способ|единственн/i.test(procedureType);
     items.push({
       number, link, title, customer, price,
       law: /223/.test(lawType) ? "223-ФЗ" : "44-ФЗ",
+      procedureType, competitive,
       endIso: toIso(stripTags(endRaw)),
       pubIso: toIso(stripTags(pubRaw)),
     });
@@ -247,6 +255,7 @@ function toPurchase(it, documents, region, deliveryDays) {
     publishedDaysAgo: it.pubIso ? Math.max(0, Math.round((now - new Date(it.pubIso).getTime()) / DAY)) : 0,
     guaranteeApp: 0, guaranteeContract: 0, prepayment: 0,
     href: it.link,
+    procedureType: it.procedureType || "", competitive: it.competitive !== false,
     deliveryDays: deliveryDays ?? null, deliveryPlace: "",
     lots: [{ name: it.title, qty: "—", unit: "", price: it.price }],
     documents: documents || [],

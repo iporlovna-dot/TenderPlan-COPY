@@ -965,6 +965,8 @@ section { padding: 78px 0; }
 .badge-stage.stage-active { background: var(--ok-bg); color: var(--ok); }
 .badge-stage.stage-committee { background: var(--gap-bg); color: var(--gap); }
 .badge-stage.stage-done { background: var(--paper-deep); color: var(--ink-faint); }
+/* неконкурентная (223 «Иной способ»/ед. поставщик) — пунктир = «не открытые торги» */
+.badge-stage.stage-noncomp { background: transparent; color: var(--ink-soft); border: 1px dashed var(--line); }
 .badge-fresh { background: var(--rust-tint); color: var(--rust); }
 
 /* карточка закупки: доп. мета и раскрытие */
