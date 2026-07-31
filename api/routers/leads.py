@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from api.db import get_db
 from api.deps import get_current_user
 from api.models import Lead, Product, User
-from api.schemas import CheckOut, ContractCard, GapFillIn, LeadDetailOut, LeadOut, LeadPage
+from api.schemas import CheckOut, ContractCard, GapFillIn, LeadDetailOut, LeadOut, LeadPage, LotInfo
 from gapfill import recompute
 from versioning import change_message
 
@@ -37,6 +37,20 @@ def _card(lead: Lead):
     d["days_to_submission"] = _days_left(d.get("submission_close"))
     try:
         return ContractCard(**d)
+    except Exception:
+        return None
+
+
+def _lot(lead: Lead):
+    """Состав сборного лота из lot_json (§11.4). None, если это одиночный лот."""
+    try:
+        d = json.loads(lead.lot_json or "null")
+    except ValueError:
+        d = None
+    if not d or not d.get("total"):
+        return None
+    try:
+        return LotInfo(**{k: v for k, v in d.items() if k in LotInfo.model_fields})
     except Exception:
         return None
 
@@ -90,6 +104,7 @@ def _detail(lead: Lead, res, attrs: list) -> LeadDetailOut:
         gaps=[c.req.key for c in res.checks if c.status.value == "gap"],
         attributes=attrs,
         card=_card(lead),
+        lot=_lot(lead),
         change_status=lead.change_status,
         change_note=change_message(lead.change_status),
     )
@@ -110,7 +125,7 @@ def _to_leadout(r: Lead) -> LeadOut:
         purchase_id=r.purchase_id, subject=r.subject, customer=r.customer, price=r.price,
         region=r.region, submission_close=r.submission_close,
         days_left=_days_left(r.submission_close), url=r.url, score=r.score,
-        verdict=r.verdict, explanation=r.explanation, card=_card(r),
+        verdict=r.verdict, explanation=r.explanation, card=_card(r), lot=_lot(r),
         change_status=r.change_status, change_note=change_message(r.change_status),
     )
 

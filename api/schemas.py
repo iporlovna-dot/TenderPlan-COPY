@@ -75,6 +75,15 @@ class ContractCard(BaseModel):
     execution_period: Optional[str] = None
 
 
+class LotInfo(BaseModel):
+    """Сборный лот (§11.4): где товар в лоте и что ещё в нём."""
+    position: int                     # позиция товара, 1..total
+    total: int                        # всего позиций в лоте
+    name: str = ""                    # наименование нашей позиции
+    quantity: str = ""                # количество нашей позиции
+    others: List[str] = []            # другие товары лота (бинты/марля/…) — не наш товар
+
+
 class LeadOut(BaseModel):
     product_id: int                   # чтобы UI открыл деталь (/products/{product_id}/leads/{purchase_id})
     purchase_id: str
@@ -89,6 +98,7 @@ class LeadOut(BaseModel):
     verdict: str
     explanation: str
     card: Optional[ContractCard] = None
+    lot: Optional[LotInfo] = None         # состав сборного лота (§11.4), если это лот
     change_status: str = "unchanged"      # unchanged | formal | material (версионность §6)
     change_note: str = ""                 # уведомление клиенту, если ТЗ изменилось
 
@@ -120,6 +130,7 @@ class LeadDetailOut(BaseModel):
     gaps: List[str]                   # ключи требований-пробелов — их можно дозаполнить
     attributes: List[dict]            # текущая карточка товара (с уже внесёнными дозаполнениями)
     card: Optional[ContractCard] = None  # карточка контракта (даты, обеспечения, аванс)
+    lot: Optional[LotInfo] = None     # состав сборного лота (§11.4)
     change_status: str = "unchanged"  # версионность §6
     change_note: str = ""
 

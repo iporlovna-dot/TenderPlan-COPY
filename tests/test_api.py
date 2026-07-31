@@ -116,7 +116,9 @@ def run():
                         "submission_close": 1785909600000, "bidding_date": 1785916800000,
                         "summing_up_date": 1786050000000, "guarantee_app": None,
                         "guarantee_contract": 21363.504, "prepayment": None,
-                        "execution_period": "Срок исполнения: в течение 30 календарных дней"}},
+                        "execution_period": "Срок исполнения: в течение 30 календарных дней"},
+               "lot": {"position": 2, "total": 4, "name": "Видеоларингоскоп", "quantity": "1 шт",
+                       "others": ["Бинт марлевый", "Марля медицинская", "Перчатки нитриловые"]}},
               open(os.path.join(rdir, "v1.json"), "w"))
     n = ingest_results(db, rdir, cid)
     db.close()
@@ -152,6 +154,9 @@ def run():
     _chk = next(c for c in det.json()["checks"] if c["req"] == "источник_света")
     r.append(check("разбор несёт формулировку ТЗ (req_text)", bool(_chk["req_text"])))
     r.append(check("разбор несёт значение товара (product_value)", _chk["product_value"] == "LED"))
+    _lot = det.json().get("lot")
+    r.append(check("деталь несёт состав сборного лота", _lot and _lot["total"] == 4 and _lot["position"] == 2))
+    r.append(check("в лоте перечислены другие товары (не наш)", _lot and "Бинт марлевый" in _lot["others"]))
     score0 = det.json()["score"]
 
     # честность: значение НИЖЕ порога не «зачитывается»

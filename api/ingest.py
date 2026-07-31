@@ -60,6 +60,7 @@ def ingest_results(db: Session, results_dir: str, company_id: int) -> int:
         lead.requirements_json = json.dumps(new_reqs, ensure_ascii=False)
         lead.synonyms_json = json.dumps(v.get("synonyms") or {}, ensure_ascii=False)
         lead.card_json = json.dumps(v.get("card") or {}, ensure_ascii=False)
+        lead.lot_json = json.dumps(v.get("lot") or None, ensure_ascii=False)  # состав сборного лота
         lead.content_hash = new_hash            # версионность §6: отпечаток текущих требований
         lead.source_updated_at = new_ts
         n += 1

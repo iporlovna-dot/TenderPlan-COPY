@@ -151,6 +151,15 @@ a.badge.formal{transition:.16s var(--ease)} a.badge.formal:hover{filter:brightne
 .sec.warn>summary{color:var(--warn)} .sec.bad>summary{color:var(--bad)}
 /* липкие кнопки формы товара */
 .form-actions{position:sticky;bottom:0;display:flex;gap:10px;padding:16px 0;margin-top:12px;background:var(--surface);border-top:1px solid var(--line)}
+/* состав сборного лота (§11.4) */
+.lotbox{border:1px solid var(--line);background:linear-gradient(180deg,var(--surface-2),var(--surface));border-radius:var(--r-md);padding:15px 17px;margin-bottom:22px;box-shadow:var(--shadow-xs)}
+.lotbox .lh{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--info);margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.lotbox .lmine{font-weight:600;font-size:14.5px;color:var(--ink);margin-bottom:8px}
+.lotbox .lmine b{color:var(--brand-ink)}
+.lotbox .loth{font-size:13px;color:var(--ink-soft);line-height:1.9}
+.lotbox .chiplet{display:inline-block;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:2px 9px;margin:0 5px 5px 0;font-size:12.5px;color:var(--ink-soft)}
+.lotbox .lnote{font-size:12px;color:var(--ink-faint);margin-top:9px;line-height:1.5}
+.mini-lot{color:var(--info);font-weight:700;font-size:11.5px}
 .facts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm)}
 .fact{background:var(--surface);padding:13px 16px}
 .fact .k{font-size:11.5px;color:var(--ink-faint);margin-bottom:4px}
@@ -364,6 +373,7 @@ const App={
         <div class="lm"><span class="dot ${bc}"></span><span>${bt}</span>
           ${l.price!=null?`<span class="mono">${fmtMoney(l.price)}</span>`:''}
           ${dl!=null?`<span class="mono">${daysWord(dl)}</span>`:''}
+          ${l.lot?`<span class="mini-lot">поз. ${l.lot.position}/${l.lot.total}</span>`:''}
           ${l.card&&l.card.smp?'<span>СМП</span>':''}${attn}</div>
       </span></button>`;
   },
@@ -411,6 +421,12 @@ const App={
           ${c.href?`<a class="badge formal" href="${esc(c.href)}" target="_blank" rel="noopener">Открыть в ЕИС ↗</a>`:''}</div></div>
       <div class="dbody">
         ${notice}
+        ${d.lot?`<div class="lotbox">
+          <div class="lh">🧩 Сборный лот · ${d.lot.total} ${plural(d.lot.total,'позиция','позиции','позиций')}</div>
+          <div class="lmine">Ваш товар — позиция ${d.lot.position}: <b>${esc(d.lot.name)}</b>${d.lot.quantity?' · '+esc(d.lot.quantity):''}</div>
+          ${d.lot.others&&d.lot.others.length?`<div class="loth">Другие товары в лоте (не ваши): ${d.lot.others.map(o=>`<span class="chiplet">${esc(o)}</span>`).join('')}</div>`:''}
+          <div class="lnote">Разбор ниже — только по вашей позиции. Лот в РФ «всё или ничего»: заявка подаётся на весь набор.</div>
+        </div>`:''}
         <div class="section-t">Карточка контракта</div>${cardHtml}
         <div class="summary" style="margin-top:20px"><span class="sum-ok">✓ Сошлось <b>${pass.length}</b></span>${bad.length?`<span class="sum-bad">✕ Не сошлось <b>${bad.length}</b></span>`:''}${gap.length?`<span class="sum-gap">⚠ На дозаполнение <b>${gap.length}</b></span>`:''}</div>
         ${sec('Не сошлось',bad,'bad',true)}

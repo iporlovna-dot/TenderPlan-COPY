@@ -92,6 +92,8 @@ class Lead(Base):
     synonyms_json: Mapped[str] = mapped_column(Text, default="{}")
     # наглядная карточка контракта (даты, обеспечения, аванс, ссылка) — §Этап 1
     card_json: Mapped[str] = mapped_column(Text, default="{}")
+    # сборный лот (§11.4): позиция товара N из M + другие товары лота (бинты/марля/…)
+    lot_json: Mapped[str] = mapped_column(Text, default="")
     # версионность §6: детект изменения ТЗ между прогонами
     content_hash: Mapped[str] = mapped_column(String(32), default="")          # отпечаток требований
     source_updated_at: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # метка источника
