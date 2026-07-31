@@ -6,10 +6,10 @@
 <title>SpecMatch — подбор госзакупок по характеристикам ТЗ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#F4F5F2; --surface:#FFFFFF; --surface-2:#FBFBF9;
+  --paper:#F4F5F2; --surface:#FFFFFF; --surface-2:#FAFBF8;
   --ink:#15171C; --ink-soft:#565E6B; --ink-faint:#8A919C;
   --line:#E5E7E1; --line-soft:#EEF0EA;
   --brand:#0F6E52; --brand-ink:#0A5540; --brand-soft:#E4F1EA;
@@ -17,211 +17,159 @@
   --bad:#B12A1E; --bad-bg:#FBE9E6; --info:#2A5BA8; --info-bg:#E9F0FB;
   --shadow-sm:0 1px 2px rgba(20,23,28,.04),0 1px 3px rgba(20,23,28,.06);
   --shadow-md:0 6px 20px -8px rgba(20,23,28,.18),0 2px 6px rgba(20,23,28,.06);
-  --shadow-lg:0 24px 60px -20px rgba(20,23,28,.28);
   --r-lg:16px; --r-md:12px; --r-sm:9px;
-  --mono:'IBM Plex Mono',ui-monospace,monospace;
-  --ui:'Onest',-apple-system,Segoe UI,Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace; --ui:'Onest',-apple-system,Segoe UI,Roboto,sans-serif;
+  --topH:54px;
 }
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{
-  font-family:var(--ui); color:var(--ink); background:var(--paper);
-  -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.5;
-  background-image:radial-gradient(1200px 600px at 100% -10%, #EBF2EE 0%, rgba(235,242,238,0) 60%);
-  min-height:100vh;
-}
+*{box-sizing:border-box} html,body{margin:0;padding:0;height:100%}
+body{font-family:var(--ui); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.5}
 .hidden{display:none !important}
 button{font-family:inherit; cursor:pointer}
 input,select,textarea{font-family:inherit; font-size:15px}
 a{color:var(--brand-ink); text-decoration:none}
-.mono{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1,"ss01" 1; letter-spacing:0}
-.code{font-family:var(--mono); font-size:.92em; letter-spacing:-.01em}
+.mono{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+.code{font-family:var(--mono); font-size:.9em}
+::-webkit-scrollbar{width:9px;height:9px} ::-webkit-scrollbar-thumb{background:#D6D9D0;border-radius:9px;border:2px solid transparent;background-clip:content-box}
 
 /* ---------- top bar ---------- */
-.topbar{
-  position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:22px;
-  padding:0 26px; height:60px; background:rgba(255,255,255,.82);
-  backdrop-filter:saturate(1.2) blur(10px); border-bottom:1px solid var(--line);
-}
-.brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-.02em; font-size:18px}
-.brand .mark{width:22px; height:22px; border-radius:7px; background:linear-gradient(150deg,var(--brand),#1FA079);
-  position:relative; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
-.brand .mark::after{content:""; position:absolute; inset:6px 6px auto auto; width:6px; height:6px; border-radius:50%;
-  background:#E8FBF2; box-shadow:0 0 0 3px rgba(255,255,255,.35)}
-.nav{display:flex; gap:4px; margin-left:6px}
-.nav button{border:0; background:none; padding:8px 14px; border-radius:8px; color:var(--ink-soft);
-  font-weight:600; font-size:14px; transition:.15s}
-.nav button:hover{background:var(--line-soft); color:var(--ink)}
-.nav button.active{background:var(--brand-soft); color:var(--brand-ink)}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:14px;padding:0 20px;height:var(--topH);
+  background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:-.02em;font-size:17px}
+.brand .mark{width:21px;height:21px;border-radius:6px;background:linear-gradient(150deg,var(--brand),#1FA079);position:relative}
+.brand .mark::after{content:"";position:absolute;inset:6px 6px auto auto;width:5px;height:5px;border-radius:50%;background:#E8FBF2}
 .spacer{flex:1}
-.whoami{display:flex; align-items:center; gap:12px; color:var(--ink-soft); font-size:13px}
-.whoami b{color:var(--ink); font-weight:600}
+.whoami{display:flex;align-items:center;gap:12px;color:var(--ink-soft);font-size:13px}
+.whoami b{color:var(--ink);font-weight:600}
 .linkbtn{border:0;background:none;color:var(--ink-faint);font-weight:600;font-size:13px;padding:6px 8px;border-radius:7px}
-.linkbtn:hover{color:var(--bad); background:var(--bad-bg)}
+.linkbtn:hover{color:var(--bad);background:var(--bad-bg)}
 
-/* ---------- layout ---------- */
-.wrap{max-width:1080px; margin:0 auto; padding:30px 26px 80px}
-.page-head{display:flex; align-items:baseline; gap:14px; margin:6px 0 20px}
-.page-head h1{font-size:26px; font-weight:800; letter-spacing:-.025em; margin:0}
-.page-head .sub{color:var(--ink-faint); font-size:14px}
+/* ---------- 3 columns ---------- */
+.cols{display:grid;grid-template-columns:270px 400px 1fr;height:calc(100vh - var(--topH))}
+.col{overflow-y:auto;height:100%}
+.col-products{background:var(--surface-2);border-right:1px solid var(--line)}
+.col-leads{background:var(--paper);border-right:1px solid var(--line)}
+.col-detail{background:var(--surface)}
+.col-h{position:sticky;top:0;z-index:5;background:inherit;border-bottom:1px solid var(--line);padding:13px 16px;display:flex;align-items:center;gap:10px}
+.col-h .t{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint)}
+.col-h .spacer{flex:1}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;width:28px;height:28px;font-size:16px;color:var(--brand-ink);display:grid;place-items:center;transition:.15s;flex:none}
+.iconbtn:hover{background:var(--brand-soft);border-color:var(--brand-soft)}
 
-/* ---------- filter bar ---------- */
-.filters{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; padding:14px; background:var(--surface);
-  border:1px solid var(--line); border-radius:var(--r-md); box-shadow:var(--shadow-sm); margin-bottom:20px}
-.field{display:flex; flex-direction:column; gap:4px}
-.field label{font-size:11px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em}
-select,input[type=text],input[type=number],input[type=email],input[type=password],textarea{
-  border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:var(--r-sm);
-  padding:8px 11px; outline:none; transition:.15s; min-width:0}
-select:focus,input:focus,textarea:focus{border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-soft)}
-.chip{display:inline-flex; align-items:center; gap:7px; padding:8px 13px; border-radius:999px;
-  border:1px solid var(--line); background:var(--surface); font-weight:600; font-size:13px; color:var(--ink-soft); transition:.15s}
+/* product rows */
+.prow{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer;border-bottom:1px solid var(--line-soft);transition:.12s;position:relative}
+.prow:hover{background:var(--line-soft)}
+.prow.sel{background:var(--brand-soft)}
+.prow.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--brand)}
+.prow .pn{flex:1;min-width:0;font-weight:600;font-size:14px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.prow .cnt{font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;color:var(--ink-soft);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:1px 8px;min-width:26px;text-align:center}
+.prow.sel .cnt{background:#fff;border-color:var(--brand-soft)}
+.prow .cnt.attn{color:var(--warn);border-color:var(--warn-bg);background:var(--warn-bg)}
+.prow .ed{opacity:0;border:0;background:none;color:var(--ink-faint);font-size:14px;padding:3px;border-radius:6px;transition:.12s}
+.prow:hover .ed{opacity:1} .prow .ed:hover{color:var(--brand-ink);background:#fff}
+
+/* lead rows */
+.lrow{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--line-soft);transition:.12s;position:relative;text-align:left;width:100%;background:none;border-left:0;border-top:0;border-right:0}
+.lrow:hover{background:var(--surface-2)}
+.lrow.sel{background:var(--surface)}
+.lrow.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--brand)}
+.lrow .sc{font-variant-numeric:tabular-nums;font-weight:800;font-size:19px;letter-spacing:-.03em;line-height:1;padding-top:2px;width:44px}
+.lrow .sc small{font-size:.55em;font-weight:700;opacity:.55}
+.v-ok .sc{color:var(--ok)} .v-gap .sc{color:var(--warn)} .v-bad .sc{color:var(--bad)}
+.lrow .lt{font-weight:600;font-size:13.5px;line-height:1.35;color:var(--ink);margin-bottom:5px}
+.lrow .lm{display:flex;flex-wrap:wrap;gap:5px 11px;font-size:12px;color:var(--ink-soft);align-items:center}
+.lrow .lm .mono{color:var(--ink)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%}
+.dot.ok{background:var(--ok)} .dot.gap{background:var(--warn)} .dot.bad{background:var(--bad)}
+.mini-attn{color:var(--warn);font-weight:700;font-size:11.5px}
+
+/* filters row in middle */
+.lfilters{display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line-soft);background:var(--paper);position:sticky;top:47px;z-index:4}
+.lfilters select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px;font-size:13px;font-weight:600;color:var(--ink)}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:600;font-size:12.5px;color:var(--ink-soft);transition:.15s}
 .chip:hover{border-color:var(--ink-faint)}
-.chip.on{background:var(--brand-ink); border-color:var(--brand-ink); color:#fff}
-.chip.attn.on{background:var(--warn); border-color:var(--warn)}
+.chip.on{background:var(--warn);border-color:var(--warn);color:#fff}
 
-/* ---------- lead cards ---------- */
-.leadlist{display:flex; flex-direction:column; gap:12px}
-.lead{display:grid; grid-template-columns:92px 1fr 22px; gap:18px; align-items:center; text-align:left; width:100%;
-  padding:16px 18px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
-  box-shadow:var(--shadow-sm); transition:.18s cubic-bezier(.2,.7,.3,1); opacity:0; transform:translateY(8px);
-  animation:rise .5s forwards}
-@keyframes rise{to{opacity:1; transform:none}}
-.lead:hover{border-color:#D6D9D0; box-shadow:var(--shadow-md); transform:translateY(-2px)}
-.score{display:flex; flex-direction:column; align-items:flex-start; gap:6px}
-.score .num{font-family:var(--ui); font-variant-numeric:tabular-nums; font-size:30px; font-weight:800; line-height:1; letter-spacing:-.035em}
-.score .num small{font-size:.5em; font-weight:700; opacity:.6; margin-left:1px}
-.score .bar{width:100%; height:5px; border-radius:99px; background:var(--line); overflow:hidden}
-.score .bar i{display:block; height:100%; border-radius:99px}
-.v-ok .num{color:var(--ok)} .v-ok .bar i{background:var(--ok)}
-.v-gap .num{color:var(--warn)} .v-gap .bar i{background:var(--warn)}
-.v-bad .num{color:var(--bad)} .v-bad .bar i{background:var(--bad)}
-.lead .title{font-weight:700; font-size:15.5px; letter-spacing:-.01em; margin:0 0 5px; color:var(--ink)}
-.lead .meta{display:flex; flex-wrap:wrap; gap:6px 14px; color:var(--ink-soft); font-size:13px; margin-bottom:9px}
-.lead .meta .mono{color:var(--ink)}
-.badges{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
-.badge{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:7px; font-size:12px; font-weight:600}
-.badge.ok{background:var(--ok-bg); color:var(--ok)}
-.badge.gap{background:var(--warn-bg); color:var(--warn)}
-.badge.bad{background:var(--bad-bg); color:var(--bad)}
-.badge.attn{background:var(--warn-bg); color:var(--warn); box-shadow:inset 0 0 0 1px rgba(140,90,6,.25)}
-.badge.formal{background:var(--info-bg); color:var(--info)}
-.badge.soft{background:var(--line-soft); color:var(--ink-soft)}
-.chev{color:var(--ink-faint); font-size:18px}
-.lead:hover .chev{color:var(--brand)}
+/* empty states */
+.empty{display:grid;place-items:center;height:100%;text-align:center;color:var(--ink-faint);padding:40px 24px}
+.empty .ic{font-size:30px;margin-bottom:10px;opacity:.5}
+.empty .big{font-size:14px;color:var(--ink-soft);font-weight:600;margin-bottom:4px}
+.empty.sm{height:auto;padding:60px 20px}
 
-/* ---------- pager ---------- */
-.pager{display:flex; align-items:center; justify-content:space-between; margin-top:22px; color:var(--ink-soft); font-size:13px}
-.pager .btns{display:flex; gap:8px}
-.btn{border:1px solid var(--line); background:var(--surface); color:var(--ink); font-weight:600; font-size:14px;
-  padding:9px 16px; border-radius:var(--r-sm); transition:.15s}
-.btn:hover:not(:disabled){border-color:var(--ink-faint); background:var(--surface-2)}
-.btn:disabled{opacity:.45; cursor:default}
-.btn.primary{background:var(--brand); border-color:var(--brand); color:#fff}
-.btn.primary:hover:not(:disabled){background:var(--brand-ink)}
-
-/* ---------- empty / toast ---------- */
-.empty{text-align:center; padding:70px 20px; color:var(--ink-faint)}
-.empty .big{font-size:15px; color:var(--ink-soft); font-weight:600; margin-bottom:6px}
-.toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
-  background:var(--ink); color:#fff; padding:12px 18px; border-radius:11px; font-size:14px; font-weight:500;
-  box-shadow:var(--shadow-lg); z-index:80; transition:.3s; pointer-events:none}
-.toast.show{opacity:1; transform:translateX(-50%)}
-.toast.err{background:var(--bad)}
-
-/* ---------- drawer (lead detail) ---------- */
-.scrim{position:fixed; inset:0; background:rgba(20,23,28,.34); backdrop-filter:blur(2px); z-index:50; opacity:0; transition:.25s}
-.scrim.show{opacity:1}
-.drawer{position:fixed; top:0; right:0; height:100vh; width:min(560px,100%); background:var(--surface); z-index:60;
-  box-shadow:var(--shadow-lg); transform:translateX(100%); transition:transform .32s cubic-bezier(.2,.7,.2,1);
-  display:flex; flex-direction:column}
-.drawer.show{transform:none}
-.drawer .dh{padding:20px 24px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:flex-start}
-.drawer .dh h2{margin:0 0 8px; font-size:19px; font-weight:800; letter-spacing:-.02em; line-height:1.3}
-.drawer .db{overflow-y:auto; padding:22px 24px 40px}
-.close{border:0; background:var(--line-soft); width:32px; height:32px; border-radius:8px; color:var(--ink-soft);
-  font-size:15px; flex:none; transition:.15s}
-.close:hover{background:var(--line); color:var(--ink)}
-
-.notice{padding:11px 14px; border-radius:var(--r-sm); font-size:13.5px; font-weight:500; margin-bottom:18px}
-.notice.attn{background:var(--warn-bg); color:var(--warn)}
-.notice.formal{background:var(--info-bg); color:var(--info)}
-
-.section-t{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); margin:24px 0 11px}
-.facts{display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line);
-  border-radius:var(--r-md); overflow:hidden}
-.fact{background:var(--surface); padding:11px 13px}
-.fact .k{font-size:11.5px; color:var(--ink-faint); margin-bottom:3px}
-.fact .val{font-size:14.5px; font-weight:600; color:var(--ink)}
+/* ---------- detail pane ---------- */
+.dpane{padding:0}
+.dhead{padding:22px 28px 18px;border-bottom:1px solid var(--line)}
+.dhead h2{margin:0 0 11px;font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.28}
+.badges{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:7px;font-size:12.5px;font-weight:600}
+.badge.ok{background:var(--ok-bg);color:var(--ok)} .badge.gap{background:var(--warn-bg);color:var(--warn)}
+.badge.bad{background:var(--bad-bg);color:var(--bad)} .badge.formal{background:var(--info-bg);color:var(--info)}
+.badge.soft{background:var(--line-soft);color:var(--ink-soft)} .badge.attn{background:var(--warn-bg);color:var(--warn);box-shadow:inset 0 0 0 1px rgba(140,90,6,.25)}
+.dbody{padding:22px 28px 60px;max-width:820px}
+.notice{padding:11px 14px;border-radius:var(--r-sm);font-size:13.5px;font-weight:500;margin-bottom:20px}
+.notice.attn{background:var(--warn-bg);color:var(--warn)} .notice.formal{background:var(--info-bg);color:var(--info)}
+.section-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);margin:26px 0 12px;display:flex;align-items:center;gap:8px}
+.section-t .n{color:var(--ink);background:var(--line-soft);border-radius:6px;padding:0 7px;font-size:11px}
+.facts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.fact{background:var(--surface);padding:11px 14px}
+.fact .k{font-size:11.5px;color:var(--ink-faint);margin-bottom:3px}
+.fact .val{font-size:14.5px;font-weight:600;color:var(--ink)}
 .fact.wide{grid-column:1/-1}
 .deadline-hot{color:var(--bad)}
+.summary{display:flex;gap:16px;margin:4px 0 6px;font-size:13px}
+.summary b{font-variant-numeric:tabular-nums}
+.sum-ok{color:var(--ok)} .sum-bad{color:var(--bad)} .sum-gap{color:var(--warn)}
 
-.checks{display:flex; flex-direction:column; gap:2px}
-.check{display:flex; gap:11px; padding:10px 2px; border-bottom:1px solid var(--line-soft)}
-.check .ic{width:20px; height:20px; border-radius:6px; flex:none; display:grid; place-items:center; font-size:12px; font-weight:700; margin-top:1px}
-.check.pass .ic{background:var(--ok-bg); color:var(--ok)}
-.check.violation .ic{background:var(--bad-bg); color:var(--bad)}
-.check.gap .ic{background:var(--warn-bg); color:var(--warn)}
-.check .body{flex:1; min-width:0}
-.check .rk{font-weight:600; font-size:14px}
-.check .rn{font-size:12.5px; color:var(--ink-soft); margin-top:1px}
-.fillrow{display:flex; gap:8px; margin-top:8px}
-.fillrow input{flex:1}
-.fillrow .btn{padding:8px 14px}
-/* сравнение «требует ТЗ» ↔ «ваш товар» */
-.cmp{display:grid; grid-template-columns:1fr 1fr; gap:1px; margin-top:7px; background:var(--line-soft);
-  border:1px solid var(--line-soft); border-radius:8px; overflow:hidden}
-.cmp-col{background:var(--surface-2); padding:7px 10px; min-width:0}
-.cmp-col .cl{display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); margin-bottom:2px}
-.cmp-col .cv{font-size:13.5px; color:var(--ink); word-break:break-word}
+.check{display:flex;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line-soft)}
+.check .ic{width:22px;height:22px;border-radius:7px;flex:none;display:grid;place-items:center;font-size:12px;font-weight:700;margin-top:1px}
+.check.pass .ic{background:var(--ok-bg);color:var(--ok)} .check.violation .ic{background:var(--bad-bg);color:var(--bad)} .check.gap .ic{background:var(--warn-bg);color:var(--warn)}
+.check .body{flex:1;min-width:0}
+.check .rk{font-weight:600;font-size:14px;text-transform:capitalize}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:7px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:8px;overflow:hidden}
+.cmp-col{background:var(--surface-2);padding:7px 11px;min-width:0}
+.cmp-col .cl{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin-bottom:2px}
+.cmp-col .cv{font-size:13.5px;color:var(--ink);word-break:break-word}
 .cmp-col.mine{background:#fff}
-.check.pass .cmp-col.mine .cv{color:var(--ok); font-weight:600}
-.check.violation .cmp-col.mine .cv{color:var(--bad); font-weight:600}
-.cmp-col.mine .cv.none{color:var(--warn); font-weight:500}
-/* строки характеристик товара в форме */
-.attr-row{display:grid; grid-template-columns:1fr 1fr 34px; gap:8px; margin-bottom:8px}
-.attr-row input{width:100%}
-.attr-row .rm{border:1px solid var(--line); background:var(--surface); border-radius:var(--r-sm); color:var(--ink-faint); font-size:16px}
-.attr-row .rm:hover{color:var(--bad); border-color:var(--bad-bg); background:var(--bad-bg)}
-.addrow{border:1px dashed var(--line); background:none; color:var(--ink-soft); font-weight:600; font-size:13.5px; padding:9px; border-radius:var(--r-sm); width:100%; transition:.15s}
-.addrow:hover{border-color:var(--brand); color:var(--brand-ink); background:var(--brand-soft)}
-.form-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px}
-.form-head h3{margin:0}
-.pcard{cursor:pointer; transition:.16s}
-.pcard:hover{border-color:#D6D9D0; box-shadow:var(--shadow-md); transform:translateY(-2px)}
-.pcard .edit-hint{font-size:12px; color:var(--brand-ink); font-weight:600; margin-top:8px; opacity:0; transition:.15s}
-.pcard:hover .edit-hint{opacity:1}
+.check.pass .cmp-col.mine .cv{color:var(--ok);font-weight:600}
+.check.violation .cmp-col.mine .cv{color:var(--bad);font-weight:600}
+.cmp-col.mine .cv.none{color:var(--warn);font-weight:500}
+.fillrow{display:flex;gap:8px;margin-top:9px}
+.fillrow input{flex:1;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px;outline:none}
+.fillrow input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;font-size:14px;padding:9px 16px;border-radius:var(--r-sm);transition:.15s}
+.btn:hover:not(:disabled){border-color:var(--ink-faint);background:var(--surface-2)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover:not(:disabled){background:var(--brand-ink)}
+.expl{color:var(--ink-soft);font-size:14px;line-height:1.6;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;margin-top:8px}
 
-/* ---------- products ---------- */
-.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px}
-.pcard{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:18px; box-shadow:var(--shadow-sm)}
-.pcard h3{margin:0 0 6px; font-size:16px; font-weight:700; letter-spacing:-.01em}
-.pcard .ktru{font-family:var(--mono); font-size:12px; color:var(--brand-ink); background:var(--brand-soft);
-  display:inline-block; padding:2px 8px; border-radius:6px; margin-bottom:10px}
-.pcard .attrs{font-size:13px; color:var(--ink-soft); line-height:1.7}
-.card-form{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:22px; box-shadow:var(--shadow-sm); margin-bottom:22px}
-.card-form h3{margin:0 0 16px; font-size:16px; font-weight:700}
-.frow{display:flex; flex-direction:column; gap:5px; margin-bottom:14px}
-.frow label{font-size:12.5px; font-weight:600; color:var(--ink-soft)}
-.frow input,.frow textarea{width:100%}
-.frow textarea{min-height:74px; resize:vertical; font-family:var(--mono); font-size:13px}
-.frow .hint{font-size:12px; color:var(--ink-faint)}
+/* ---------- product form (in right pane) ---------- */
+.frow{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+.frow label{font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.frow .hint{font-weight:400;color:var(--ink-faint)}
+.frow input{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 12px;outline:none}
+.frow input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.attr-row{display:grid;grid-template-columns:1fr 1fr 34px;gap:8px;margin-bottom:8px}
+.attr-row input{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px;outline:none}
+.attr-row input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.attr-row .rm{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);color:var(--ink-faint);font-size:16px}
+.attr-row .rm:hover{color:var(--bad);border-color:var(--bad-bg);background:var(--bad-bg)}
+.addrow{border:1px dashed var(--line);background:none;color:var(--ink-soft);font-weight:600;font-size:13.5px;padding:9px;border-radius:var(--r-sm);width:100%;transition:.15s}
+.addrow:hover{border-color:var(--brand);color:var(--brand-ink);background:var(--brand-soft)}
 
 /* ---------- auth ---------- */
-.auth{min-height:100vh; display:grid; place-items:center; padding:24px}
-.auth-card{width:min(420px,100%); background:var(--surface); border:1px solid var(--line); border-radius:22px;
-  box-shadow:var(--shadow-md); padding:38px 34px; animation:rise .5s forwards}
-.auth .brand{font-size:22px; margin-bottom:14px}
-.auth h1{font-size:22px; font-weight:800; letter-spacing:-.02em; margin:20px 0 4px}
-.auth p.lede{color:var(--ink-faint); font-size:14px; margin:0 0 24px}
-.auth .frow{margin-bottom:16px}
-.auth .btn.primary{width:100%; padding:12px; font-size:15px; margin-top:6px}
-.auth .switch{text-align:center; margin-top:18px; font-size:13.5px; color:var(--ink-soft)}
-.auth .switch button{border:0; background:none; color:var(--brand-ink); font-weight:700; padding:0}
-.auth .err{background:var(--bad-bg); color:var(--bad); padding:10px 13px; border-radius:9px; font-size:13.5px; margin-bottom:16px}
-.tagline{color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0}
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px}
+.auth-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow-md);padding:38px 34px}
+.auth .brand{font-size:22px;margin-bottom:14px}
+.auth h1{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:20px 0 4px}
+.auth p.lede{color:var(--ink-faint);font-size:14px;margin:0 0 24px}
+.auth .btn.primary{width:100%;padding:12px;font-size:15px;margin-top:6px}
+.auth .switch{text-align:center;margin-top:18px;font-size:13.5px;color:var(--ink-soft)}
+.auth .switch button{border:0;background:none;color:var(--brand-ink);font-weight:700;padding:0}
+.auth .err{background:var(--bad-bg);color:var(--bad);padding:10px 13px;border-radius:9px;font-size:13.5px;margin-bottom:16px}
+.tagline{color:var(--ink-soft);font-size:14px;line-height:1.6;margin:0}
 
-@media(max-width:560px){ .lead{grid-template-columns:70px 1fr 16px; gap:12px} .facts{grid-template-columns:1fr} }
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;padding:12px 18px;border-radius:11px;font-size:14px;font-weight:500;box-shadow:var(--shadow-md);z-index:80;transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%)} .toast.err{background:var(--bad)}
+@media(max-width:900px){.cols{grid-template-columns:1fr} .col-products,.col-leads{display:none} .facts{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -234,22 +182,11 @@ select:focus,input:focus,textarea:focus{border-color:var(--brand); box-shadow:0 
     <h1 id="authTitle">Вход в кабинет</h1>
     <p class="lede" id="authLede">Лента подходящих закупок, готовая к подаче.</p>
     <div id="authErr" class="err hidden"></div>
-    <div class="frow" id="companyRow" style="display:none">
-      <label>Название компании</label>
-      <input id="aCompany" type="text" placeholder="ООО «Медснаб»" autocomplete="organization">
-    </div>
-    <div class="frow">
-      <label>E-mail</label>
-      <input id="aEmail" type="email" placeholder="buyer@medsnab.ru" autocomplete="email">
-    </div>
-    <div class="frow">
-      <label>Пароль</label>
-      <input id="aPass" type="password" placeholder="минимум 8 символов" autocomplete="current-password">
-    </div>
+    <div class="frow" id="companyRow" style="display:none"><label>Название компании</label><input id="aCompany" type="text" placeholder="ООО «Медснаб»"></div>
+    <div class="frow"><label>E-mail</label><input id="aEmail" type="email" placeholder="buyer@medsnab.ru"></div>
+    <div class="frow"><label>Пароль</label><input id="aPass" type="password" placeholder="минимум 8 символов"></div>
     <button class="btn primary" id="authBtn" onclick="App.submitAuth()">Войти</button>
-    <div class="switch" id="authSwitch">
-      Ещё нет аккаунта? <button onclick="App.toggleAuth()">Зарегистрировать компанию</button>
-    </div>
+    <div class="switch" id="authSwitch">Ещё нет аккаунта? <button onclick="App.toggleAuth()">Зарегистрировать компанию</button></div>
   </div>
 </div>
 
@@ -257,303 +194,209 @@ select:focus,input:focus,textarea:focus{border-color:var(--brand); box-shadow:0 
 <div id="appScreen" class="hidden">
   <div class="topbar">
     <div class="brand"><span class="mark"></span>SpecMatch</div>
-    <div class="nav">
-      <button id="navFeed" class="active" onclick="App.go('feed')">Лента</button>
-      <button id="navProducts" onclick="App.go('products')">Товары</button>
-    </div>
     <div class="spacer"></div>
     <div class="whoami"><span id="whoEmail"></span><button class="linkbtn" onclick="App.logout()">Выйти</button></div>
   </div>
-  <div class="wrap" id="view"></div>
+  <div class="cols">
+    <div class="col col-products">
+      <div class="col-h"><span class="t">Товары</span><span class="spacer"></span><button class="iconbtn" title="Добавить товар" onclick="App.newProduct()">+</button></div>
+      <div id="productList"></div>
+    </div>
+    <div class="col col-leads">
+      <div class="col-h"><span class="t" id="leadsColTitle">Закупки</span><span class="spacer"></span><span class="t mono" id="leadsCount"></span></div>
+      <div id="leadsFilters"></div>
+      <div id="leadsList"></div>
+    </div>
+    <div class="col col-detail"><div id="detailPane"></div></div>
+  </div>
 </div>
 
-<div id="scrim" class="scrim hidden" onclick="App.closeDrawer()"></div>
-<div id="drawer" class="drawer"></div>
 <div id="toast" class="toast"></div>
 
 <script>
-const API = ""; // тот же origin (FastAPI отдаёт этот файл)
-const T = { get a(){return localStorage.getItem('sm_access')}, get r(){return localStorage.getItem('sm_refresh')},
-  set(a,r){localStorage.setItem('sm_access',a); localStorage.setItem('sm_refresh',r)},
-  clear(){localStorage.removeItem('sm_access'); localStorage.removeItem('sm_refresh'); localStorage.removeItem('sm_email')} };
+const API="";
+const T={get a(){return localStorage.getItem('sm_access')},get r(){return localStorage.getItem('sm_refresh')},
+  set(a,r){localStorage.setItem('sm_access',a);localStorage.setItem('sm_refresh',r)},
+  clear(){['sm_access','sm_refresh','sm_email'].forEach(k=>localStorage.removeItem(k))}};
 
-// ---- API client with auto-refresh ----
-async function api(path, {method='GET', body, auth=true}={}, _retry=false){
-  const h={}; if(body!==undefined) h['Content-Type']='application/json';
-  if(auth && T.a) h['Authorization']='Bearer '+T.a;
+async function api(path,{method='GET',body,auth=true}={},_retry=false){
+  const h={}; if(body!==undefined)h['Content-Type']='application/json'; if(auth&&T.a)h['Authorization']='Bearer '+T.a;
   const res=await fetch(API+path,{method,headers:h,body:body!==undefined?JSON.stringify(body):undefined});
-  if(res.status===401 && auth && !_retry && T.r){
-    const ok=await refresh(); if(ok) return api(path,{method,body,auth},true);
-    App.logout(); throw new Error('Сессия истекла');
-  }
-  if(res.status===204) return null;
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.detail || ('Ошибка '+res.status));
-  return data;
+  if(res.status===401&&auth&&!_retry&&T.r){const ok=await refresh(); if(ok)return api(path,{method,body,auth},true); App.logout(); throw new Error('Сессия истекла');}
+  if(res.status===204)return null;
+  const data=await res.json().catch(()=>({})); if(!res.ok)throw new Error(data.detail||('Ошибка '+res.status)); return data;
 }
-async function refresh(){
-  try{ const d=await api('/auth/refresh',{method:'POST',body:{refresh_token:T.r},auth:false});
-    T.set(d.access_token,d.refresh_token); return true; }catch(e){ return false; }
-}
+async function refresh(){try{const d=await api('/auth/refresh',{method:'POST',body:{refresh_token:T.r},auth:false});T.set(d.access_token,d.refresh_token);return true;}catch(e){return false;}}
 
-// ---- helpers ----
 const fmtMoney=v=>v==null?'—':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(v)+' ₽';
-const fmtDate=ms=>{ if(!ms) return '—'; const d=new Date(ms); return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear(); };
-const daysWord=n=>{ if(n==null) return ''; const a=Math.floor(Math.abs(n))%100, b=a%10; const w=a>10&&a<20?'дней':b===1?'день':b>1&&b<5?'дня':'дней'; return Math.floor(n)+' '+w; };
+const fmtDate=ms=>{if(!ms)return '—';const d=new Date(ms);return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();};
+const daysWord=n=>{if(n==null)return '';const a=Math.floor(Math.abs(n))%100,b=a%10;const w=a>10&&a<20?'дней':b===1?'день':b>1&&b<5?'дня':'дней';return Math.floor(n)+' '+w;};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const VMAP={eligible:['v-ok','ok','Проходит'], eligible_with_gaps:['v-gap','gap','С пробелами'], disqualified:['v-bad','bad','Не проходит']};
-function toast(msg,err){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(err?' err':''); setTimeout(()=>t.className='toast',2600); }
+const VMAP={eligible:['v-ok','ok','Проходит'],eligible_with_gaps:['v-gap','gap','С пробелами'],disqualified:['v-bad','bad','Не проходит']};
+const plural=(n,a,b,c)=>{const x=Math.abs(n)%100,y=x%10;return x>10&&x<20?c:y===1?a:y>1&&y<5?b:c;};
+function toast(m,e){const t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(e?' err':'');setTimeout(()=>t.className='toast',2600);}
 
-// ---- App ----
-const App = {
-  regMode:false, feed:{offset:0, limit:10, total:0, params:{}}, _deb:null, _detail:null, editId:null, _products:[],
+const App={
+  regMode:false, editId:null, selProduct:null, selLead:null,
+  _products:[], _leads:[], lf:{sort:'score',attn:false},
 
-  init(){ if(T.a){ this.enter(); } else { document.getElementById('authScreen').classList.remove('hidden'); } },
+  init(){ T.a?this.enter():document.getElementById('authScreen').classList.remove('hidden'); },
 
   // ----- auth -----
-  toggleAuth(){ this.regMode=!this.regMode;
-    document.getElementById('companyRow').style.display=this.regMode?'flex':'none';
-    document.getElementById('authTitle').textContent=this.regMode?'Регистрация компании':'Вход в кабинет';
-    document.getElementById('authLede').textContent=this.regMode?'Заведите компанию и первого пользователя.':'Лента подходящих закупок, готовая к подаче.';
-    document.getElementById('authBtn').textContent=this.regMode?'Создать компанию':'Войти';
-    document.getElementById('authSwitch').innerHTML=this.regMode
-      ? 'Уже есть аккаунт? <button onclick="App.toggleAuth()">Войти</button>'
-      : 'Ещё нет аккаунта? <button onclick="App.toggleAuth()">Зарегистрировать компанию</button>';
-    document.getElementById('authErr').classList.add('hidden');
-  },
-  async submitAuth(){
-    const email=document.getElementById('aEmail').value.trim(), pass=document.getElementById('aPass').value,
-      company=document.getElementById('aCompany').value.trim(), err=document.getElementById('authErr');
-    err.classList.add('hidden');
-    try{
-      const path=this.regMode?'/auth/register':'/auth/login';
-      const body=this.regMode?{email,password:pass,company_name:company}:{email,password:pass};
-      const d=await api(path,{method:'POST',body,auth:false});
-      T.set(d.access_token,d.refresh_token); localStorage.setItem('sm_email',email); this.enter();
-    }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
-  },
-  async logout(){ try{ if(T.r) await api('/auth/logout',{method:'POST',body:{refresh_token:T.r},auth:false}); }catch(e){}
-    T.clear(); location.reload(); },
+  toggleAuth(){this.regMode=!this.regMode;const g=id=>document.getElementById(id);
+    g('companyRow').style.display=this.regMode?'flex':'none';
+    g('authTitle').textContent=this.regMode?'Регистрация компании':'Вход в кабинет';
+    g('authLede').textContent=this.regMode?'Заведите компанию и первого пользователя.':'Лента подходящих закупок, готовая к подаче.';
+    g('authBtn').textContent=this.regMode?'Создать компанию':'Войти';
+    g('authSwitch').innerHTML=this.regMode?'Уже есть аккаунт? <button onclick="App.toggleAuth()">Войти</button>':'Ещё нет аккаунта? <button onclick="App.toggleAuth()">Зарегистрировать компанию</button>';
+    g('authErr').classList.add('hidden');},
+  async submitAuth(){const g=id=>document.getElementById(id);const email=g('aEmail').value.trim(),pass=g('aPass').value,company=g('aCompany').value.trim(),err=g('authErr');err.classList.add('hidden');
+    try{const d=await api(this.regMode?'/auth/register':'/auth/login',{method:'POST',body:this.regMode?{email,password:pass,company_name:company}:{email,password:pass},auth:false});
+      T.set(d.access_token,d.refresh_token);localStorage.setItem('sm_email',email);this.enter();}
+    catch(e){err.textContent=e.message;err.classList.remove('hidden');}},
+  async logout(){try{if(T.r)await api('/auth/logout',{method:'POST',body:{refresh_token:T.r},auth:false});}catch(e){}T.clear();location.reload();},
 
-  enter(){
-    document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('appScreen').classList.remove('hidden');
+  enter(){document.getElementById('authScreen').classList.add('hidden');document.getElementById('appScreen').classList.remove('hidden');
     document.getElementById('whoEmail').innerHTML='<b>'+esc(localStorage.getItem('sm_email')||'')+'</b>';
-    this.go('feed');
+    this.renderFilters(); this.loadProducts();},
+
+  // ===== LEFT: products =====
+  async loadProducts(){
+    try{ const items=await api('/products'); this._products=items;
+      const el=document.getElementById('productList');
+      if(!items.length){ el.innerHTML='<div class="empty sm"><div class="ic">📦</div><div class="big">Товаров нет</div>Нажмите «+» вверху,<br>чтобы завести первый.</div>'; this.showEmptyLeads('Заведите товар, чтобы увидеть закупки'); this.showEmptyDetail(); return; }
+      el.innerHTML=items.map(p=>`<div class="prow ${this.selProduct===p.id?'sel':''}" onclick="App.selectProduct(${p.id})">
+        <span class="pn" title="${esc(p.name)}">${esc(p.name)}</span>
+        <span class="cnt" id="cnt_${p.id}">·</span>
+        <button class="ed" title="Изменить" onclick="event.stopPropagation();App.editProduct(${p.id})">✎</button></div>`).join('');
+      items.forEach(p=>this.fetchCount(p.id));
+      if(this.selProduct==null){ this.selectProduct(items[0].id); }
+    }catch(e){ document.getElementById('productList').innerHTML='<div class="empty sm">'+esc(e.message)+'</div>'; }
   },
-  go(page){
-    document.getElementById('navFeed').classList.toggle('active',page==='feed');
-    document.getElementById('navProducts').classList.toggle('active',page==='products');
-    if(page==='feed'){ this.feed.offset=0; this.renderFeed(); } else this.renderProducts();
+  async fetchCount(pid){ try{ const d=await api(`/products/${pid}/leads?limit=1`); const el=document.getElementById('cnt_'+pid); if(!el)return;
+    const at=await api(`/products/${pid}/leads?limit=1&changed_only=true`);
+    el.textContent=d.total; el.className='cnt'+(at.total>0?' attn':''); if(at.total>0)el.title=at.total+' с изменившимся ТЗ';
+  }catch(e){} },
+
+  selectProduct(id){ this.selProduct=id; this.selLead=null;
+    const rows=document.getElementById('productList').querySelectorAll('.prow');
+    this._products.forEach((p,i)=>{ if(rows[i]) rows[i].classList.toggle('sel', p.id===id); });
+    const p=this._products.find(x=>x.id===id);
+    document.getElementById('leadsColTitle').textContent=p?p.name:'Закупки';
+    this.showEmptyDetail('Выберите закупку в списке');
+    this.loadLeads(id);
   },
 
-  // ----- feed -----
-  readFilters(){
-    const g=id=>document.getElementById(id);
-    const p={ sort:g('fSort').value, limit:this.feed.limit, offset:this.feed.offset };
-    if(g('fScore').value) p.min_score=g('fScore').value;
-    if(g('fRegion').value.trim()) p.region=g('fRegion').value.trim();
-    if(g('fDeadline').value) p.deadline_max_days=g('fDeadline').value;
-    if(g('fAttn').classList.contains('on')) p.changed_only=true;
-    if(g('fDq').classList.contains('on')) p.include_disqualified=true;
-    return p;
+  // ===== MIDDLE: leads for product =====
+  renderFilters(){ document.getElementById('leadsFilters').innerHTML=`<div class="lfilters">
+      <select id="lfSort" onchange="App.lf.sort=this.value;App.loadLeads(App.selProduct)">
+        <option value="score">По совпадению</option><option value="deadline">По сроку подачи</option><option value="updated">По обновлению</option></select>
+      <button class="chip" id="lfAttn" onclick="App.lf.attn=!App.lf.attn;this.classList.toggle('on');App.loadLeads(App.selProduct)">❗ ТЗ изменилось</button>
+    </div>`; },
+  async loadLeads(pid){ if(pid==null)return; const list=document.getElementById('leadsList'); list.innerHTML='<div class="empty sm">Загрузка…</div>';
+    const qs=`sort=${this.lf.sort}&limit=50&min_score=0`+(this.lf.attn?'&changed_only=true':'');
+    try{ const page=await api(`/products/${pid}/leads?${qs}`); this._leads=page.items;
+      document.getElementById('leadsCount').textContent=page.total+' '+plural(page.total,'закупка','закупки','закупок');
+      if(!page.items.length){ list.innerHTML='<div class="empty sm"><div class="ic">🔍</div><div class="big">Подходящих закупок нет</div>По этому товару пока пусто'+(this.lf.attn?' (снимите фильтр «ТЗ изменилось»)':'')+'.</div>'; return; }
+      list.innerHTML=page.items.map(l=>this.leadRow(l)).join('');
+    }catch(e){ list.innerHTML='<div class="empty sm">'+esc(e.message)+'</div>'; }
   },
-  applyFilters(){ this.feed.offset=0; this.loadFeed(); },
-  toggleChip(id){ document.getElementById(id).classList.toggle('on'); this.applyFilters(); },
-  debApply(){ clearTimeout(this._deb); this._deb=setTimeout(()=>this.applyFilters(),350); },
-
-  renderFeed(){
-    document.getElementById('view').innerHTML = `
-      <div class="page-head"><h1>Лента закупок</h1><span class="sub" id="feedSub"></span></div>
-      <div class="filters">
-        <div class="field"><label>Сортировка</label>
-          <select id="fSort" onchange="App.applyFilters()">
-            <option value="score">По совпадению</option>
-            <option value="deadline">По сроку подачи</option>
-            <option value="updated">По обновлению</option>
-          </select></div>
-        <div class="field"><label>% не ниже</label><input id="fScore" type="number" min="0" max="100" style="width:88px" placeholder="0" oninput="App.debApply()"></div>
-        <div class="field"><label>Регион</label><input id="fRegion" type="text" style="width:96px" placeholder="код" oninput="App.debApply()"></div>
-        <div class="field"><label>Срок ≤ дней</label><input id="fDeadline" type="number" min="0" style="width:96px" placeholder="—" oninput="App.debApply()"></div>
-        <div style="flex:1"></div>
-        <button class="chip attn" id="fAttn" onclick="App.toggleChip('fAttn')">❗ Требуют внимания</button>
-        <button class="chip" id="fDq" onclick="App.toggleChip('fDq')">Показать непроходные</button>
-      </div>
-      <div id="leadlist" class="leadlist"></div>
-      <div id="pager"></div>`;
-    this.loadFeed();
-  },
-
-  async loadFeed(){
-    const list=document.getElementById('leadlist'); if(!list) return;
-    const p=this.readFilters(); this.feed.params=p;
-    const qs=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
-    list.innerHTML='<div class="empty">Загрузка…</div>';
-    try{
-      const page=await api('/leads?'+qs); this.feed.total=page.total;
-      const n=page.total; document.getElementById('feedSub').textContent = n+' '+(n%10===1&&n%100!==11?'закупка':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?'закупки':'закупок'));
-      if(!page.items.length){ list.innerHTML='<div class="empty"><div class="big">Пока пусто</div>Заведите товары и дождитесь свежих лидов, либо ослабьте фильтры.</div>'; document.getElementById('pager').innerHTML=''; return; }
-      list.innerHTML = page.items.map((l,i)=>this.leadCard(l,i)).join('');
-      this.renderPager();
-    }catch(e){ list.innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
-  },
-  leadCard(l,i){
-    const [vc,bc,bt]=VMAP[l.verdict]||['v-gap','soft',l.verdict];
-    const c=l.card||{}; const dleft=l.days_left;
-    const attn = l.change_status==='material' ? '<span class="badge attn">❗ ТЗ изменилось</span>'
-      : l.change_status==='formal' ? '<span class="badge formal">Обновлено</span>' : '';
-    const dl = dleft!=null ? `<span class="mono">${daysWord(dleft)} до подачи</span>` : '';
-    return `<button class="lead ${vc}" style="animation-delay:${i*45}ms" onclick="App.openLead(${l.product_id},'${encodeURIComponent(l.purchase_id)}')">
-      <div class="score"><span class="num">${l.score}<small>%</small></span><span class="bar"><i style="width:${Math.max(4,l.score)}%"></i></span></div>
-      <div>
-        <p class="title">${esc(l.subject||'Без названия')}</p>
-        <div class="meta">
-          ${l.customer?`<span>${esc(l.customer)}</span>`:''}
+  leadRow(l){ const [vc,bc,bt]=VMAP[l.verdict]||['v-gap','gap','—']; const dl=l.days_left;
+    const attn=l.change_status==='material'?'<span class="mini-attn">❗ ТЗ изменилось</span>':'';
+    return `<button class="lrow ${vc} ${this.selLead===l.purchase_id?'sel':''}" onclick="App.selectLead('${encodeURIComponent(l.purchase_id)}')">
+      <span class="sc">${l.score}<small>%</small></span>
+      <span>
+        <div class="lt">${esc(l.subject||'Без названия')}</div>
+        <div class="lm"><span class="dot ${bc}"></span><span>${bt}</span>
           ${l.price!=null?`<span class="mono">${fmtMoney(l.price)}</span>`:''}
-          ${l.region?`<span>рег. ${esc(l.region)}</span>`:''}
-          ${dl}
-        </div>
-        <div class="badges"><span class="badge ${bc}">${bt}</span>${attn}${c.smp?'<span class="badge soft">СМП</span>':''}</div>
-      </div>
-      <span class="chev">›</span>
-    </button>`;
+          ${dl!=null?`<span class="mono">${daysWord(dl)}</span>`:''}
+          ${l.card&&l.card.smp?'<span>СМП</span>':''}${attn}</div>
+      </span></button>`;
   },
-  renderPager(){
-    const {offset,limit,total}=this.feed; const from=offset+1, to=Math.min(offset+limit,total);
-    document.getElementById('pager').innerHTML=`<div class="pager">
-      <span>Показано <b class="mono">${from}–${to}</b> из <b class="mono">${total}</b></span>
-      <div class="btns">
-        <button class="btn" ${offset<=0?'disabled':''} onclick="App.pageBy(-1)">← Назад</button>
-        <button class="btn" ${to>=total?'disabled':''} onclick="App.pageBy(1)">Вперёд →</button>
-      </div></div>`;
-  },
-  pageBy(d){ this.feed.offset=Math.max(0,this.feed.offset+d*this.feed.limit); this.loadFeed(); window.scrollTo({top:0,behavior:'smooth'}); },
 
-  // ----- lead detail drawer -----
-  async openLead(pid,purchaseEnc){
-    const purchase=decodeURIComponent(purchaseEnc);
-    const sc=document.getElementById('scrim'), dw=document.getElementById('drawer');
-    sc.classList.remove('hidden'); requestAnimationFrame(()=>{sc.classList.add('show'); dw.classList.add('show')});
-    dw.innerHTML='<div class="db"><div class="empty">Загрузка…</div></div>';
-    try{ const d=await api(`/products/${pid}/leads/${encodeURIComponent(purchase)}`); this._detail={pid,purchase,d}; this.renderDetail(d); }
-    catch(e){ dw.innerHTML='<div class="db"><div class="empty">'+esc(e.message)+'</div></div>'; }
+  // ===== RIGHT: lead detail =====
+  showEmptyLeads(msg){ document.getElementById('leadsList').innerHTML=`<div class="empty"><div class="ic">👈</div>${esc(msg||'Выберите товар')}</div>`; document.getElementById('leadsCount').textContent=''; },
+  showEmptyDetail(msg){ document.getElementById('detailPane').innerHTML=`<div class="empty"><div class="ic">📄</div>${esc(msg||'Выберите закупку слева')}</div>`; },
+
+  async selectLead(enc){ const purchase=decodeURIComponent(enc); this.selLead=purchase;
+    document.querySelectorAll('.lrow').forEach(r=>r.classList.remove('sel'));
+    this._leads.forEach((l,i)=>{ if(l.purchase_id===purchase){ const rows=document.querySelectorAll('.lrow'); if(rows[i])rows[i].classList.add('sel'); } });
+    const pane=document.getElementById('detailPane'); pane.innerHTML='<div class="empty">Загрузка…</div>';
+    try{ const d=await api(`/products/${this.selProduct}/leads/${encodeURIComponent(purchase)}`); this._detail=d; this.renderDetail(d); }
+    catch(e){ pane.innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
   },
-  closeDrawer(){ const sc=document.getElementById('scrim'), dw=document.getElementById('drawer');
-    sc.classList.remove('show'); dw.classList.remove('show'); setTimeout(()=>sc.classList.add('hidden'),260); },
-  renderDetail(d){
-    const [vc,bc,bt]=VMAP[d.verdict]||['v-gap','soft',d.verdict]; const c=d.card||{};
-    const notice = d.change_status==='material' ? `<div class="notice attn">❗ ${esc(d.change_note)}</div>`
-      : d.change_status==='formal' ? `<div class="notice formal">${esc(d.change_note)}</div>` : '';
+  renderDetail(d){ const [,bc,bt]=VMAP[d.verdict]||['','gap','—']; const c=d.card||{};
+    const notice=d.change_status==='material'?`<div class="notice attn">❗ ${esc(d.change_note)}</div>`:d.change_status==='formal'?`<div class="notice formal">${esc(d.change_note)}</div>`:'';
     const money=v=>v==null?'—':fmtMoney(v);
     const fact=(k,v,cls='')=>`<div class="fact ${cls}"><div class="k">${k}</div><div class="val mono">${v}</div></div>`;
-    const hot = c.days_to_submission!=null && c.days_to_submission<=3 ? 'deadline-hot' : '';
-    const cardHtml = `<div class="facts">
-      ${fact('НМЦК', money(c.nmck))}
-      ${fact('Срок подачи', `<span class="${hot}">${fmtDate(c.submission_close)}${c.days_to_submission!=null?' · '+daysWord(c.days_to_submission):''}</span>`)}
-      ${fact('Проведение торгов', fmtDate(c.bidding_date))}
-      ${fact('Подведение итогов', fmtDate(c.summing_up_date))}
-      ${fact('Обеспечение заявки', money(c.guarantee_app))}
-      ${fact('Обеспечение контракта', money(c.guarantee_contract))}
-      ${fact('Аванс', money(c.prepayment))}
-      ${fact('Регион / СМП', (c.region?('рег. '+esc(c.region)):'—')+(c.smp?' · СМП':''))}
-      ${c.execution_period?fact('Срок исполнения', esc(c.execution_period),'wide'):''}
-      ${c.delivery_place?fact('Место поставки', esc(c.delivery_place),'wide'):''}
+    const hot=c.days_to_submission!=null&&c.days_to_submission<=3?'deadline-hot':'';
+    const cardHtml=`<div class="facts">
+      ${fact('НМЦК',money(c.nmck))}
+      ${fact('Срок подачи',`<span class="${hot}">${fmtDate(c.submission_close)}${c.days_to_submission!=null?' · '+daysWord(c.days_to_submission):''}</span>`)}
+      ${fact('Проведение торгов',fmtDate(c.bidding_date))}
+      ${fact('Подведение итогов',fmtDate(c.summing_up_date))}
+      ${fact('Обеспечение заявки',money(c.guarantee_app))}
+      ${fact('Обеспечение контракта',money(c.guarantee_contract))}
+      ${c.execution_period?fact('Срок исполнения',esc(c.execution_period),'wide'):''}
+      ${c.delivery_place?fact('Место поставки',esc(c.delivery_place),'wide'):''}
     </div>`;
-    const checks = (d.checks||[]).map(ch=>{
-      const map={pass:['pass','✓'],violation:['violation','✕'],gap:['gap','⚠']}; const [cl,ic]=map[ch.status]||['gap','·'];
-      const has = ch.product_value!=null && ch.product_value!=='';
-      const cmp = `<div class="cmp">
-        <div class="cmp-col"><span class="cl">Требует ТЗ заказчика</span><span class="cv">${esc(ch.req_text||ch.req)}</span></div>
-        <div class="cmp-col mine"><span class="cl">Ваш товар</span><span class="cv ${has?'':'none'}">${has?esc(ch.product_value):'нет данных'}</span></div>
-      </div>`;
-      let fill='';
-      if(ch.status==='gap'){ fill=`<div class="fillrow"><input type="text" data-fill="${esc(ch.req)}" placeholder="${esc(ch.action||'указать значение')}"><button class="btn" onclick="App.fillGap(this,'${esc(ch.req)}')">Указать</button></div>`; }
-      return `<div class="check ${cl}"><span class="ic">${ic}</span><div class="body"><div class="rk">${esc(ch.req).replace(/_/g,' ')}</div>${cmp}${fill}</div></div>`;
-    }).join('');
-    document.getElementById('drawer').innerHTML=`
-      <div class="dh">
-        <div style="flex:1">
-          <h2>${esc(d.subject||'Закупка')}</h2>
-          <div class="badges"><span class="badge ${bc}">${bt} · ${d.score}%</span>
-            ${c.reg_number?`<span class="badge soft mono">№ ${esc(c.reg_number)}</span>`:''}
-            ${c.href?`<a class="badge formal" href="${esc(c.href)}" target="_blank" rel="noopener">Открыть в ЕИС ↗</a>`:''}</div>
-        </div>
-        <button class="close" onclick="App.closeDrawer()">✕</button>
-      </div>
-      <div class="db">
+    const chks=d.checks||[]; const pass=chks.filter(c=>c.status==='pass'),bad=chks.filter(c=>c.status==='violation'),gap=chks.filter(c=>c.status==='gap');
+    const rowH=ch=>{ const map={pass:['pass','✓'],violation:['violation','✕'],gap:['gap','⚠']};const[cl,ic]=map[ch.status];const has=ch.product_value!=null&&ch.product_value!=='';
+      const fill=ch.status==='gap'?`<div class="fillrow"><input type="text" data-fill="${esc(ch.req)}" placeholder="${esc(ch.action||'указать значение')}"><button class="btn primary" onclick="App.fillGap(this,'${esc(ch.req)}')">Указать</button></div>`:'';
+      return `<div class="check ${cl}"><span class="ic">${ic}</span><div class="body"><div class="rk">${esc(ch.req).replace(/_/g,' ')}</div>
+        <div class="cmp"><div class="cmp-col"><span class="cl">Требует ТЗ заказчика</span><span class="cv">${esc(ch.req_text||ch.req)}</span></div>
+        <div class="cmp-col mine"><span class="cl">Ваш товар</span><span class="cv ${has?'':'none'}">${has?esc(ch.product_value):'нет данных'}</span></div></div>${fill}</div></div>`; };
+    const sec=(title,arr,cls)=>arr.length?`<div class="section-t ${cls}">${title}<span class="n">${arr.length}</span></div>${arr.map(rowH).join('')}`:'';
+    document.getElementById('detailPane').innerHTML=`<div class="dpane">
+      <div class="dhead"><h2>${esc(d.subject||'Закупка')}</h2>
+        <div class="badges"><span class="badge ${bc}">${bt} · ${d.score}%</span>
+          ${c.reg_number?`<span class="badge soft code">№ ${esc(c.reg_number)}</span>`:''}
+          ${c.customer?`<span class="badge soft">${esc(c.customer)}</span>`:''}
+          ${c.href?`<a class="badge formal" href="${esc(c.href)}" target="_blank" rel="noopener">Открыть в ЕИС ↗</a>`:''}</div></div>
+      <div class="dbody">
         ${notice}
-        ${c.customer?`<div style="color:var(--ink-soft);font-size:14px;margin-bottom:4px">${esc(c.customer)}</div>`:''}
-        <div class="section-t">Карточка контракта</div>
-        ${cardHtml}
-        <div class="section-t">Соответствие требованиям${(d.gaps||[]).length?' · '+(d.gaps||[]).length+' на дозаполнение':''}</div>
-        <div class="checks">${checks||'<div class="empty">Разбор недоступен</div>'}</div>
-      </div>`;
+        ${d.explanation?`<div class="expl">${esc(d.explanation)}</div>`:''}
+        <div class="section-t">Карточка контракта</div>${cardHtml}
+        <div class="summary"><span class="sum-ok">✓ Сошлось: <b>${pass.length}</b></span>${bad.length?`<span class="sum-bad">✕ Не сошлось: <b>${bad.length}</b></span>`:''}${gap.length?`<span class="sum-gap">⚠ На дозаполнение: <b>${gap.length}</b></span>`:''}</div>
+        ${sec('❌ Не сошлось',bad)}
+        ${sec('⚠ Обратить внимание — дозаполните',gap)}
+        ${sec('✓ Сошлось',pass)}
+      </div></div>`;
   },
-  async fillGap(btn,key){
-    const inp=btn.parentElement.querySelector('input[data-fill]'); const val=inp.value.trim(); if(!val) return;
-    const {pid,purchase}=this._detail;
-    try{ const d=await api(`/products/${pid}/leads/${encodeURIComponent(purchase)}/fill`,{method:'POST',body:{fills:{[key]:val}}});
-      this._detail.d=d; this.renderDetail(d); toast('Пересчитано: '+d.score+'%'); this.loadFeed(); }
+  async fillGap(btn,key){ const inp=btn.parentElement.querySelector('input[data-fill]');const val=inp.value.trim();if(!val)return;
+    try{ const d=await api(`/products/${this.selProduct}/leads/${encodeURIComponent(this.selLead)}/fill`,{method:'POST',body:{fills:{[key]:val}}});
+      this._detail=d; this.renderDetail(d); toast('Пересчитано: '+d.score+'%'); this.loadLeads(this.selProduct); this.fetchCount(this.selProduct); }
     catch(e){ toast(e.message,true); }
   },
 
-  // ----- products -----
-  renderProducts(){
-    document.getElementById('view').innerHTML=`<div class="page-head"><h1>Товары</h1><span class="sub">карточки, по которым ищем закупки — нажмите на товар, чтобы изменить</span></div>
-      <div class="card-form" id="pform">
-        <div class="form-head"><h3 id="formTitle">Добавить товар</h3>
-          <button class="linkbtn" id="cancelEdit" style="display:none" onclick="App.resetForm()">Отмена</button></div>
-        <div class="frow"><label>Название товара</label><input id="pName" type="text" placeholder="Перчатки смотровые нитриловые, неопудренные"></div>
-        <div class="frow"><label>Артикул <span class="hint">— ваш внутренний код товара</span></label><input id="pKey" type="text" placeholder="gloves-nitrile-blue"></div>
-        <div class="frow"><label>Коды КТРУ / ОКПД2 <span class="hint">— через запятую, по ним отсеиваем чужие закупки</span></label><input id="pKtru" type="text" placeholder="32.50.13.190-00007689"></div>
-        <div class="frow"><label>Характеристики товара <span class="hint">— по ним движок сверяет ваш товар с требованиями ТЗ</span></label>
-          <div id="attrRows"></div>
-          <button class="addrow" onclick="App.addAttrRow()">+ добавить характеристику</button></div>
-        <button class="btn primary" id="saveBtn" onclick="App.saveProduct()" style="margin-top:6px">Создать товар</button>
-      </div>
-      <div id="plist" class="grid"><div class="empty">Загрузка…</div></div>`;
-    this.resetForm(); this.loadProducts();
+  // ===== product create/edit (in right pane) =====
+  newProduct(){ this.editId=null; this.selLead=null; document.querySelectorAll('.lrow,.prow').forEach(r=>r.classList.remove('sel')); this.productForm(null); },
+  editProduct(id){ const p=this._products.find(x=>x.id===id); if(!p)return; this.editId=id; this.selLead=null; this.productForm(p); },
+  productForm(p){
+    const rows=(p&&p.attributes&&p.attributes.length?p.attributes:[{key:'',value:''}]).map(a=>this.attrRow(a.key,a.value)).join('');
+    document.getElementById('detailPane').innerHTML=`<div class="dpane"><div class="dhead"><h2>${p?'Изменить товар':'Новый товар'}</h2></div>
+      <div class="dbody" style="max-width:640px">
+        <div class="frow"><label>Название товара</label><input id="pName" value="${esc(p?p.name:'')}" placeholder="Перчатки смотровые нитриловые, неопудренные"></div>
+        <div class="frow"><label>Артикул <span class="hint">— ваш внутренний код</span></label><input id="pKey" value="${esc(p?p.product_key:'')}" placeholder="gloves-nitrile-blue"></div>
+        <div class="frow"><label>Коды КТРУ / ОКПД2 <span class="hint">— через запятую, по ним отсеиваем чужие закупки</span></label><input id="pKtru" value="${esc(p?(p.ktru||[]).join(', '):'')}" placeholder="32.50.13.190-00007689"></div>
+        <div class="frow"><label>Характеристики <span class="hint">— по ним движок сверяет товар с требованиями ТЗ</span></label>
+          <div id="attrRows">${rows}</div><button class="addrow" onclick="App.addAttrRow()">+ добавить характеристику</button></div>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="btn primary" onclick="App.saveProduct()">${p?'Сохранить изменения':'Создать товар'}</button>
+          <button class="btn" onclick="App.selProduct?App.selectProduct(App.selProduct):App.showEmptyDetail()">Отмена</button></div>
+      </div></div>`;
   },
   attrRow(k='',v=''){ return `<div class="attr-row"><input placeholder="характеристика (напр. материал)" value="${esc(k)}"><input placeholder="значение (напр. нитрил)" value="${esc(v)}"><button class="rm" title="удалить" onclick="this.parentElement.remove()">×</button></div>`; },
-  addAttrRow(k='',v=''){ document.getElementById('attrRows').insertAdjacentHTML('beforeend', this.attrRow(k,v)); },
-  collectAttrs(){ const out=[]; document.querySelectorAll('#attrRows .attr-row').forEach(row=>{
-      const ins=row.querySelectorAll('input'); const k=ins[0].value.trim(), v=ins[1].value.trim();
-      if(k) out.push({key:k.toLowerCase().replace(/\s+/g,'_'), value:v}); }); return out; },
-  resetForm(){ this.editId=null;
-    const g=id=>document.getElementById(id);
-    g('formTitle').textContent='Добавить товар'; g('saveBtn').textContent='Создать товар'; g('cancelEdit').style.display='none';
-    g('pName').value=''; g('pKey').value=''; g('pKtru').value=''; g('attrRows').innerHTML=''; this.addAttrRow(); this.addAttrRow();
-  },
-  editProduct(id){ const p=(this._products||[]).find(x=>x.id===id); if(!p) return; this.editId=id;
-    const g=id=>document.getElementById(id);
-    g('formTitle').textContent='Изменить товар'; g('saveBtn').textContent='Сохранить изменения'; g('cancelEdit').style.display='inline';
-    g('pName').value=p.name||''; g('pKey').value=p.product_key||''; g('pKtru').value=(p.ktru||[]).join(', ');
-    g('attrRows').innerHTML=''; (p.attributes||[]).forEach(a=>this.addAttrRow(a.key,a.value)); if(!(p.attributes||[]).length) this.addAttrRow();
-    g('pform').scrollIntoView({behavior:'smooth',block:'start'});
-  },
-  async saveProduct(){
-    const name=document.getElementById('pName').value.trim(), key=document.getElementById('pKey').value.trim(),
-      ktru=document.getElementById('pKtru').value.split(',').map(s=>s.trim()).filter(Boolean), attrs=this.collectAttrs();
-    if(!name||!key) return toast('Заполните название и артикул',true);
+  addAttrRow(){ document.getElementById('attrRows').insertAdjacentHTML('beforeend',this.attrRow()); },
+  collectAttrs(){ const out=[]; document.querySelectorAll('#attrRows .attr-row').forEach(row=>{const ins=row.querySelectorAll('input');const k=ins[0].value.trim(),v=ins[1].value.trim();if(k)out.push({key:k.toLowerCase().replace(/\s+/g,'_'),value:v});});return out; },
+  async saveProduct(){ const g=id=>document.getElementById(id); const name=g('pName').value.trim(),key=g('pKey').value.trim(),ktru=g('pKtru').value.split(',').map(s=>s.trim()).filter(Boolean),attrs=this.collectAttrs();
+    if(!name||!key)return toast('Заполните название и артикул',true);
     const body={product_key:key,name,ktru,attributes:attrs};
-    try{
-      if(this.editId){ await api('/products/'+this.editId,{method:'PUT',body}); toast('Товар обновлён'); }
-      else{ await api('/products',{method:'POST',body}); toast('Товар создан'); }
-      this.resetForm(); this.loadProducts();
+    try{ let saved; if(this.editId){ saved=await api('/products/'+this.editId,{method:'PUT',body}); toast('Товар обновлён'); } else { saved=await api('/products',{method:'POST',body}); toast('Товар создан'); }
+      this.selProduct=saved.id; await this.loadProducts(); this.selectProduct(saved.id);
     }catch(e){ toast(e.message,true); }
   },
-  async loadProducts(){
-    try{ const items=await api('/products'); this._products=items;
-      const el=document.getElementById('plist');
-      if(!items.length){ el.innerHTML='<div class="empty"><div class="big">Товаров пока нет</div>Заведите первый — и лента начнёт наполняться.</div>'; return; }
-      el.innerHTML=items.map(p=>`<div class="pcard" onclick="App.editProduct(${p.id})"><h3>${esc(p.name)}</h3>
-        ${(p.ktru||[]).map(k=>`<span class="ktru">${esc(k)}</span>`).join(' ')}
-        <div class="attrs">${(p.attributes||[]).slice(0,6).map(a=>`${esc(a.key).replace(/_/g,' ')}: <b>${esc(a.value)}</b>`).join('<br>')}${(p.attributes||[]).length>6?'<br>…':''}</div>
-        <div class="edit-hint">Нажмите, чтобы изменить →</div></div>`).join('');
-    }catch(e){ document.getElementById('plist').innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
-  },
 };
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') App.closeDrawer(); });
 App.init();
 </script>
 </body>
