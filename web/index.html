@@ -139,6 +139,18 @@ a.badge.formal{transition:.16s var(--ease)} a.badge.formal:hover{filter:brightne
 .notice.attn{background:var(--warn-bg);color:var(--warn)} .notice.formal{background:var(--info-bg);color:var(--info)}
 .section-t{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);margin:30px 0 13px;display:flex;align-items:center;gap:9px}
 .section-t .n{color:var(--ink);background:var(--line-soft);border-radius:7px;padding:1px 8px;font-size:11px}
+/* сворачиваемые секции требований */
+.sec{border-top:1px solid var(--line-soft)}
+.sec>summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;gap:9px;padding:18px 0 8px;
+  font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);transition:.15s var(--ease)}
+.sec>summary:hover{color:var(--ink-soft)}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary::before{content:"▸";font-size:11px;color:var(--ink-faint);transition:transform .2s var(--ease)}
+.sec[open]>summary::before{transform:rotate(90deg)}
+.sec>summary .n{color:var(--ink);background:var(--line-soft);border-radius:7px;padding:1px 8px;font-size:11px}
+.sec.warn>summary{color:var(--warn)} .sec.bad>summary{color:var(--bad)}
+/* липкие кнопки формы товара */
+.form-actions{position:sticky;bottom:0;display:flex;gap:10px;padding:16px 0;margin-top:12px;background:var(--surface);border-top:1px solid var(--line)}
 .facts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm)}
 .fact{background:var(--surface);padding:13px 16px}
 .fact .k{font-size:11.5px;color:var(--ink-faint);margin-bottom:4px}
@@ -382,13 +394,15 @@ const App={
       ${c.execution_period?fact('Срок исполнения',esc(c.execution_period),'wide'):''}
       ${c.delivery_place?fact('Место поставки',esc(c.delivery_place),'wide'):''}
     </div>`;
-    const chks=d.checks||[]; const pass=chks.filter(c=>c.status==='pass'),bad=chks.filter(c=>c.status==='violation'),gap=chks.filter(c=>c.status==='gap');
+    const seen=new Set(); const chks=(d.checks||[]).filter(c=>{if(seen.has(c.req))return false;seen.add(c.req);return true;});
+    const pass=chks.filter(c=>c.status==='pass'),bad=chks.filter(c=>c.status==='violation'),gap=chks.filter(c=>c.status==='gap');
+    const hum=s=>esc(String(s).replace(/_/g,' '));
     const rowH=ch=>{ const map={pass:['pass','✓'],violation:['violation','✕'],gap:['gap','⚠']};const[cl,ic]=map[ch.status];const has=ch.product_value!=null&&ch.product_value!=='';
-      const fill=ch.status==='gap'?`<div class="fillrow"><input type="text" data-fill="${esc(ch.req)}" placeholder="${esc(ch.action||'указать значение')}"><button class="btn primary" onclick="App.fillGap(this,'${esc(ch.req)}')">Указать</button></div>`:'';
-      return `<div class="check ${cl}"><span class="ic">${ic}</span><div class="body"><div class="rk">${esc(ch.req).replace(/_/g,' ')}</div>
+      const fill=ch.status==='gap'?`<div class="fillrow"><input type="text" data-fill="${esc(ch.req)}" placeholder="${hum(ch.action||'указать значение')}"><button class="btn primary" onclick="App.fillGap(this,'${esc(ch.req)}')">Указать</button></div>`:'';
+      return `<div class="check ${cl}"><span class="ic">${ic}</span><div class="body"><div class="rk">${hum(ch.req)}</div>
         <div class="cmp"><div class="cmp-col"><span class="cl">Требует ТЗ заказчика</span><span class="cv">${esc(ch.req_text||ch.req)}</span></div>
         <div class="cmp-col mine"><span class="cl">Ваш товар</span><span class="cv ${has?'':'none'}">${has?esc(ch.product_value):'нет данных'}</span></div></div>${fill}</div></div>`; };
-    const sec=(title,arr)=>arr.length?`<div class="section-t">${title}<span class="n">${arr.length}</span></div>${arr.map(rowH).join('')}`:'';
+    const sec=(title,arr,cls,open)=>arr.length?`<details class="sec ${cls||''}" ${open?'open':''}><summary>${title}<span class="n">${arr.length}</span></summary>${arr.map(rowH).join('')}</details>`:'';
     document.getElementById('detailPane').innerHTML=`<div class="dpane">
       <div class="dhead"><h2>${esc(d.subject||'Закупка')}</h2>
         <div class="badges"><span class="badge ${bc}">${bt} · ${d.score}%</span>
@@ -397,12 +411,11 @@ const App={
           ${c.href?`<a class="badge formal" href="${esc(c.href)}" target="_blank" rel="noopener">Открыть в ЕИС ↗</a>`:''}</div></div>
       <div class="dbody">
         ${notice}
-        ${d.explanation?`<div class="expl">${esc(d.explanation)}</div>`:''}
         <div class="section-t">Карточка контракта</div>${cardHtml}
         <div class="summary" style="margin-top:20px"><span class="sum-ok">✓ Сошлось <b>${pass.length}</b></span>${bad.length?`<span class="sum-bad">✕ Не сошлось <b>${bad.length}</b></span>`:''}${gap.length?`<span class="sum-gap">⚠ На дозаполнение <b>${gap.length}</b></span>`:''}</div>
-        ${sec('❌ Не сошлось',bad)}
-        ${sec('⚠ Обратить внимание — дозаполните',gap)}
-        ${sec('✓ Сошлось',pass)}
+        ${sec('Не сошлось',bad,'bad',true)}
+        ${sec('Обратить внимание — дозаполните',gap,'warn',true)}
+        ${sec('Сошлось',pass,'',false)}
       </div></div>`;
   },
   async fillGap(btn,key){ const inp=btn.parentElement.querySelector('input[data-fill]');const val=inp.value.trim();if(!val)return;
@@ -423,7 +436,7 @@ const App={
         <div class="frow"><label>Коды КТРУ / ОКПД2 <span class="hint">— через запятую, по ним отсеиваем чужие закупки</span></label><input id="pKtru" value="${esc(p?(p.ktru||[]).join(', '):'')}" placeholder="32.50.13.190-00007689"></div>
         <div class="frow"><label>Характеристики <span class="hint">— по ним движок сверяет товар с требованиями ТЗ</span></label>
           <div id="attrRows">${rows}</div><button class="addrow" onclick="App.addAttrRow()">+ добавить характеристику</button></div>
-        <div style="display:flex;gap:10px;margin-top:10px">
+        <div class="form-actions">
           <button class="btn primary" onclick="App.saveProduct()">${p?'Сохранить изменения':'Создать товар'}</button>
           <button class="btn" onclick="App.selProduct?App.selectProduct(App.selProduct):App.showEmptyDetail()">Отмена</button></div>
       </div></div>`;
