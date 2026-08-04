@@ -507,13 +507,19 @@
   function checkClass(s) { return s === "pass" ? "ok" : s === "gap" ? "gap" : "bad"; }
   function checkIcon(s) { return s === "pass" ? "✓" : s === "gap" ? "⚠" : "✕"; }
 
+  // Порог «горящего» срока: до трёх суток включительно. Такую закупку ещё
+  // реально успеть подать, но откладывать уже нельзя — именно её и стоит
+  // подсвечивать. Оформление класса — в CSS (.deadline.is-urgent).
+  const URGENT_DAYS = 3;
+
   function deadlineText(p) {
     // у неконкурентных «до конца подачи» вводит в заблуждение — торгов нет
     if (!isCompetitive(p)) return `<span class="deadline muted">неконкурентная закупка</span>`;
     if (liveStage(p) === "active") {
-      if (p.endDate) return `<span class="deadline">до конца подачи: <b>${remainingText(p)}</b></span>`;
+      const urgent = daysLeft(p) <= URGENT_DAYS ? " is-urgent" : "";
+      if (p.endDate) return `<span class="deadline${urgent}">до конца подачи: <b>${remainingText(p)}</b></span>`;
       const d = Math.max(1, daysLeft(p));
-      return `<span class="deadline"><b>${d}</b> ${lkPlural(d, ["день","дня","дней"])} до конца подачи</span>`;
+      return `<span class="deadline${urgent}"><b>${d}</b> ${lkPlural(d, ["день","дня","дней"])} до конца подачи</span>`;
     }
     return `<span class="deadline muted">${STAGE[liveStage(p)].label}</span>`;
   }
@@ -666,23 +672,28 @@
           </div>
         </div>` : "";
 
+    // Внутренняя обёртка нужна для плавного разворачивания: контейнер
+    // анимирует grid-template-rows 0fr→1fr, а обёртка гасит переполнение.
+    // Без неё пришлось бы дёргать display, а его анимировать нельзя.
     return `
       <div class="tender-detail">
-        ${boardControls(p)}
-        ${m ? matchDetail(m) : ""}
-        <div class="detail-block">
-          <div class="detail-block__title">Позиции лота${p.lots.length > 1 ? ` (${p.lots.length})` : ""}</div>
-          ${lots}
-        </div>
-        <div class="detail-block">
-          <div class="detail-block__title">Условия закупки</div>
-          <div class="facts-grid">${facts}</div>
-        </div>
-        ${docsHtml}
-        <div class="tender-actions">
-          ${p.href
-            ? `<a class="btn btn-primary btn-sm" href="${lkEscape(platformHref(p))}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
-            : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:not-allowed;" title="Ссылка на площадку недоступна">Ссылка недоступна</span>`}
+        <div class="tender-detail__inner">
+          ${boardControls(p)}
+          ${m ? matchDetail(m) : ""}
+          <div class="detail-block">
+            <div class="detail-block__title">Позиции лота${p.lots.length > 1 ? ` (${p.lots.length})` : ""}</div>
+            ${lots}
+          </div>
+          <div class="detail-block">
+            <div class="detail-block__title">Условия закупки</div>
+            <div class="facts-grid">${facts}</div>
+          </div>
+          ${docsHtml}
+          <div class="tender-actions">
+            ${p.href
+              ? `<a class="btn btn-primary btn-sm" href="${lkEscape(platformHref(p))}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
+              : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:not-allowed;" title="Ссылка на площадку недоступна">Ссылка недоступна</span>`}
+          </div>
         </div>
       </div>`;
   }

@@ -651,52 +651,105 @@ section { padding: 92px 0; position: relative; }
 
 /* ---------- steps ---------- */
 
+/* ---------- чернильная секция ----------
+   Отдельный характер для «Как это работает»: тёмная полоса во всю ширину
+   разбивает кремовую ленту и делает блок самостоятельной главой, а не
+   продолжением лендинга. От финального призыва отличается тем, что тот —
+   вставная скруглённая плашка, а этот идёт от края до края. */
+.section-ink {
+  background:
+    radial-gradient(60% 90% at 15% 0%, color-mix(in srgb, var(--rust) 30%, transparent) 0%, transparent 60%),
+    linear-gradient(165deg, #2c261d 0%, #1a1610 100%);
+  color: var(--paper);
+  border-top: none;
+  border-bottom: none;
+  isolation: isolate;
+}
+.section-ink::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: var(--grain);
+  background-size: var(--grain-size);
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: -1;
+}
+.section-ink h2 { color: #fdf8ee; }
+.section-ink .section-head p { color: rgba(246, 241, 230, 0.7); }
+.section-ink .eyebrow {
+  color: #f0a883;
+  background: rgba(232, 121, 74, 0.12);
+  border-color: rgba(232, 121, 74, 0.32);
+}
+.section-ink .eyebrow::before { background: #f0a883; }
+
+/* ---------- steps как маршрут ---------- */
+
 .steps {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
-  counter-reset: step;
+  /* minmax(0, 1fr), а не 1fr: у трека 1fr неявный min-width:auto, поэтому он
+     не сжимается ниже min-content содержимого и сетка вылезает за контейнер. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+}
+/* Линия маршрута проходит через центры узлов. Гасим её на краях градиентом,
+   чтобы она не упиралась в поля контейнера обрубленным концом. */
+.steps::before {
+  content: "";
+  position: absolute;
+  top: 23px; left: 8%; right: 8%;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent, rgba(232, 121, 74, 0.55) 12%, rgba(232, 121, 74, 0.55) 88%, transparent);
 }
 .step {
   position: relative;
-  padding: 22px 18px 20px;
-  border-radius: var(--radius-lg);
-  border: 1px solid transparent;
-  background: transparent;
-  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease),
-              transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  padding: 0 14px;
+  text-align: center;
 }
-/* Шкала-«линейка» поверх шагов: заливка растёт от первого к пятому,
-   так последовательность читается без стрелок. */
-.step::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 3px;
-  border-radius: 999px;
-  background: var(--rust);
-  opacity: calc(0.3 + var(--i, 1) * 0.14);
-}
-.step:nth-child(1) { --i: 1; } .step:nth-child(2) { --i: 2; } .step:nth-child(3) { --i: 3; }
-.step:nth-child(4) { --i: 4; } .step:nth-child(5) { --i: 5; }
-.step:hover {
-  background: var(--white);
-  border-color: var(--line);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-}
+/* Узел маршрута: номер внутри кружка прямо на линии. */
 .step__num {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px; height: 46px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
   font-family: var(--font-display);
-  font-size: 2.1rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  -webkit-text-stroke: 1.4px var(--ink-faint);
-  color: transparent;
-  display: block;
-  margin-bottom: 10px;
-  transition: -webkit-text-stroke-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  letter-spacing: 0;
+  color: #f6efe2;
+  background: #221c14;
+  border: 2px solid rgba(232, 121, 74, 0.5);
+  -webkit-text-stroke: 0;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease),
+              color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.step:hover .step__num { -webkit-text-stroke-color: var(--rust); color: var(--rust-tint); }
-.step h4 { font-size: 0.98rem; margin-bottom: 6px; }
-.step p { font-size: 0.87rem; margin: 0; line-height: 1.5; }
+.step:hover .step__num {
+  background: var(--rust);
+  border-color: var(--rust);
+  color: #fff;
+  box-shadow: 0 0 0 6px rgba(232, 121, 74, 0.16);
+}
+.step h4 {
+  font-size: 0.98rem;
+  margin-bottom: 7px;
+  color: #fdf8ee;
+  transition: color var(--dur) var(--ease);
+}
+.step p {
+  font-size: 0.86rem;
+  margin: 0;
+  line-height: 1.55;
+  color: rgba(246, 241, 230, 0.62);
+  transition: color var(--dur) var(--ease);
+}
+.step:hover p { color: rgba(246, 241, 230, 0.85); }
 
 /* ---------- sources ---------- */
 
@@ -1175,6 +1228,53 @@ section { padding: 92px 0; position: relative; }
 .tender-card.is-open::before { transform: scaleY(1); }
 .tender-card.is-open { box-shadow: var(--shadow-md); border-color: color-mix(in srgb, var(--rust) 40%, var(--line)); }
 
+/* Карточка отвечает на наведение целиком, а не только рамкой: шеврон
+   подаётся вниз и темнеет, бейджи чуть подаются вперёд, звезда проявляется.
+   Без scale() — он мылит текст (см. историю с тарифами). */
+.tender-card__main .badge { transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+.tender-card:hover .tender-chevron { color: var(--rust); transform: translateY(2px); }
+.tender-card.is-open:hover .tender-chevron { transform: rotate(180deg) translateY(2px); }
+.tender-card:hover .save-btn { color: var(--ink-faint); }
+.tender-card:hover .save-btn.is-saved { color: var(--brass); }
+
+/* Появление ленты очередью. Задержка растёт только у первых восьми карточек:
+   дальше пользователь всё равно доскроллит позже, а длинный каскад на
+   странице в 50 позиций читался бы как тормоза. */
+@media (prefers-reduced-motion: no-preference) {
+  .tender-card { animation: card-in 340ms var(--ease-out) backwards; }
+  .tender-card:nth-child(1) { animation-delay: 0ms; }
+  .tender-card:nth-child(2) { animation-delay: 40ms; }
+  .tender-card:nth-child(3) { animation-delay: 80ms; }
+  .tender-card:nth-child(4) { animation-delay: 120ms; }
+  .tender-card:nth-child(5) { animation-delay: 160ms; }
+  .tender-card:nth-child(6) { animation-delay: 200ms; }
+  .tender-card:nth-child(7) { animation-delay: 240ms; }
+  .tender-card:nth-child(n+8) { animation-delay: 280ms; }
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Горящий срок: чем меньше дней, тем заметнее. Класс вешает разметка ленты,
+   здесь только подача — тихое тление, а не мигающая тревога. */
+.deadline.is-urgent b { color: var(--rust); }
+.deadline.is-urgent::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px; margin-right: 6px;
+  border-radius: 50%;
+  background: var(--rust);
+  vertical-align: 1px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .deadline.is-urgent::before { animation: ember 2.4s var(--ease) infinite; }
+}
+@keyframes ember {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--rust) 45%, transparent); }
+  70%      { opacity: 0.65; box-shadow: 0 0 0 6px transparent; }
+}
+
 /* просмотренные — тусклее, чтобы не путаться в ленте; при наведении/раскрытии видно как обычно */
 .tender-card.is-viewed { opacity: 0.6; }
 .tender-card.is-viewed:hover,
@@ -1203,15 +1303,21 @@ section { padding: 92px 0; position: relative; }
 .tender-meta b { color: var(--ink-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
 .lot-note { font-size: 0.78rem; color: var(--brass); background: var(--brass-tint); padding: 2px 9px; border-radius: 999px; display: inline-flex; align-items: center; }
 
-.tender-chevron { align-self: center; color: var(--ink-faint); transition: transform 0.15s ease; flex-shrink: 0; }
+/* Шеврон крутится ровно столько же, сколько разворачивается панель — иначе
+   стрелка уже перевернулась, а карточка ещё едет, и жест распадается надвое. */
+.tender-chevron {
+  align-self: center;
+  color: var(--ink-faint);
+  transition: transform 280ms var(--ease), color var(--dur-fast) var(--ease);
+  flex-shrink: 0;
+}
+.tender-card.is-open .tender-chevron { transition: transform 400ms var(--ease-out), color var(--dur-fast) var(--ease); }
 .tender-card.is-open .tender-chevron { transform: rotate(180deg); }
 
-.tender-detail {
-  display: none;
-  border-top: 1px dashed var(--line);
-  padding: 4px 22px 22px 120px;
-}
-.tender-card.is-open .tender-detail { display: block; }
+/* Ранняя версия блока раскрытия (отступ слева под колонку % совпадения).
+   Отступы и рамка переехали на .tender-detail__inner — здесь их держать
+   нельзя: контейнер теперь свёрнутый грид, и любой его паддинг оставлял бы
+   щель под закрытой карточкой. Актуальные правила — ниже по файлу. */
 .tender-detail .check-row { font-size: 0.9rem; }
 .tender-detail .check-status.bad { color: var(--bad); }
 .explanation {
@@ -1440,8 +1546,46 @@ section { padding: 92px 0; position: relative; }
 .deadline.muted { color: var(--ink-faint); }
 .tender-title mark { background: var(--brass-tint); color: var(--ink); border-radius: 3px; padding: 0 2px; }
 
-.tender-detail { display: none; border-top: 1px dashed var(--line); padding: 18px 22px 22px; }
-.tender-card.is-open .tender-detail { display: block; }
+/* Плавное разворачивание карточки.
+   `display: none/block` анимировать нельзя, а height:auto недостижим для
+   transition. Приём с grid: контейнер анимирует grid-template-rows 0fr→1fr,
+   внутренняя обёртка гасит переполнение. Высота считается браузером сама,
+   поэтому не нужен ни JS-замер, ни max-height «на глазок». */
+.tender-detail {
+  display: grid;
+  grid-template-rows: 0fr;
+  /* Закрытие чуть быстрее открытия: убрать с глаз уже прочитанное хочется
+     сразу, а разворачивание должно успеть прочитаться как движение. */
+  transition: grid-template-rows 280ms var(--ease);
+}
+.tender-card.is-open .tender-detail { transition: grid-template-rows 400ms var(--ease-out); }
+.tender-detail__inner {
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px dashed transparent;
+  /* Вертикальные паддинги живут ТОЛЬКО в раскрытом состоянии и анимируются
+     вместе с высотой. Держать их постоянно нельзя: при box-sizing: border-box
+     padding входит в границы блока и не схлопывается вслед за нулевой строкой
+     грида — под каждой закрытой карточкой торчала полоса в 40px с началом
+     содержимого. Горизонтальные на высоту не влияют, они постоянны. */
+  padding: 0 22px;
+  /* Содержимое проявляется вдогонку высоте, а не появляется сразу целиком:
+     без этого коробка ещё растёт, а текст уже стоит на полной яркости —
+     и раскрытие читается как рывок, хотя высота анимируется. */
+  opacity: 0;
+  transition: padding 280ms var(--ease), border-color 280ms var(--ease),
+              opacity 120ms var(--ease);
+}
+.tender-card.is-open .tender-detail { grid-template-rows: 1fr; }
+.tender-card.is-open .tender-detail__inner {
+  padding: 18px 22px 22px;
+  border-top-color: var(--line);
+  opacity: 1;
+  /* Задержка = примерно четверть хода высоты: содержимое догоняет открывшуюся
+     часть панели, а не опережает её. */
+  transition: padding 400ms var(--ease-out), border-color 400ms var(--ease-out),
+              opacity 260ms var(--ease-out) 100ms;
+}
 .detail-block { margin-bottom: 20px; }
 .detail-block__title {
   font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em;
@@ -1672,7 +1816,26 @@ section { padding: 92px 0; position: relative; }
   .hero-visual { max-width: 460px; }
   .hero::before { width: 100%; right: -30%; opacity: 0.7; }
   .compare { grid-template-columns: 1fr; }
-  .steps { grid-template-columns: repeat(2, 1fr); }
+  /* Маршрут разворачивается вертикально: горизонтальная линия через две
+     колонки соединяла бы шаги в неверном порядке (1-2, потом 3-4 ниже). */
+  .steps { grid-template-columns: minmax(0, 1fr); gap: 26px; max-width: 520px; }
+  .steps::before {
+    top: 10px; bottom: 10px; left: 22px; right: auto;
+    width: 2px; height: auto;
+    background: linear-gradient(180deg,
+      transparent, rgba(232,121,74,0.55) 8%, rgba(232,121,74,0.55) 92%, transparent);
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    column-gap: 18px;
+    text-align: left;
+    padding: 0;
+  }
+  .step__num { margin: 0; grid-row: 1 / span 2; }
+  .step h4, .step p { min-width: 0; overflow-wrap: anywhere; }
+  .step h4 { align-self: center; margin-bottom: 4px; }
+  .step p { grid-column: 2; }
   .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
   .price-card.is-featured { transform: none; }
   .app-shell { grid-template-columns: 1fr; }
@@ -1683,7 +1846,6 @@ section { padding: 92px 0; position: relative; }
 }
 
 @media (max-width: 640px) {
-  .steps { grid-template-columns: 1fr; }
   .price-card:hover, .price-card.is-featured:hover { transform: none; }
   .final-cta > .container { padding: 52px 24px; }
   .hero-stats { flex-direction: column; gap: 16px; }
