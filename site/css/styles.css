@@ -504,7 +504,7 @@ p { margin: 0 0 1em; color: var(--ink-soft); text-wrap: pretty; }
      покачивания, проигнорировав hover-состояние. Снимаем анимацию — и
      transition доводит трансформ до наведённого положения плавно. */
   animation: none;
-  transform: rotate(-0.4deg) translateY(-8px) scale(1.012);
+  transform: rotate(-0.4deg) translateY(-8px);
   box-shadow: var(--shadow-lg), 0 34px 70px rgba(58, 38, 14, 0.12);
 }
 /* Двойная «стопка» бумаги под карточкой — второй лист чуть выглядывает.
@@ -753,27 +753,31 @@ section { padding: 92px 0; position: relative; }
      выходит дёрганым. 420мс на ease-out читается как «лист поднимают», а не
      «блок прыгнул». Отдельные свойства, а не `all`, — иначе браузер
      анимирует и то, что меняться не должно. */
+  /* БЕЗ scale() и БЕЗ will-change — иначе текст на карточке мылит:
+     1) scale() браузер применяет к уже растрированному слою, а не
+        перерисовывает — буквы получаются растянутой картинкой;
+     2) will-change: transform навсегда выносит карточку в отдельный слой,
+        а на Windows это отключает субпиксельное сглаживание (ClearType),
+        и текст выглядит мягче соседнего даже без наведения.
+     Выход вперёд даём подъёмом и тенью: translateY на целое число пикселей
+     ничего не пересэмплирует, текст остаётся идеально резким. */
   --lift: 0px;
-  --card-scale: 1;
-  transform: translateY(var(--lift)) scale(var(--card-scale));
+  transform: translateY(var(--lift));
   transition: transform 420ms var(--ease-out), box-shadow 420ms var(--ease-out),
               border-color var(--dur) var(--ease), opacity 420ms var(--ease-out);
-  will-change: transform;
 }
 .price-card:hover {
-  --lift: -10px;
-  --card-scale: 1.02;
-  box-shadow: var(--shadow-lg);
-  border-color: color-mix(in srgb, var(--rust) 45%, var(--line));
+  --lift: -12px;
+  box-shadow: var(--shadow-lg), 0 30px 60px rgba(58, 38, 14, 0.10);
+  border-color: color-mix(in srgb, var(--rust) 55%, var(--line));
   z-index: 2;
 }
 /* Соседи отступают, когда наводишь на любую карточку: выбранная выходит
    вперёд не только своим подъёмом, но и контрастом с остальными. Именно это
-   даёт ощущение живой сетки, а не трёх независимых блоков. */
-.pricing-grid:hover .price-card:not(:hover) {
-  --card-scale: 0.985;
-  opacity: 0.72;
-}
+   даёт ощущение живой сетки, а не трёх независимых блоков.
+   Приглушение — только прозрачностью: она не пересэмплирует пиксели, в отличие
+   от уменьшающего scale, которым это делалось раньше. */
+.pricing-grid:hover .price-card:not(:hover) { opacity: 0.62; }
 .price-card.is-featured {
   border-color: color-mix(in srgb, var(--rust) 50%, var(--line));
   box-shadow: var(--shadow-lg);
@@ -782,7 +786,7 @@ section { padding: 92px 0; position: relative; }
     linear-gradient(180deg, color-mix(in srgb, var(--rust-tint) 55%, transparent) 0%, transparent 240px),
     var(--white);
 }
-.price-card.is-featured:hover { --lift: -18px; --card-scale: 1.03; }
+.price-card.is-featured:hover { --lift: -20px; }
 
 /* Внутренности реагируют вместе с карточкой — иначе поднимается «коробка»,
    а содержимое остаётся мёртвым. */
@@ -793,15 +797,18 @@ section { padding: 92px 0; position: relative; }
               color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .price-card:hover .price-card__price { transform: translateY(-2px); }
-.price-card:hover .price-badge { transform: translateY(-3px) scale(1.04); }
+.price-card:hover .price-badge { transform: translateY(-3px); }
 .price-card:hover .btn-ghost { border-color: var(--rust); color: var(--rust); background: var(--white); }
 .price-card:hover .btn-primary { box-shadow: var(--shadow-rust), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
 
 /* Галочки проявляются очередью — короткая волна сверху вниз, читается как
    «список ожил». Задержки заданы только на hover, поэтому обратный ход
    происходит разом, без «раскручивания» волны назад. */
-.price-card li::before { transition: transform 260ms var(--ease-out), background-color 260ms var(--ease); }
-.price-card:hover li::before { transform: scale(1.18); background: color-mix(in srgb, var(--rust) 26%, var(--rust-tint)); }
+.price-card li::before { transition: box-shadow 260ms var(--ease-out), background-color 260ms var(--ease), color 260ms var(--ease); }
+.price-card:hover li::before {
+  background: color-mix(in srgb, var(--rust) 22%, var(--rust-tint));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rust) 12%, transparent);
+}
 .price-card:hover li:nth-child(1)::before { transition-delay: 0ms; }
 .price-card:hover li:nth-child(2)::before { transition-delay: 45ms; }
 .price-card:hover li:nth-child(3)::before { transition-delay: 90ms; }
