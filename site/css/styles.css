@@ -326,6 +326,21 @@ p { margin: 0 0 1em; color: var(--ink-soft); text-wrap: pretty; }
   background-color: var(--rust-dark);
   box-shadow: var(--shadow-rust), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
+/* Блик пробегает по кнопке при наведении. Живость без суеты: движется свет,
+   а не сама кнопка. overflow скрывает блик за скруглением. */
+.btn-primary { overflow: hidden; isolation: isolate; }
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%,
+              rgba(255, 255, 255, 0.32) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 620ms var(--ease-out);
+  pointer-events: none;
+  z-index: -1;
+}
+.btn-primary:hover::after { transform: translateX(120%); }
 .btn-primary:focus-visible { box-shadow: var(--ring), var(--shadow-rust); }
 
 .btn-ghost {
@@ -473,8 +488,23 @@ p { margin: 0 0 1em; color: var(--ink-soft); text-wrap: pretty; }
   transform: rotate(-1.4deg);
   transition: transform var(--dur-slow) var(--ease-out), box-shadow var(--dur-slow) var(--ease-out);
 }
+/* Ленивое «дыхание» карточки в покое: очень малая амплитуда и длинный цикл —
+   страница выглядит живой, но движение не ловит на себя взгляд и не мешает
+   читать заголовок рядом. При наведении покачивание останавливается. */
+@media (prefers-reduced-motion: no-preference) {
+  .mock-card { animation: mock-float 7s ease-in-out 1.2s infinite; }
+}
+@keyframes mock-float {
+  0%, 100% { transform: rotate(-1.4deg) translateY(0); }
+  50%      { transform: rotate(-1deg) translateY(-7px); }
+}
 .hero-visual:hover .mock-card {
-  transform: rotate(-0.4deg) translateY(-6px);
+  /* Именно `animation: none`, а не `paused`: у работающей анимации transform
+     приоритетнее обычного объявления, и на паузе карточка застыла бы в кадре
+     покачивания, проигнорировав hover-состояние. Снимаем анимацию — и
+     transition доводит трансформ до наведённого положения плавно. */
+  animation: none;
+  transform: rotate(-0.4deg) translateY(-8px) scale(1.012);
   box-shadow: var(--shadow-lg), 0 34px 70px rgba(58, 38, 14, 0.12);
 }
 /* Двойная «стопка» бумаги под карточкой — второй лист чуть выглядывает.
@@ -719,18 +749,64 @@ section { padding: 92px 0; position: relative; }
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-xs);
-  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  /* Своя длительность: подъём карточки — жест крупный, на общих 240мс он
+     выходит дёрганым. 420мс на ease-out читается как «лист поднимают», а не
+     «блок прыгнул». Отдельные свойства, а не `all`, — иначе браузер
+     анимирует и то, что меняться не должно. */
+  --lift: 0px;
+  --card-scale: 1;
+  transform: translateY(var(--lift)) scale(var(--card-scale));
+  transition: transform 420ms var(--ease-out), box-shadow 420ms var(--ease-out),
+              border-color var(--dur) var(--ease), opacity 420ms var(--ease-out);
+  will-change: transform;
 }
-.price-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); border-color: var(--ink-faint); }
+.price-card:hover {
+  --lift: -10px;
+  --card-scale: 1.02;
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--rust) 45%, var(--line));
+  z-index: 2;
+}
+/* Соседи отступают, когда наводишь на любую карточку: выбранная выходит
+   вперёд не только своим подъёмом, но и контрастом с остальными. Именно это
+   даёт ощущение живой сетки, а не трёх независимых блоков. */
+.pricing-grid:hover .price-card:not(:hover) {
+  --card-scale: 0.985;
+  opacity: 0.72;
+}
 .price-card.is-featured {
   border-color: color-mix(in srgb, var(--rust) 50%, var(--line));
   box-shadow: var(--shadow-lg);
-  transform: translateY(-10px);
+  --lift: -10px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--rust-tint) 55%, transparent) 0%, transparent 240px),
     var(--white);
 }
-.price-card.is-featured:hover { transform: translateY(-16px); }
+.price-card.is-featured:hover { --lift: -18px; --card-scale: 1.03; }
+
+/* Внутренности реагируют вместе с карточкой — иначе поднимается «коробка»,
+   а содержимое остаётся мёртвым. */
+.price-card__price,
+.price-card .btn,
+.price-badge {
+  transition: transform 420ms var(--ease-out), box-shadow 420ms var(--ease-out),
+              color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.price-card:hover .price-card__price { transform: translateY(-2px); }
+.price-card:hover .price-badge { transform: translateY(-3px) scale(1.04); }
+.price-card:hover .btn-ghost { border-color: var(--rust); color: var(--rust); background: var(--white); }
+.price-card:hover .btn-primary { box-shadow: var(--shadow-rust), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+
+/* Галочки проявляются очередью — короткая волна сверху вниз, читается как
+   «список ожил». Задержки заданы только на hover, поэтому обратный ход
+   происходит разом, без «раскручивания» волны назад. */
+.price-card li::before { transition: transform 260ms var(--ease-out), background-color 260ms var(--ease); }
+.price-card:hover li::before { transform: scale(1.18); background: color-mix(in srgb, var(--rust) 26%, var(--rust-tint)); }
+.price-card:hover li:nth-child(1)::before { transition-delay: 0ms; }
+.price-card:hover li:nth-child(2)::before { transition-delay: 45ms; }
+.price-card:hover li:nth-child(3)::before { transition-delay: 90ms; }
+.price-card:hover li:nth-child(4)::before { transition-delay: 135ms; }
+.price-card:hover li:nth-child(5)::before { transition-delay: 180ms; }
 .price-card.is-featured::before {
   content: "";
   position: absolute;
