@@ -39,6 +39,15 @@ const LKTZ = (() => {
     }
     return w;
   }
+  // «беглая гласная»: клинОк → клинка/клинки теряют «о» перед «к» в косвенных формах
+  // и множественном числе — суффиксный стеммер этого не видит (буква пропадает
+  // ВНУТРИ слова). Добавляем вариант без гласной в набор терминов ДОПОЛНИТЕЛЬНО
+  // (не взамен) — так «клинок» в закупке и «клинки» в своём ТЗ пересекутся по
+  // термину «клинк», не ломая остальные совпадения.
+  function fleetingVowelVariant(word) {
+    const m = /^(.+[бвгджзйклмнпрстфхцчшщ])[оеё]к$/i.exec(word || "");
+    return m ? m[1] + "к" : null;
+  }
 
   function terms(text) {
     const set = new Set();
@@ -48,7 +57,11 @@ const LKTZ = (() => {
     WORD_RE.lastIndex = 0;
     while ((m = WORD_RE.exec(text))) {
       const s = stem(m[0]);
-      if (!STOP.some(x => s.startsWith(x.slice(0, 5)))) set.add(s);
+      if (!STOP.some(x => s.startsWith(x.slice(0, 5)))) {
+        set.add(s);
+        const alt = fleetingVowelVariant(s);
+        if (alt) set.add(alt);
+      }
     }
     return set;
   }

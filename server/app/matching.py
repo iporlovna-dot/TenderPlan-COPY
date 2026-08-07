@@ -95,6 +95,18 @@ def _stem(word: str) -> str:
     return w
 
 
+# «беглая гласная»: клинОк → клинка/клинки теряют «о» перед «к» в косвенных формах
+# и множественном числе — суффиксный стеммер этого не видит (буква пропадает ВНУТРИ
+# слова). Добавляем вариант без гласной в набор терминов ДОПОЛНИТЕЛЬНО (не взамен) —
+# так «клинок» с одной стороны и «клинки» с другой пересекутся по термину «клинк».
+_FLEETING_VOWEL_RE = re.compile(r"^(.+[бвгджзйклмнпрстфхцчшщ])[оеё]к$", re.IGNORECASE)
+
+
+def _fleeting_vowel_variant(word: str) -> str | None:
+    m = _FLEETING_VOWEL_RE.match(word)
+    return (m.group(1) + "к") if m else None
+
+
 def significant_terms(text: str) -> set[str]:
     terms: set[str] = set()
     for m in _NUM_REQ.finditer(text):
@@ -103,6 +115,9 @@ def significant_terms(text: str) -> set[str]:
         s = _stem(m.group(0))
         if s not in _STOP and not any(s.startswith(x[:5]) for x in _STOP):
             terms.add(s)
+            alt = _fleeting_vowel_variant(s)
+            if alt:
+                terms.add(alt)
     return terms
 
 
