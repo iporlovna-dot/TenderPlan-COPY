@@ -106,7 +106,15 @@ async function annotateTz(purchases, cache = {}, budget = 120) {
     const hit = cache[p.id];
     if (hit) { applyTz(p, hit); reused++; continue; }
     const doc = pickTzDoc(p.documents);
-    if (!doc) { p.tzStatus = "no-doc"; noDoc++; continue; }
+    if (!doc) {
+      // Пустой documents[] значит разное. У Портала карточка приходит целиком, и
+      // пусто — это правда «приложений нет». У ЕИС в карточку надо заходить
+      // отдельно, и до большинства закупок бюджет docsLimit ещё не дошёл — там
+      // честный ответ «ещё не смотрели», а не «документов нет».
+      p.tzStatus = p.docsFetched === false ? "pending" : "no-doc";
+      if (p.tzStatus === "no-doc") noDoc++;
+      continue;
+    }
     need.push({ p, doc });
   }
   const queue = need.slice(0, budget);

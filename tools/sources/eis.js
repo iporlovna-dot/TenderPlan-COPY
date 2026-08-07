@@ -378,8 +378,14 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     + `${reused} из кэша`);
 
   return items.map(it => {
-    const m = docsCache[it.number] || {};
-    return toPurchase(it, m.docs || [], m.region || "", m.deliveryDays ?? null);
+    const m = docsCache[it.number];
+    const p = toPurchase(it, (m && m.docs) || [], (m && m.region) || "", (m && m.deliveryDays) ?? null);
+    // Заходили ли мы вообще в карточку. Без этого пустой documents[] неотличим от
+    // «приложений нет», и «Умная сверка» говорила бы «у закупки нет документов» тем
+    // тысячам закупок, до которых просто не дошёл бюджет docsLimit. Это разные вещи:
+    // первое — свойство закупки, второе — наша недоработка, и врать тут нельзя.
+    p.docsFetched = Boolean(m);
+    return p;
   });
 }
 
