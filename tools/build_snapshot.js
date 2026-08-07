@@ -16,6 +16,27 @@ const { collectEis } = require("./sources/eis");
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
 
+// Кэш карточек ЕИС (документы/регион/срок поставки), переживающий пересборку.
+// Лежит вне site/ намеренно: это рабочий файл сборщика, он не деплоится и не
+// коммитится (.gitignore). Без него каждый час заново качались бы те же 150
+// карточек, а покрытие ленты документами навсегда упиралось бы в LK_EIS_DOCS.
+const CACHE_DIR = path.resolve(__dirname, ".cache");
+const DOCS_CACHE = path.join(CACHE_DIR, "eis-docs.json");
+
+function loadDocsCache() {
+  try { return JSON.parse(fs.readFileSync(DOCS_CACHE, "utf8")); }
+  catch (e) { return {}; }   // нет файла/битый — начинаем с чистого, это не ошибка
+}
+
+// Чистим кэш от закупок, которых больше нет в снапшоте (истёк срок подачи и т.п.),
+// иначе он растёт без предела и тащит мусор годами.
+function saveDocsCache(cache, keepNumbers) {
+  for (const n of Object.keys(cache)) if (!keepNumbers.has(n)) delete cache[n];
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  fs.writeFileSync(DOCS_CACHE, JSON.stringify(cache), "utf8");
+  return Object.keys(cache).length;
+}
+
 const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 500);
 // общий список (без поиска по словам) — сейчас единственный канал ЕИС, который
 // не задет антибот-мерой на поиск (см. plan.md); подняли повыше как страховку,
@@ -33,11 +54,22 @@ function endTs(p) { return p.endDate ? new Date(p.endDate).getTime() : Infinity;
 async function main() {
   let purchases = [];
 
+  const docsCache = loadDocsCache();
+
   // обе площадки — параллельно
   const [portal, eis] = await Promise.all([
     collectPortal(PORTAL_TAKE).catch(e => (console.error("Портал: ошибка —", e.message), [])),
-    collectEis(EIS_LIST, EIS_DOCS, EIS_KEYWORDS).catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
+    collectEis(EIS_LIST, EIS_DOCS, EIS_KEYWORDS, docsCache)
+      .catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
   ]);
+
+  // сохраняем кэш до фильтра по сроку: закупка, отсеянная как просроченная в этом
+  // прогоне, из кэша и так уйдёт, а вот сбой ЕИС (eis=[]) не должен стереть всё
+  // накопленное — при пустом ответе кэш оставляем как есть
+  if (eis.length) {
+    const kept = saveDocsCache(docsCache, new Set(eis.map(p => p.number)));
+    console.log(`  кэш карточек ЕИС: ${kept} записей -> ${path.relative(process.cwd(), DOCS_CACHE)}`);
+  }
   purchases = purchases.concat(portal, eis);
 
   // убрать уже просроченные (на всякий случай) и отсортировать по близости дедлайна

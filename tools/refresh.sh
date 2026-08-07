@@ -14,7 +14,11 @@ VPS="root@186.246.30.213"
 KEY="$HOME/.ssh/nexara_deploy"
 REMOTE_DIR="/opt/lekalo/site/data"
 
-ids() { node -e 'try{console.log(require("./site/data/purchases.json").purchases.map(p=>p.id).sort().join(","))}catch(e){console.log("")}'; }
+# Отпечаток снапшота: не только СОСТАВ закупок, но и появились ли у них документы.
+# Документы ЕИС накапливаются между прогонами (кэш в tools/.cache) — если сверять
+# только id, прогон, добывший ТЗ для сотни закупок без изменения состава, считался
+# бы «ничего не поменялось», и покрытие никогда бы не доехало до прода.
+ids() { node -e 'try{console.log(require("./site/data/purchases.json").purchases.map(p=>p.id+":"+((p.documents||[]).length?1:0)).sort().join(","))}catch(e){console.log("")}'; }
 
 before="$(ids)"
 node tools/build_snapshot.js

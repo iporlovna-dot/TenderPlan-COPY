@@ -17,6 +17,9 @@ const { curlAsync, mapLimit, sleep } = require("./util");
 const RESULTS = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html";
 const DAY = 86400000;
 const CONC = Number(process.env.LK_EIS_CONC || 6);
+// сколько кэш документов считается свежим: ТЗ закупок правят, но не ежечасно —
+// перепроверяем остатком бюджета, не отнимая его у ещё не покрытых закупок
+const DOCS_TTL_MS = Number(process.env.LK_EIS_DOCS_TTL_DAYS || 7) * 86400000;
 
 const DEFAULT_KEYWORDS = [
   // медицина
@@ -280,6 +283,11 @@ async function fetchPool(seen, items, take, searchString, label, browserPage) {
     if (!parsed.length) break;
     for (const it of parsed) {
       if (seen.has(it.number)) continue;
+      // откуда закупка пришла: прицельный поиск по теме или общий пул. Флаг нужен
+      // на шаге 3 — бюджет на документы тратим сначала на тематические (ради них
+      // поиск и делался), иначе они тонут в общем пуле и остаются без ТЗ.
+      // `seen` не даст общему проходу перетереть флаг: закупка добавляется один раз.
+      it.viaKeyword = Boolean(searchString);
       seen.add(it.number); items.push(it); got++;
     }
     process.stdout.write(`\r  ЕИС ${label}: ${got}/${take}`);
@@ -287,7 +295,11 @@ async function fetchPool(seen, items, take, searchString, label, browserPage) {
   process.stdout.write("\n");
 }
 
-async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_KEYWORDS) {
+// docsCache — накопительный кэш «карточка ЕИС → документы/регион/срок поставки»,
+// переживающий пересборку снапшота (см. шаг 3). Владелец файла — build_snapshot.js,
+// сюда приходит уже загруженным и мутируется на месте.
+async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_KEYWORDS,
+                          docsCache = {}) {
   const seen = new Set();
   let items = [];
 
@@ -326,21 +338,47 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     .filter(it => it.endIso && new Date(it.endIso).getTime() > now)
     .sort((a, b) => new Date(a.endIso) - new Date(b.endIso));
 
-  // 3) документы + регион — только для ближайших docsLimit (один заход в карточку)
-  const withDocs = items.slice(0, docsLimit);
-  const metaById = {};
-  await mapLimit(withDocs, CONC, async (it) => {
+  // 3) документы + регион — один заход в карточку на закупку, но их тысячи, а
+  // каждая стоит два запроса (карточка → documents.html). Поэтому бюджет docsLimit,
+  // и тратится он с учётом того, что уже добыто в прошлые прогоны: `docsCache`
+  // переживает пересборку, так что за сутки ежечасных прогонов покрытие
+  // накапливается до почти полного, а длительность одного прогона не растёт.
+  //
+  // Очередь по убыванию пользы:
+  //   1. тематические, которых ещё нет в кэше — ради них и делался поиск по словам;
+  //   2. остальные новые — по близости дедлайна (items уже так отсортированы);
+  //   3. остатком бюджета — обновление протухших: ТЗ закупок правят, и кэш
+  //      возрастом больше TTL перепроверяем (см. matcher/src/versioning.py).
+  const fresh = [], stale = [];
+  for (const it of items) {
+    const c = docsCache[it.number];
+    if (!c) fresh.push(it);
+    else if (now - (c.fetchedAt || 0) > DOCS_TTL_MS) stale.push(it);
+  }
+  // сортировка стабильна (Node 11+), поэтому внутри каждой группы порядок по
+  // дедлайну, заданный выше, сохраняется — тематические просто поднимаются наверх
+  fresh.sort((a, b) => Number(Boolean(b.viaKeyword)) - Number(Boolean(a.viaKeyword)));
+  const queue = fresh.concat(stale).slice(0, docsLimit);
+
+  await mapLimit(queue, CONC, async (it) => {
     const meta = await fetchCardMeta(it.link);
-    metaById[it.number] = {
+    docsCache[it.number] = {
       docs: meta.docsUrl ? await fetchDocs(meta.docsUrl) : [],
       region: meta.region || "",
       deliveryDays: meta.deliveryDays ?? null,
+      fetchedAt: Date.now(),
     };
   }, (k, t) => process.stdout.write(`\r  ЕИС документы: ${k}/${t}`));
-  if (withDocs.length) process.stdout.write("\n");
+  if (queue.length) process.stdout.write("\n");
+
+  const queued = new Set(queue.map(it => it.number));
+  const reused = items.filter(it => docsCache[it.number] && !queued.has(it.number)).length;
+  console.log(`  ЕИС карточки: ${queue.length} запрошено (новых ${fresh.length}, `
+    + `тематических ${fresh.filter(it => it.viaKeyword).length}, протухших ${stale.length}), `
+    + `${reused} из кэша`);
 
   return items.map(it => {
-    const m = metaById[it.number] || {};
+    const m = docsCache[it.number] || {};
     return toPurchase(it, m.docs || [], m.region || "", m.deliveryDays ?? null);
   });
 }

@@ -27,3 +27,7 @@ site/data/analytics.json
 
 # playwright и браузеры
 tools/node_modules/
+
+# рабочий кэш сборщика (карточки ЕИС: документы/регион/срок) — накапливается
+# между прогонами, машинно-специфичен, не деплоится. См. tools/build_snapshot.js
+tools/.cache/
