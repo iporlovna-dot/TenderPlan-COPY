@@ -693,6 +693,7 @@
             ${p.href
               ? `<a class="btn btn-primary btn-sm" href="${lkEscape(platformHref(p))}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
               : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:not-allowed;" title="Ссылка на площадку недоступна">Ссылка недоступна</span>`}
+            <a class="btn btn-ghost btn-sm" data-tz="${p.id}" href="#">Сверить своё ТЗ</a>
           </div>
         </div>
       </div>`;
