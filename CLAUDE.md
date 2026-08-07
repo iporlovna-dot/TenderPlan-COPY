@@ -51,6 +51,43 @@ Node-сборщики (tools/) → site/data/purchases.json → статичес
 | `tools/refresh.sh` | автообновление: пересобрать → scp на VPS (закупки — если состав изменился; аналитика — раз в сутки) |
 | `tools/refresh.cmd` | обёртка для Планировщика Windows |
 | `server/` | FastAPI-бэкенд (отложен) + `deploy/` (systemd, nginx, DEPLOY.md) |
+| `matcher/` | движок сверки SpecMatch — импортирован сюда с историей (см. ниже) |
+
+### `matcher/` — движок сверки ТЗ↔товар (импорт SpecMatch)
+
+Отдельный проект `tender-matcher` (он же SpecMatch), влит в этот репо через
+`git subtree` вместе с **96 коммитами** — до импорта его история существовала
+только на одной машине, без remote. Импортирована ветка
+`videolaryngoscope-bd-df-besdata`, а не `main`: `main` там отстал на 44 коммита,
+вся работа за последний месяц (api, миграции, кабинет, сборные лоты) лежала на
+фича-ветке.
+
+⚠️ **История доступна, но не по пути.** `git log -- matcher/` покажет только сам
+импорт: в старых коммитах пути идут от корня (`src/matcher.py`, не
+`matcher/src/matcher.py`) — так работает `subtree add`. Смотреть через точку
+импорта: `git log 92c3a77 -- src/matcher.py`.
+
+| Внутри `matcher/` | Что | Статус |
+|---|---|---|
+| `src/matcher.py` (457 стр.) | ядро: операторы `≥/≤/range/one_of/set`, веса, дисквалификация | **живое, 39/39 тестов** |
+| `src/schema.py` | `Product` · `Requirement` · `Check` · `MatchResult` | живое |
+| `src/parser.py` | `.docx/.pdf/.xlsx/.xls` → текст **+ таблицы**, OCR-fallback, архивы | живое |
+| `src/filter.py`, `ktru.py` | воронка: ОКПД2/КТРУ, слова, срок, регион | живое |
+| `src/keymatch.py`, `extractor.py`, `embed.py` | семантика и извлечение требований | нужен `numpy` / `ANTHROPIC_API_KEY` |
+| `src/tenderplan.py` | адаптер Тендерплана | **мёртвый груз** — от Тендерплана ушли |
+| `api/`, `web/`, `migrations/` | свой FastAPI + кабинет + alembic | **архив-референс**, дублирует `server/` и `site/`, не деплоится |
+| `tests/` | 17 файлов, включая golden | 39/39 юнит + 46/46 golden (23 фикстуры) |
+
+Ядро **не требует зависимостей вообще** — `matcher/src` на `sys.path` и
+`import matcher` работает на голом Python 3.12. Тяжёлое (`sentence-transformers`,
+`easyocr` → torch, ~950 МБ venv) нужно только опциональным слоям; на VPS его не тащить.
+
+**Стыковка с Лекало ещё не сделана.** Схемы совместимы (`verdict` совпадает
+дословно, `Check.status`: у Лекало `fail` — у SpecMatch `violation`), но зазор
+содержательный: `/api/match` в Лекало сверяет **текст↔текст**, а
+`matcher.match()` принимает **структуру** — `Product` (карточка товара с
+атрибутами; в Лекало таких карточек нет) и `List[Requirement]` (извлекаются
+LLM-ом). Порядок сближения — в [`plan.md`](plan.md).
 
 ### Схема закупки (единая для всех площадок)
 `{ id, number, title, customer, customerInn, law, source, region, okpd, price,
