@@ -1,0 +1,214 @@
+"""Извлечение текста ТЗ из документов (шаг 5 конвейера, plan.md §3).
+
+Детерминированный код, БЕЗ LLM: docx / pdf / xlsx / doc / txt → нормализованный текст.
+(.doc — старый Word — через внешний конвертер textutil/antiword/soffice, плоским текстом.)
+Таблицы рендерятся как pipe-таблицы (| a | b |), чтобы и человек, и LLM видели
+структуру строк — в ТЗ характеристики почти всегда лежат таблицей.
+
+Кривые сканы / картинки здесь не обрабатываются — для них нужен OCR
+(Tesseract → Claude vision fallback), это отдельный шаг, см. plan.md §3 шаг 5.
+"""
+from __future__ import annotations
+
+import os
+from typing import List
+
+
+def parse(path: str) -> str:
+    """Документ → чистый текст с таблицами. Диспетчер по расширению файла."""
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".docx":
+        return _parse_docx(path)
+    if ext == ".pdf":
+        return _parse_pdf(path)
+    if ext == ".xlsx":
+        return _parse_xlsx(path)
+    if ext == ".xls":
+        return _parse_xls(path)
+    if ext == ".doc":
+        return _parse_doc(path)
+    if ext in (".zip", ".rar"):
+        return _parse_archive(path)
+    if ext in (".txt", ".md"):
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip()
+    raise ValueError(
+        "Неподдерживаемый формат '%s'. Скан/картинку нужно прогнать через OCR." % ext)
+
+
+# документы, которые умеем читать внутри архива
+_DOC_EXT = (".docx", ".pdf", ".xlsx", ".xls", ".doc", ".txt", ".md", ".zip")
+
+
+def _parse_archive(path: str) -> str:
+    """Архив (.zip/.rar) → текст всех читаемых вложенных документов, склеенный с заголовками.
+    ТЗ часто кладут пачкой в архив. .zip — stdlib; .rar — через rarfile (нужен unrar/unar в
+    системе; если нет — понятная ошибка). Zip-slip не страшен: ZipFile.extract санитизирует пути."""
+    import tempfile
+    ext = os.path.splitext(path)[1].lower()
+    with tempfile.TemporaryDirectory() as tmp:
+        files = _extract_zip(path, tmp) if ext == ".zip" else _extract_rar(path, tmp)
+        parts = []
+        for fp in sorted(files):
+            if os.path.splitext(fp)[1].lower() not in _DOC_EXT:
+                continue
+            try:
+                txt = parse(fp)                 # рекурсия: вложенный документ (в т.ч. .zip)
+            except Exception:
+                continue
+            if txt.strip():
+                parts.append("[ФАЙЛ %s]\n%s" % (os.path.basename(fp), txt))
+        return "\n\n".join(parts).strip()
+
+
+def _extract_zip(path: str, dest: str) -> List[str]:
+    import zipfile
+    out = []
+    with zipfile.ZipFile(path) as z:
+        for info in z.infolist():
+            if info.is_dir():
+                continue
+            out.append(z.extract(info, dest))
+    return out
+
+
+def _extract_rar(path: str, dest: str) -> List[str]:
+    try:
+        import rarfile
+        with rarfile.RarFile(path) as rf:
+            rf.extractall(dest)
+    except Exception as e:
+        raise ValueError(".rar не распакован (нужен системный unrar/unar): %s" % e)
+    out = []
+    for root, _dirs, files in os.walk(dest):
+        out.extend(os.path.join(root, f) for f in files)
+    return out
+
+
+def _render_table(rows: List[List[str]]) -> str:
+    """Список строк-ячеек → pipe-таблица. Пустые ячейки сохраняем как ''."""
+    out = []
+    for row in rows:
+        cells = [(" " if c is None else str(c)).replace("\n", " ").strip() for c in row]
+        if any(cells):
+            out.append("| " + " | ".join(cells) + " |")
+    return "\n".join(out)
+
+
+def _parse_docx(path: str) -> str:
+    import docx  # python-docx
+
+    doc = docx.Document(path)
+    parts: List[str] = []
+    for p in doc.paragraphs:
+        if p.text.strip():
+            parts.append(p.text.strip())
+    for i, table in enumerate(doc.tables):
+        rows = [[cell.text for cell in row.cells] for row in table.rows]
+        rendered = _render_table(rows)
+        if rendered:
+            parts.append("[ТАБЛИЦА %d]\n%s" % (i + 1, rendered))
+    return "\n\n".join(parts).strip()
+
+
+def _parse_pdf(path: str) -> str:
+    import pdfplumber
+
+    parts: List[str] = []
+    with pdfplumber.open(path) as pdf:
+        for pageno, page in enumerate(pdf.pages, 1):
+            text = page.extract_text() or ""
+            if text.strip():
+                parts.append(text.strip())
+            for i, table in enumerate(page.extract_tables() or []):
+                rendered = _render_table(table)
+                if rendered:
+                    parts.append("[ТАБЛИЦА стр.%d №%d]\n%s" % (pageno, i + 1, rendered))
+    text = "\n\n".join(parts).strip()
+    if text:
+        return text
+    # Нет текстового слоя → вероятно скан. Пробуем OCR (шаг 5, ocr.py).
+    try:
+        from ocr import ocr_pdf, available_backend
+        if available_backend() is None:
+            raise ValueError(
+                "PDF без текстового слоя (скан), а OCR недоступен (нет tesseract/easyocr): %s" % path)
+        return ocr_pdf(path)
+    except ImportError:
+        raise ValueError(
+            "PDF без текстового слоя (скан) — нужен OCR (модуль ocr.py): %s" % path)
+
+
+def _parse_doc(path: str) -> str:
+    """Старый Word .doc → текст через внешний конвертер (штатного парсера нет).
+
+    Порядок: textutil (macOS, встроен) → antiword/catdoc (Linux) → LibreOffice soffice
+    (кросс-платформенно, тяжелее). .doc отдаёт ПЛОСКИЙ текст — таблицы не рендерятся в
+    pipe-формат (ограничение формата); для характеристик в таблицах лучше .docx/.pdf.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    if shutil.which("textutil"):  # macOS
+        r = subprocess.run(["textutil", "-convert", "txt", "-stdout", path],
+                           capture_output=True, timeout=60)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.decode("utf-8", "replace").strip()
+    for tool in ("antiword", "catdoc"):  # Linux
+        if shutil.which(tool):
+            r = subprocess.run([tool, path], capture_output=True, timeout=60)
+            if r.returncode == 0 and r.stdout.strip():
+                return r.stdout.decode("utf-8", "replace").strip()
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if soffice:
+        with tempfile.TemporaryDirectory() as td:
+            subprocess.run([soffice, "--headless", "--convert-to", "txt:Text",
+                            "--outdir", td, path], capture_output=True, timeout=120)
+            fp = os.path.join(td, os.path.splitext(os.path.basename(path))[0] + ".txt")
+            if os.path.exists(fp):
+                with open(fp, encoding="utf-8", errors="replace") as f:
+                    return f.read().strip()
+    raise ValueError(
+        "Формат .doc (старый Word): нужен конвертер — textutil (macOS), antiword/catdoc "
+        "или LibreOffice (soffice). Ни один не найден: %s" % path)
+
+
+def _parse_xlsx(path: str) -> str:
+    import openpyxl
+
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    parts: List[str] = []
+    for ws in wb.worksheets:
+        rows = [list(r) for r in ws.iter_rows(values_only=True)]
+        rendered = _render_table(rows)
+        if rendered:
+            parts.append("[ЛИСТ '%s']\n%s" % (ws.title, rendered))
+    wb.close()
+    return "\n\n".join(parts).strip()
+
+
+def _parse_xls(path: str) -> str:
+    """Старый бинарный .xls (Excel 97-2003) через xlrd — openpyxl его не читает.
+    Целочисленные значения нормализуем («1.0»→«1»), чтобы таблица читалась как в .xlsx."""
+    import xlrd
+
+    def _cell(v):
+        if isinstance(v, float) and v.is_integer():
+            return int(v)
+        return v
+
+    wb = xlrd.open_workbook(path)
+    parts: List[str] = []
+    for sh in wb.sheets():
+        rows = [[_cell(v) for v in sh.row_values(i)] for i in range(sh.nrows)]
+        rendered = _render_table(rows)
+        if rendered:
+            parts.append("[ЛИСТ '%s']\n%s" % (sh.name, rendered))
+    return "\n\n".join(parts).strip()
+
+
+if __name__ == "__main__":
+    import sys
+
+    print(parse(sys.argv[1]))

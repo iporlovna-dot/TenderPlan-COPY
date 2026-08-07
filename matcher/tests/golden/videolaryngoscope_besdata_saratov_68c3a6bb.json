@@ -1,0 +1,1459 @@
+{
+  "id": "videolaryngoscope_besdata_saratov_68c3a6bb",
+  "source": "check_tender: 68c3a6bb5d48d39bb4a03ee9",
+  "expected_verdict": "eligible_with_gaps",
+  "expected_score": 75,
+  "score_tolerance": 0,
+  "synonyms": {
+    "одноразовый": [
+      "одноразового использования",
+      "однократного применения",
+      "disposable"
+    ],
+    "макинтош": [
+      "mcintosh",
+      "mac"
+    ],
+    "изогнутый": [
+      "curved"
+    ],
+    "фиброоптическая": [
+      "фиброоптический",
+      "оптоволоконный",
+      "fiberoptic"
+    ],
+    "пластик": [
+      "полиамид",
+      "пластиковый",
+      "пластмасса"
+    ],
+    "flexline": [
+      "din iso 7376",
+      "iso 7376",
+      "зелёная спецификация",
+      "green system"
+    ]
+  },
+  "product": {
+    "id": "videolaryngoscope-besdata-bd-df",
+    "name": "Видеоларингоскоп Набор BD-DF, BESDATA (Shenzhen Besdata Technology Co., Ltd, Китай), многоразовый, LED, 3\" ЖК-дисплей, набор клинков Macintosh 1-4 + Miller 0",
+    "ktru": [
+      "32.50.13.190-00007689"
+    ],
+    "attributes": [
+      {
+        "key": "тип_изделия",
+        "value": "видеоларингоскоп",
+        "status": "declared"
+      },
+      {
+        "key": "назначение",
+        "value": "визуализация верхних дыхательных путей, эндотрахеальная интубация (стационар и экстренная медицина)",
+        "status": "declared"
+      },
+      {
+        "key": "исполнение",
+        "value": "многоразовый",
+        "status": "declared"
+      },
+      {
+        "key": "стерильность",
+        "value": "нестерильный",
+        "status": "declared"
+      },
+      {
+        "key": "источник_света",
+        "value": "LED",
+        "status": "declared"
+      },
+      {
+        "key": "производитель",
+        "value": "Shenzhen Besdata Technology Co., Ltd",
+        "status": "declared"
+      },
+      {
+        "key": "страна_происхождения",
+        "value": "Китай",
+        "status": "declared"
+      },
+      {
+        "key": "артикул",
+        "value": "BESDATA BD-DF",
+        "status": "declared"
+      },
+      {
+        "key": "тип_дисплея",
+        "value": "ЖК (LCD)",
+        "status": "declared"
+      },
+      {
+        "key": "диагональ_дисплея_дюйм",
+        "value": 3,
+        "status": "declared"
+      },
+      {
+        "key": "разрешение_дисплея",
+        "value": "640 x 480 (RGB)",
+        "status": "declared"
+      },
+      {
+        "key": "формат_дисплея",
+        "value": "4:3",
+        "status": "declared"
+      },
+      {
+        "key": "частота_обновления_дисплея_гц",
+        "value": 30,
+        "status": "declared"
+      },
+      {
+        "key": "габариты_экрана_мм",
+        "value": "87 x 20 x 62",
+        "status": "declared",
+        "doc": "приблизительно, Д x Ш x В"
+      },
+      {
+        "key": "угол_поворота_дисплея",
+        "value": 155,
+        "status": "declared",
+        "doc": "±155°, замерено вручную (в инструкции не указано)"
+      },
+      {
+        "key": "разрешение_камеры",
+        "value": "1280 x 720",
+        "status": "declared"
+      },
+      {
+        "key": "формат_камеры",
+        "value": "4:3",
+        "status": "declared"
+      },
+      {
+        "key": "освещённость_камеры_лк",
+        "value": 150,
+        "status": "declared"
+      },
+      {
+        "key": "класс_защиты",
+        "value": "IPX7",
+        "status": "declared",
+        "doc": "погружная вставная часть"
+      },
+      {
+        "key": "тип_памяти",
+        "value": "microSD",
+        "status": "declared"
+      },
+      {
+        "key": "объём_памяти_гб",
+        "value": 32,
+        "status": "declared"
+      },
+      {
+        "key": "запись_фото_видео",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "перенос_данных",
+        "value": "USB на ПК",
+        "status": "declared"
+      },
+      {
+        "key": "тип_аккумулятора",
+        "value": "литий-ионный",
+        "status": "declared"
+      },
+      {
+        "key": "напряжение_аккумулятора_в",
+        "value": 3.7,
+        "status": "declared"
+      },
+      {
+        "key": "ёмкость_аккумулятора",
+        "value": "1350 мАч",
+        "status": "declared"
+      },
+      {
+        "key": "время_работы_мин",
+        "value": 140,
+        "status": "declared",
+        "doc": "приблизительно при полном заряде"
+      },
+      {
+        "key": "время_зарядки_ч",
+        "value": 5,
+        "status": "declared",
+        "doc": "приблизительно при полном разряде"
+      },
+      {
+        "key": "срок_службы_аккумулятора_лет",
+        "value": 3,
+        "status": "declared"
+      },
+      {
+        "key": "ресурс_циклов_заряда",
+        "value": 500,
+        "status": "declared",
+        "doc": "приблизительно"
+      },
+      {
+        "key": "блок_питания_вход",
+        "value": "100-240 В, 50/60 Гц, 0,3 А",
+        "status": "declared"
+      },
+      {
+        "key": "блок_питания_выход",
+        "value": "5 В DC, 1 А",
+        "status": "declared"
+      },
+      {
+        "key": "частота_сети_зарядного_устройства_гц",
+        "value": "50/60",
+        "status": "declared"
+      },
+      {
+        "key": "материал_корпуса_экрана",
+        "value": "АБС-пластик (ABS)",
+        "status": "declared"
+      },
+      {
+        "key": "материал_рукоятки",
+        "value": "алюминиевый сплав",
+        "status": "declared"
+      },
+      {
+        "key": "материал_клинка",
+        "value": "алюминиевый сплав",
+        "status": "declared"
+      },
+      {
+        "key": "типы_клинков",
+        "value": [
+          "макинтош",
+          "миллер"
+        ],
+        "status": "declared"
+      },
+      {
+        "key": "форма_клинков",
+        "value": [
+          "изогнутый",
+          "прямой"
+        ],
+        "status": "declared"
+      },
+      {
+        "key": "размеры_клинков",
+        "value": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "d-blade"
+        ],
+        "status": "declared",
+        "doc": "Miller 0, Macintosh 1-4, D-Blade (сложные дыхательные пути)"
+      },
+      {
+        "key": "клинки_многоразовые",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "длина_клинка_миллер_0",
+        "value": "8.2 см",
+        "status": "declared",
+        "doc": "новорождённый; рабочая длина 82 мм"
+      },
+      {
+        "key": "длина_клинка_макинтош_1",
+        "value": "10.45 см",
+        "status": "declared",
+        "doc": "педиатрия; рабочая длина 104,5 мм"
+      },
+      {
+        "key": "длина_клинка_макинтош_2",
+        "value": "12.11 см",
+        "status": "declared",
+        "doc": "малый взрослый; рабочая длина 121,1 мм"
+      },
+      {
+        "key": "длина_клинка_макинтош_3",
+        "value": "14.25 см",
+        "status": "declared",
+        "doc": "взрослый; рабочая длина 142,5 мм"
+      },
+      {
+        "key": "длина_клинка_макинтош_4",
+        "value": "16.08 см",
+        "status": "declared",
+        "doc": "крупный взрослый; рабочая длина 160,8 мм"
+      },
+      {
+        "key": "длина_клинка_d_blade",
+        "value": "13.27 см",
+        "status": "declared",
+        "doc": "сложные дыхательные пути; рабочая длина 132,7 мм"
+      },
+      {
+        "key": "клинок_миллер_0",
+        "value": 1,
+        "status": "declared",
+        "doc": "в комплекте (шт), количество по требованию закупки"
+      },
+      {
+        "key": "клинок_макинтош_1",
+        "value": 1,
+        "status": "declared"
+      },
+      {
+        "key": "клинок_макинтош_2",
+        "value": 1,
+        "status": "declared"
+      },
+      {
+        "key": "клинок_макинтош_3",
+        "value": 1,
+        "status": "declared"
+      },
+      {
+        "key": "клинок_макинтош_4",
+        "value": 1,
+        "status": "declared"
+      },
+      {
+        "key": "клинок_d_blade",
+        "value": 1,
+        "status": "declared"
+      },
+      {
+        "key": "диаметр_интубационной_трубки_миллер_0",
+        "value": "2.5-4.0 мм",
+        "status": "declared"
+      },
+      {
+        "key": "диаметр_интубационной_трубки_макинтош_1",
+        "value": "4.0-5.0 мм",
+        "status": "declared"
+      },
+      {
+        "key": "диаметр_интубационной_трубки_макинтош_2",
+        "value": "5.0-6.0 мм",
+        "status": "declared"
+      },
+      {
+        "key": "диаметр_интубационной_трубки_макинтош_3",
+        "value": "6.0-9.0 мм",
+        "status": "declared"
+      },
+      {
+        "key": "диаметр_интубационной_трубки_макинтош_4",
+        "value": "7.5-10.0 мм",
+        "status": "declared"
+      },
+      {
+        "key": "диаметр_интубационной_трубки_d_blade",
+        "value": "6.0-10.0 мм",
+        "status": "declared"
+      },
+      {
+        "key": "ширина_клинка_миллер_0",
+        "value": 13,
+        "status": "confirmable",
+        "doc": "макс. ширина рабочей части, мм; в пределах требований ТЗ (11-13), подтвердить паспортом/замером"
+      },
+      {
+        "key": "ширина_клинка_макинтош_1",
+        "value": 23,
+        "status": "confirmable",
+        "doc": "макс. ширина рабочей части, мм; подтвердить паспортом/замером"
+      },
+      {
+        "key": "ширина_клинка_макинтош_2",
+        "value": 23,
+        "status": "confirmable",
+        "doc": "макс. ширина рабочей части, мм; подтвердить паспортом/замером"
+      },
+      {
+        "key": "ширина_клинка_макинтош_3",
+        "value": 23,
+        "status": "confirmable",
+        "doc": "макс. ширина рабочей части, мм; подтвердить паспортом/замером"
+      },
+      {
+        "key": "ширина_клинка_макинтош_4",
+        "value": 23,
+        "status": "confirmable",
+        "doc": "макс. ширина рабочей части, мм; подтвердить паспортом/замером"
+      },
+      {
+        "key": "ширина_клинка_d_blade",
+        "value": 23,
+        "status": "confirmable",
+        "doc": "макс. ширина рабочей части, мм; подтвердить паспортом/замером"
+      },
+      {
+        "key": "толщина_клинка_миллер_0",
+        "value": 9,
+        "status": "confirmable",
+        "doc": "высота профиля рабочей части у основания, мм; подтвердить паспортом"
+      },
+      {
+        "key": "толщина_клинка_макинтош_1",
+        "value": 13,
+        "status": "confirmable",
+        "doc": "высота профиля рабочей части у основания, мм; подтвердить паспортом"
+      },
+      {
+        "key": "толщина_клинка_макинтош_2",
+        "value": 15,
+        "status": "confirmable",
+        "doc": "высота профиля рабочей части у основания, мм; подтвердить паспортом"
+      },
+      {
+        "key": "толщина_клинка_макинтош_3",
+        "value": 16,
+        "status": "confirmable",
+        "doc": "высота профиля рабочей части у основания, мм; подтвердить паспортом"
+      },
+      {
+        "key": "толщина_клинка_макинтош_4",
+        "value": 17,
+        "status": "confirmable",
+        "doc": "высота профиля рабочей части у основания, мм; подтвердить паспортом"
+      },
+      {
+        "key": "толщина_клинка_d_blade",
+        "value": 13,
+        "status": "confirmable",
+        "doc": "высота профиля рабочей части у основания, мм; подтвердить паспортом"
+      },
+      {
+        "key": "угол_обзора_камеры",
+        "value": 70,
+        "status": "confirmable",
+        "doc": "поле зрения видеокамеры, °; в пределах требований ТЗ (45-75, ≥60), подтвердить паспортом"
+      },
+      {
+        "key": "комплектация",
+        "value": "алюминиевый кейс, 3\" ЖК-экран, ручка, набор клинков (Miller 0 + Macintosh 1-4 + сложный воздуховод), блок питания (евро) + USB-кабель, инструкция",
+        "status": "declared"
+      },
+      {
+        "key": "система_просмотра",
+        "value": "карманный монитор",
+        "status": "declared"
+      },
+      {
+        "key": "масса_блока_визуализации",
+        "value": "225 г",
+        "status": "confirmable",
+        "doc": "открытые источники; подтвердить паспортом"
+      },
+      {
+        "key": "встроенный_аккумулятор",
+        "value": "да",
+        "status": "declared",
+        "doc": "встроенный перезаряжаемый литий-ионный"
+      },
+      {
+        "key": "количество_клинков_в_комплекте",
+        "value": 6,
+        "status": "declared",
+        "doc": "доступно до 6 (MIL-0, MAC-1..4, D-Blade); в поставку идёт требуемое закупкой подмножество"
+      },
+      {
+        "key": "зарядное_устройство",
+        "value": 1,
+        "status": "declared",
+        "doc": "блок питания + USB-кабель в комплекте (шт)"
+      },
+      {
+        "key": "кейс_для_транспортировки",
+        "value": 1,
+        "status": "declared",
+        "doc": "алюминиевый кейс (шт)"
+      },
+      {
+        "key": "руководство_по_эксплуатации",
+        "value": 1,
+        "status": "declared",
+        "doc": "инструкция в комплекте (шт)"
+      },
+      {
+        "key": "температура_эксплуатации",
+        "value": "10...40 °C",
+        "status": "declared"
+      },
+      {
+        "key": "влажность_эксплуатации",
+        "value": "10-90 % RH без конденсации",
+        "status": "declared"
+      },
+      {
+        "key": "давление_эксплуатации",
+        "value": "500-1060 гПа",
+        "status": "declared"
+      },
+      {
+        "key": "температура_хранения",
+        "value": "-20...40 °C",
+        "status": "declared"
+      },
+      {
+        "key": "рег_удостоверение",
+        "value": "РУ имеется",
+        "status": "confirmable",
+        "doc": "регистрационное удостоверение (документ контракта, не в инструкции)"
+      },
+      {
+        "key": "новизна_товара",
+        "value": "новый, не бывший в употреблении",
+        "status": "declared"
+      },
+      {
+        "key": "гарантия_поставщика_мес",
+        "value": 12,
+        "status": "confirmable",
+        "doc": "гарантийное обязательство поставщика (условие контракта)"
+      },
+      {
+        "key": "гарантия_производителя_мес",
+        "value": 12,
+        "status": "confirmable",
+        "doc": "гарантия производителя (условие контракта)"
+      }
+    ]
+  },
+  "requirements": [
+    {
+      "key": "назначение",
+      "operator": "eq",
+      "value": "визуализация верхних дыхательных путей, эндотрахеальная интубация (стационар и экстренная медицина)",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Предназначена для интубации трахеи, а также для исследования и визуализации верхних дыхательных путей пациентов."
+    },
+    {
+      "key": "размеры_клинков",
+      "operator": "set",
+      "value": [
+        "Миллер 0",
+        "Макинтош 1",
+        "Макинтош 2",
+        "Макинтош 3",
+        "Макинтош 4",
+        "D-BLADE"
+      ],
+      "unit": "",
+      "hardness": "hard",
+      "type": "technical",
+      "raw": "клинок видеоларингоскопа Миллер 0, Макинтош 1-4, D-BLADE – не менее 1 шт. каждого",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "количество_мониторов",
+      "operator": "gte",
+      "value": 1,
+      "unit": "шт",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "монитор не менее 3 дюйма – 1 шт."
+    },
+    {
+      "key": "количество_защитных_колпачков",
+      "operator": "gte",
+      "value": 6,
+      "unit": "шт",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Защитный колпачок – не менее 6 шт."
+    },
+    {
+      "key": "зарядное_устройство",
+      "operator": "gte",
+      "value": 1,
+      "unit": "шт",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Сетевое зарядное устройство с кабелем USB – не менее 1 шт.",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "инструкция_по_применению",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Инструкция по применению – не менее 1 шт."
+    },
+    {
+      "key": "длина_монитора_мм",
+      "operator": "gte",
+      "value": 87,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Размеры (Д x Ш x В) не менее 87 х 25 х 62 мм"
+    },
+    {
+      "key": "ширина_монитора_мм",
+      "operator": "gte",
+      "value": 25,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Размеры (Д x Ш x В) не менее 87 х 25 х 62 мм"
+    },
+    {
+      "key": "высота_монитора_мм",
+      "operator": "gte",
+      "value": 62,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Размеры (Д x Ш x В) не менее 87 х 25 х 62 мм"
+    },
+    {
+      "key": "тип_дисплея",
+      "operator": "eq",
+      "value": "ЖК (LCD)",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип экрана: ЖК-дисплей (жидкокристаллический дисплей)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диагональ_дисплея_дюйм",
+      "operator": "gte",
+      "value": 3,
+      "unit": "дюйм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Размер экрана не менее 3 дюйма (76,2 мм)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "разрешение_дисплея",
+      "operator": "gte",
+      "value": 640,
+      "unit": "пикс",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Разрешение экрана не менее 640 x 480 пикселей (RGB)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "разрешение_дисплея",
+      "operator": "gte",
+      "value": 480,
+      "unit": "пикс",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Разрешение экрана не менее 640 x 480 пикселей (RGB)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "формат_дисплея",
+      "operator": "eq",
+      "value": "4:3",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Соотношение сторон экрана 4:3",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "частота_обновления_дисплея_гц",
+      "operator": "gte",
+      "value": 30,
+      "unit": "кадр/с",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Частота обновления экрана не менее 30 кадров в секунду",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "блок_питания_выход",
+      "operator": "eq",
+      "value": "5 В DC, 1 А",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Входное питание: постоянный ток: 5 В постоянного тока, 1,0 А",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "угол_поворота_дисплея",
+      "operator": "gte",
+      "value": 130,
+      "unit": "°",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Угол поворота монитора не менее 130 ° (± 15 %)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_корпуса_экрана",
+      "operator": "eq",
+      "value": "АБС-пластик (ABS)",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материал изготовления корпуса монитора: Сополимер акрилонитрилбутадиенстирол (АБС)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "тип_памяти",
+      "operator": "eq",
+      "value": "microSD",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип карты памяти microSD",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "объём_памяти_гб",
+      "operator": "gte",
+      "value": 8,
+      "unit": "ГБ",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Емкость карты памяти не менее 8 ГБ",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "запись_фото_видео",
+      "operator": "eq",
+      "value": "да",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Формат сохранения изображений JPG",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "запись_фото_видео",
+      "operator": "eq",
+      "value": "да",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Формат сохранения видеозаписей AVI",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "разрешение_камеры",
+      "operator": "gte",
+      "value": 1280,
+      "unit": "пикс",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Разрешение камеры не менее 1280 x 720 пикселей",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "разрешение_камеры",
+      "operator": "gte",
+      "value": 720,
+      "unit": "пикс",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Разрешение камеры не менее 1280 x 720 пикселей",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "формат_камеры",
+      "operator": "eq",
+      "value": "4:3",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Соотношение сторон 4:3 (камера)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "освещённость_камеры_лк",
+      "operator": "gte",
+      "value": 150,
+      "unit": "Люкс",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Освещенность (на расстоянии 20 мм) ≥ 150 Люкс",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диаметр_камеры_макинтош",
+      "operator": "eq",
+      "value": 4.5,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр 4,5 мм (± 5 %) для рукоятки видеоларингоскопа, тип Макинтош"
+    },
+    {
+      "key": "диаметр_камеры_миллер",
+      "operator": "eq",
+      "value": 3.9,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр 3,9 мм (± 5 %) для рукоятки видеоларингоскопа, тип Миллер"
+    },
+    {
+      "key": "угол_обзора_камеры",
+      "operator": "gte",
+      "value": 60,
+      "unit": "°",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Угол обзора не менее 60° (± 15 %)"
+    },
+    {
+      "key": "глубина_резкости_камеры",
+      "operator": "range",
+      "value": [
+        10,
+        60
+      ],
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Глубина резкости 10 мм ~ 60 мм"
+    },
+    {
+      "key": "тип_аккумулятора",
+      "operator": "eq",
+      "value": "литий-ионный",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип аккумулятора Литий-ионный аккумулятор"
+    },
+    {
+      "key": "ёмкость_аккумулятора",
+      "operator": "gte",
+      "value": 1350,
+      "unit": "мА·ч",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Емкость не менее 1350 мА·ч",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "время_работы_мин",
+      "operator": "gte",
+      "value": 140,
+      "unit": "мин",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Срок эксплуатации изделия от полностью заряженного аккумулятора не менее 140 мин",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "время_зарядки_ч",
+      "operator": "lte",
+      "value": 5,
+      "unit": "ч",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Время зарядки Не более 5 ч",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "ресурс_циклов_заряда",
+      "operator": "gte",
+      "value": 500,
+      "unit": "раз",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Циклы зарядки-разрядки не менее 500 раз",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диаметр_интубационной_трубки_миллер_0",
+      "operator": "range",
+      "value": [
+        2.5,
+        4.0
+      ],
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр используемой ЭТТ От 2,5 мм до 4,0 мм (Миллер 0)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "длина_клинка_миллер_0",
+      "operator": "eq",
+      "value": 55,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Длина рабочей части 55 мм (Миллер 0)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "ширина_клинка_миллер_0",
+      "operator": "eq",
+      "value": 12,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Ширина рабочей части 12 мм (Миллер 0)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "толщина_клинка_миллер_0",
+      "operator": "eq",
+      "value": 9,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Толщина рабочей части 9 мм (Миллер 0)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_клинка",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления клинка Алюминиевый сплав (Миллер 0)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_рукоятки",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления рукоятки Алюминиевый сплав (Миллер 0)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "источник_света",
+      "operator": "eq",
+      "value": "LED",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип источника освещения Светодиод (СИД) (Миллер 0)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диаметр_интубационной_трубки_макинтош_1",
+      "operator": "range",
+      "value": [
+        4.0,
+        6.0
+      ],
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр используемой ЭТТ От 4,0 мм до 6,0 мм (Макинтош 1)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "длина_клинка_макинтош_1",
+      "operator": "eq",
+      "value": 75,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Длина рабочей части 75 мм (Макинтош 1)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "ширина_клинка_макинтош_1",
+      "operator": "eq",
+      "value": 23,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Ширина рабочей части 23 мм (Макинтош 1)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "толщина_клинка_макинтош_1",
+      "operator": "eq",
+      "value": 13,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Толщина рабочей части 13 мм (Макинтош 1)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_клинка",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления клинка Алюминиевый сплав (Макинтош 1)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_рукоятки",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления рукоятки Алюминиевый сплав (Макинтош 1)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "источник_света",
+      "operator": "eq",
+      "value": "LED",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип источника освещения Светодиод (СИД) (Макинтош 1)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диаметр_интубационной_трубки_макинтош_2",
+      "operator": "range",
+      "value": [
+        5.0,
+        6.0
+      ],
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр используемой ЭТТ От 5,0 мм до 6,0 мм (Макинтош 2)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "длина_клинка_макинтош_2",
+      "operator": "eq",
+      "value": 90,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Длина рабочей части 90 мм (Макинтош 2)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "ширина_клинка_макинтош_2",
+      "operator": "eq",
+      "value": 23,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Ширина рабочей части 23 мм (Макинтош 2)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "толщина_клинка_макинтош_2",
+      "operator": "eq",
+      "value": 15,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Толщина рабочей части 15 мм (Макинтош 2)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_клинка",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления клинка Алюминиевый сплав (Макинтош 2)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_рукоятки_макинтош_2",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления рукоятки Алюминиевый сплав (Макинтош 2)"
+    },
+    {
+      "key": "источник_света",
+      "operator": "eq",
+      "value": "LED",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип источника освещения Светодиод (СИД) (Макинтош 2)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диаметр_интубационной_трубки_макинтош_3",
+      "operator": "range",
+      "value": [
+        6.0,
+        9.0
+      ],
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр используемой ЭТТ От 6,0 мм до 9,0 мм (Макинтош 3)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "длина_клинка_макинтош_3",
+      "operator": "eq",
+      "value": 110,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Длина рабочей части 110 мм (Макинтош 3)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "ширина_клинка_макинтош_3",
+      "operator": "eq",
+      "value": 23,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Ширина рабочей части 23 мм (Макинтош 3)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "толщина_клинка_макинтош_3",
+      "operator": "eq",
+      "value": 16,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Толщина рабочей части 16 мм (Макинтош 3)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_клинка",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления клинка Алюминиевый сплав (Макинтош 3)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_рукоятки",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления рукоятки Алюминиевый сплав (Макинтош 3)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "источник_света",
+      "operator": "eq",
+      "value": "LED",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип источника освещения Светодиод (СИД) (Макинтош 3)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диаметр_интубационной_трубки_макинтош_4",
+      "operator": "range",
+      "value": [
+        7.5,
+        10.0
+      ],
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр используемой ЭТТ От 7,5 мм до 10,0 мм (Макинтош 4)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "длина_клинка_макинтош_4",
+      "operator": "eq",
+      "value": 130,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Длина рабочей части 130 мм (Макинтош 4)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "ширина_клинка_макинтош_4",
+      "operator": "eq",
+      "value": 23,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Ширина рабочей части 23 мм (Макинтош 4)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "толщина_клинка_макинтош_4",
+      "operator": "eq",
+      "value": 17,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Толщина рабочей части 17 мм (Макинтош 4)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_клинка",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления клинка Алюминиевый сплав (Макинтош 4)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_рукоятки",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления рукоятки Алюминиевый сплав (Макинтош 4)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "источник_света",
+      "operator": "eq",
+      "value": "LED",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип источника освещения Светодиод (СИД) (Макинтош 4)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "диаметр_интубационной_трубки_d_blade",
+      "operator": "range",
+      "value": [
+        7.5,
+        10.0
+      ],
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диаметр используемой ЭТТ От 7,5 мм до 10,0 мм (D-BLADE)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "длина_клинка_d_blade",
+      "operator": "eq",
+      "value": 105,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Длина рабочей части 105 мм (D-BLADE)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "ширина_клинка_d_blade",
+      "operator": "eq",
+      "value": 23,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Ширина рабочей части 23 мм (D-BLADE)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "толщина_клинка_d_blade",
+      "operator": "eq",
+      "value": 13,
+      "unit": "мм",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Толщина рабочей части 13 мм (D-BLADE)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_клинка",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления клинка Алюминиевый сплав (D-BLADE)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "материал_рукоятки",
+      "operator": "eq",
+      "value": "Алюминиевый сплав",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Материалы изготовления рукоятки Алюминиевый сплав (D-BLADE)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "источник_света",
+      "operator": "eq",
+      "value": "LED",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Тип источника освещения Светодиод (СИД) (D-BLADE)",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "блок_питания_вход",
+      "operator": "eq",
+      "value": "100-240 В, 50/60 Гц, 0,3 А",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Входные параметры: Переменный ток: 100-240 В, 50/60 Гц, 0,15 А",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "блок_питания_выход",
+      "operator": "eq",
+      "value": "5 В DC, 1 А",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Выходные параметры: Постоянный ток: 5 В, 1,0 А",
+      "remapped": true,
+      "remap_locked": false
+    },
+    {
+      "key": "длина_кабеля_usb",
+      "operator": "gte",
+      "value": 1.0,
+      "unit": "м",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Длина кабеля USB не менее 1,0 м"
+    },
+    {
+      "key": "рег_удостоверение",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Регистрационное(ые) удостоверение(я) в отношении каждого наименования, предлагаемого участником закупки товара"
+    },
+    {
+      "key": "год_выпуска",
+      "operator": "gte",
+      "value": 2025,
+      "unit": "год",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Товар должен быть новым, неиспользованным, серийно выпускаемым, не ранее 2025 года выпуска"
+    },
+    {
+      "key": "новизна_товара",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Товар должен быть новым, неиспользованным, серийно выпускаемым (не бывшими ранее в употреблении, ремонте...)"
+    },
+    {
+      "key": "инструкция_на_русском",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Товар должен иметь инструкции по эксплуатации на русском языке."
+    },
+    {
+      "key": "гарантия_поставщика_мес",
+      "operator": "gte",
+      "value": 12,
+      "unit": "мес",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Гарантийный срок на поставляемый Товар от Поставщика составляет 12 месяцев, но не менее срока, установленного производителем (изготовителем).",
+      "remapped": true,
+      "remap_locked": false
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "purchase_id": "6a5f0d4e_перчатки_нитриловые_смотровые",
+  "source": "zakupki.gov.ru, тендер 6a5f0d4e (авто-сбор Тендерплан). Позиция: перчатки смотровые/процедурные нитриловые, неопудренные, нестерильные, КТРУ 22.19.60.119-00000008",
+  "_note": "Извлечено Claude Code (без API) из авто-собранного ТЗ. Формат ТЗ — 'участник указывает ___ мм', поэтому длина/толщина мягкие. Материал/опудренность/стерильность жёстко заданы КТРУ.",
+  "requirements": [
+    {"key": "материал", "operator": "eq", "value": "нитрил",
+     "hardness": "hard", "type": "technical", "raw": "Перчатки нитриловые (КТРУ 22.19.60.119-00000008)"},
+    {"key": "назначение", "operator": "eq", "value": "смотровые",
+     "hardness": "hard", "type": "technical", "raw": "смотровые/процедурные"},
+    {"key": "опудренность", "operator": "eq", "value": "нет",
+     "hardness": "hard", "type": "technical", "raw": "неопудренные"},
+    {"key": "стерильность", "operator": "eq", "value": "нет",
+     "hardness": "hard", "type": "technical", "raw": "нестерильные"},
+    {"key": "отделка_текстура", "operator": "present", "value": true,
+     "hardness": "hard", "type": "technical", "raw": "Внешняя отделка перчатки текстурированная на пальцах"},
+    {"key": "размеры", "operator": "set", "value": ["XS", "S", "М"],
+     "hardness": "hard", "type": "technical", "raw": "Размеры XS, S, М (позиции 1-4)"},
+    {"key": "срок_годности_остаточный_мес", "operator": "gte", "value": 6,
+     "hardness": "hard", "type": "documentary", "raw": "остаточный срок годности не менее 6 месяцев"},
+    {"key": "рег_удостоверение", "operator": "present", "value": true,
+     "hardness": "hard", "type": "documentary", "raw": "медизделие: регистрационное удостоверение"}
+  ]
+}

@@ -1,0 +1,568 @@
+{
+  "id": "ophthalmoscope_e36_ks24",
+  "source": "ТЗ КС24-ПСЗ2024-350 (локальный docx). Товар KaWe Eurolight E36 LED 2,5В. Поставляли → подходит.",
+  "expected_verdict": "eligible_with_gaps",
+  "expected_score": 89,
+  "score_tolerance": 0,
+  "synonyms": {
+    "асферическая": [
+      "асферическая оптика",
+      "aspheric"
+    ],
+    "ксенон-галогенная": [
+      "ксенон галоген",
+      "xhl",
+      "галогенная"
+    ],
+    "аккумуляторный": [
+      "перезаряжаемый",
+      "перезаряжаемый от сети",
+      "rechargeable"
+    ],
+    "светодиодная лампа": [
+      "led",
+      "светодиодная",
+      "светодиодный",
+      "светодиод"
+    ]
+  },
+  "product": {
+    "id": "kawe-eurolight-e36",
+    "name": "Офтальмоскоп KaWe Eurolight E36, LED 2,5 В (батарейки тип C / аккумулятор), прямой",
+    "ktru": [
+      "26.60.12.119-00000875"
+    ],
+    "attributes": [
+      {
+        "key": "назначение",
+        "value": "прямая офтальмоскопия",
+        "status": "declared"
+      },
+      {
+        "key": "тип",
+        "value": "прямой",
+        "status": "declared"
+      },
+      {
+        "key": "оптика",
+        "value": "асферическая",
+        "status": "declared"
+      },
+      {
+        "key": "количество_корректирующих_линз",
+        "value": 18,
+        "status": "declared"
+      },
+      {
+        "key": "диапазон_коррекции",
+        "value": [
+          -20,
+          20
+        ],
+        "status": "declared"
+      },
+      {
+        "key": "шаг_коррекции",
+        "value": "1-4 дптр: 1; 4-10 дптр: 2; 10-20 дптр: 5",
+        "status": "declared"
+      },
+      {
+        "key": "количество_апертур",
+        "value": 6,
+        "status": "declared"
+      },
+      {
+        "key": "апертура_большой_круг",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "апертура_малый_круг",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "апертура_полукруг",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "апертура_щель",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "апертура_точка_фиксации",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "светофильтр",
+        "value": "зеленый (бескрасный)",
+        "status": "declared"
+      },
+      {
+        "key": "выбор_апертуры",
+        "value": "колесико на голове офтальмоскопа",
+        "status": "declared"
+      },
+      {
+        "key": "источник_света",
+        "value": "LED",
+        "status": "declared"
+      },
+      {
+        "key": "напряжение",
+        "value": "2,5 В",
+        "status": "declared"
+      },
+      {
+        "key": "источник_питания",
+        "value": "батарейки 2 шт тип C / аккумулятор 2,5 В",
+        "status": "declared"
+      },
+      {
+        "key": "срок_службы_источника_света",
+        "value": 50000,
+        "status": "declared"
+      },
+      {
+        "key": "регулировка_яркости",
+        "value": "плавная, реостатом на рукояти",
+        "status": "declared"
+      },
+      {
+        "key": "материал_головы",
+        "value": "ударопрочный пластик",
+        "status": "declared"
+      },
+      {
+        "key": "материал_рукояти",
+        "value": "металл",
+        "status": "declared"
+      },
+      {
+        "key": "покрытие_рукоятки",
+        "value": "рифленое",
+        "status": "declared"
+      },
+      {
+        "key": "замок_крепления",
+        "value": "тип «Клик»",
+        "status": "declared"
+      },
+      {
+        "key": "угол_падения_луча",
+        "value": "±6 градусов",
+        "status": "declared"
+      },
+      {
+        "key": "гарантия",
+        "value": 24,
+        "status": "declared"
+      },
+      {
+        "key": "гарантия_поставщика_мес",
+        "value": 24,
+        "status": "declared"
+      },
+      {
+        "key": "год_выпуска",
+        "value": 2024,
+        "status": "declared"
+      },
+      {
+        "key": "декларация_сертификат_соответствия",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "инструкция_на_русском",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "сервисное_обслуживание",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "сервисная_служба",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "комплектация_монтажные_принадлежности",
+        "value": "да",
+        "status": "declared"
+      },
+      {
+        "key": "рег_удостоверение",
+        "value": "РЗН",
+        "status": "declared"
+      }
+    ]
+  },
+  "requirements": [
+    {
+      "key": "назначение",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Ручной офтальмологический прибор предназначен для изучения внутренних структур глаза - Соответствие"
+    },
+    {
+      "key": "прямая_офтальмоскопия",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Прямая офтальмоскопия - Наличие"
+    },
+    {
+      "key": "количество_корректирующих_линз",
+      "operator": "gte",
+      "value": 18,
+      "unit": "шт",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Диск, содержащий не менее 18 линз"
+    },
+    {
+      "key": "диапазон_коррекции",
+      "operator": "eq",
+      "value": 20,
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы, максимальное значение +20 дптр"
+    },
+    {
+      "key": "диапазон_коррекции",
+      "operator": "eq",
+      "value": -20,
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы, минимальное значение -20 дптр"
+    },
+    {
+      "key": "источник_питания",
+      "operator": "eq",
+      "value": "батарейки 2 шт тип C / аккумулятор 2,5 В",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Питание - Батарейки"
+    },
+    {
+      "key": "регулировка_яркости",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Плавная регулировка яркости с помощью реостата - Наличие"
+    },
+    {
+      "key": "материал_головы",
+      "operator": "eq",
+      "value": "ударопрочный пластик",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Голова из ударопрочного пластика - Наличие"
+    },
+    {
+      "key": "светофильтр",
+      "operator": "eq",
+      "value": "зеленый (бескрасный)",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Светофильтр - зеленый"
+    },
+    {
+      "key": "шаг_коррекции",
+      "operator": "range",
+      "value": [
+        1,
+        4
+      ],
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы с шагом со знаком '+' 1 диоптрия: 1-4 дптр"
+    },
+    {
+      "key": "шаг_коррекции",
+      "operator": "range",
+      "value": [
+        4,
+        10
+      ],
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы с шагом со знаком '+' 2 диоптрия: 4-10 дптр"
+    },
+    {
+      "key": "шаг_коррекции",
+      "operator": "eq",
+      "value": 5,
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы с шагом со знаком '+' 5 диоптрия: 5 дптр"
+    },
+    {
+      "key": "шаг_коррекции",
+      "operator": "range",
+      "value": [
+        1,
+        4
+      ],
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы с шагом со знаком '-' 1 диоптрия: 1-4 дптр"
+    },
+    {
+      "key": "шаг_коррекции",
+      "operator": "range",
+      "value": [
+        4,
+        10
+      ],
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы с шагом со знаком '-' 2 диоптрия: 4-10 дптр"
+    },
+    {
+      "key": "шаг_коррекции",
+      "operator": "eq",
+      "value": 5,
+      "unit": "дптр",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Корригирующие линзы с шагом со знаком '-' 5 диоптрия: 5 дптр"
+    },
+    {
+      "key": "источник_света",
+      "operator": "eq",
+      "value": "LED",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "LED лампа - 1 шт."
+    },
+    {
+      "key": "напряжение",
+      "operator": "eq",
+      "value": 2.5,
+      "unit": "В",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Напряжение лампы - 2,5 В"
+    },
+    {
+      "key": "срок_службы_источника_света",
+      "operator": "gte",
+      "value": 50000,
+      "unit": "час",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Срок службы лампы - 50000 час"
+    },
+    {
+      "key": "апертура_щель",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Апертуры: Щель - Наличие"
+    },
+    {
+      "key": "апертура_точка_фиксации",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Апертуры: Точка фиксации - Наличие"
+    },
+    {
+      "key": "апертура_большой_круг",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Апертуры: Большой круг - Наличие"
+    },
+    {
+      "key": "апертура_малый_круг",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Апертуры: Малый круг - Наличие"
+    },
+    {
+      "key": "апертура_полукруг",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Апертуры: Полукруг - Наличие"
+    },
+    {
+      "key": "количество_апертур",
+      "operator": "set",
+      "value": [
+        "щель",
+        "точка_фиксации",
+        "большой_круг",
+        "малый_круг",
+        "полукруг"
+      ],
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Апертуры: Щель, Точка фиксации, Большой круг, Малый круг, Полукруг"
+    },
+    {
+      "key": "материал_рукояти",
+      "operator": "eq",
+      "value": "металл",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Рукоять из металла на батарейках - Наличие"
+    },
+    {
+      "key": "замок_крепления",
+      "operator": "eq",
+      "value": "тип «Клик»",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Замок крепления рукояти и головки типа 'Клик' - Наличие"
+    },
+    {
+      "key": "покрытие_рукоятки",
+      "operator": "eq",
+      "value": "рифленое",
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Рифленое покрытие рукоятки для защиты от скольжения - Наличие"
+    },
+    {
+      "key": "регулировка_яркости",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Реостат - Наличие"
+    },
+    {
+      "key": "выбор_апертуры",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Выбор апертуры с помощью колесика на голове офтальмоскопа - Наличие"
+    },
+    {
+      "key": "год_выпуска",
+      "operator": "gte",
+      "value": 2023,
+      "unit": "год",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Год выпуска оборудование и комплектующих не ранее 2023 года"
+    },
+    {
+      "key": "декларация_сертификат_соответствия",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Декларация о соответствии или сертификат соответствия или качества товара, в случае если данный товар подлежит обязательному декларированию или сертификации"
+    },
+    {
+      "key": "рег_удостоверение",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Регистрационное удостоверение на медицинские изделия - Наличие"
+    },
+    {
+      "key": "инструкция_на_русском",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "hard",
+      "type": "documentary",
+      "raw": "Инструкция по эксплуатации на русском языке - Наличие"
+    },
+    {
+      "key": "гарантия",
+      "operator": "gte",
+      "value": 18,
+      "unit": "мес",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Гарантия производителя оборудования не менее 18 месяцев"
+    },
+    {
+      "key": "гарантия_поставщика_мес",
+      "operator": "gte",
+      "value": 18,
+      "unit": "мес",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Гарантия поставщика оборудования не менее 18 месяцев"
+    },
+    {
+      "key": "комплектация_монтажные_принадлежности",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Поставка в комплекте с необходимыми монтажными принадлежностями, комплектующими и другими материалами для ввода в эксплуатацию и полноценной работы оборудования"
+    },
+    {
+      "key": "сервисное_обслуживание",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Сервисное обслуживание в течение гарантийного периода, в соответствии с требованиями завода изготовителя - Наличие"
+    },
+    {
+      "key": "сервисная_служба",
+      "operator": "present",
+      "value": true,
+      "unit": "",
+      "hardness": "soft",
+      "type": "technical",
+      "raw": "Сервисная служба - Наличие"
+    }
+  ]
+}

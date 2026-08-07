@@ -1,0 +1,29 @@
+{
+  "id": "gloves-latex-surgical-sterile",
+  "name": "Перчатки латексные хирургические стерильные, анатомической формы, неопудренные",
+  "ktru": [],
+  "attributes": [
+    {"key": "материал", "value": "латекс", "status": "declared"},
+    {"key": "назначение", "value": "хирургические", "status": "declared"},
+    {"key": "стерильность", "value": "да", "status": "declared"},
+    {"key": "опудренность", "value": "нет", "status": "declared"},
+    {"key": "форма", "value": "анатомическая", "status": "declared"},
+    {"key": "отделка_текстура", "value": "текстурированы по рабочей поверхности", "status": "declared"},
+    {"key": "манжета", "value": "заканчивается валиком, облегает запястье", "status": "declared"},
+    {"key": "обработка_внутренней_поверхности", "value": "полимерное покрытие", "status": "declared"},
+    {"key": "размеры", "value": ["6", "6.5", "7", "7.5", "8", "8.5", "9"], "status": "declared"},
+    {"key": "длина_мм", "value": 280, "status": "declared"},
+    {"key": "толщина_манжеты_мм", "value": 0.10, "status": "declared"},
+    {"key": "толщина_ладонь_мм", "value": 0.14, "status": "declared"},
+    {"key": "толщина_пальцы_мм", "value": 0.16, "status": "declared"},
+    {"key": "срок_годности_остаточный_мес", "value": 36, "status": "declared"},
+    {"key": "гост", "value": "52238-2004", "status": "declared"},
+    {"key": "тип_использования", "value": "одноразовый", "status": "declared"},
+    {"key": "класс_потенциального_риска", "value": "2А", "status": "declared"},
+    {"key": "страна_происхождения", "value": "Российская Федерация", "status": "declared"},
+    {"key": "сертификат_соответствия", "value": "да", "status": "declared"},
+    {"key": "декларация_соответствия", "value": "да", "status": "declared"},
+    {"key": "рег_удостоверение", "value": "РУ имеется", "status": "declared"},
+    {"key": "новый_товар", "value": "да", "status": "declared"}
+  ]
+}
