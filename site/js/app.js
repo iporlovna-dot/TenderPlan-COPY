@@ -14,6 +14,7 @@ const LK = (() => {
   const KEY_PRODUCTS = "lekalo_products";
   const KEY_SEARCHES = "lekalo_searches";
   const KEY_CURRENT_SEARCH = "lekalo_current_search";
+  const KEY_MY_TZ = "lekalo_my_tz";
 
   // ---------- компания / сессия ----------
 
@@ -181,6 +182,20 @@ const LK = (() => {
     list.push(p);
     setProducts(list);
     return p;
+  }
+
+  // ---------- своё ТЗ (для «Умной сверки» по всей ленте) ----------
+
+  // Храним НЕ текст, а имя файла и извлечённые термины: текст ТЗ бывает под
+  // мегабайт, а в localStorage лимит ~5 МБ на весь домен — снапшот поисков и
+  // доска закупок живут там же. Термины — это ровно то, что нужно сравнению,
+  // и их сотни, а не сотни тысяч символов.
+  function getMyTz() {
+    try { return JSON.parse(localStorage.getItem(KEY_MY_TZ)) || null; } catch { return null; }
+  }
+  function setMyTz(tz) {
+    if (!tz) localStorage.removeItem(KEY_MY_TZ);
+    else localStorage.setItem(KEY_MY_TZ, JSON.stringify(tz));
   }
 
   // ---------- сохранённые поиски (шаблоны, как «Мои поиски» у ТП) ----------
@@ -616,6 +631,7 @@ const LK = (() => {
   return {
     getCompany, setCompany, clearSession, isLoggedIn,
     getProducts, setProducts, addProduct,
+    getMyTz, setMyTz,
     getSearches, setSearches, addSearch, updateSearch, deleteSearch,
     getCurrentSearchId, setCurrentSearchId,
     getSaved, isSaved, savedStatus, addToBoard, setBoardStatus, setBoardAssignee, removeSaved,

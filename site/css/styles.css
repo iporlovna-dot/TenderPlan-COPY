@@ -1287,6 +1287,9 @@ section { padding: 92px 0; position: relative; }
 .tender-score__num.gap { color: var(--gap); }
 .tender-score__num.bad { color: var(--bad); }
 .tender-score__pct { font-size: 0.9rem; color: var(--ink-faint); }
+/* ТЗ закупки не разобрано — честный прочерк вместо выдуманного процента.
+   Причина висит в title и разворачивается в детали карточки. */
+.tender-score__num--none { color: var(--ink-faint); cursor: help; }
 
 .tender-body { flex-grow: 1; min-width: 0; }
 .tender-body__top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; flex-wrap: wrap; }

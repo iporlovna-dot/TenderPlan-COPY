@@ -1,11 +1,23 @@
-/* Клиентская сверка «своё ТЗ ↔ ТЗ закупки».
-   Извлекает текст из .txt/.docx прямо в браузере (docx — ZIP + DecompressionStream),
-   вытаскивает значимые термины и считает покрытие. Порт server/app/matching.py. */
+/* Сверка «своё ТЗ ↔ ТЗ закупки»: извлечение текста, термины, покрытие.
+   Порт server/app/matching.py.
+
+   Работает В ДВУХ СРЕДАХ — в браузере и в Node 18+ (сборщик снапшота):
+   разбор .docx опирается только на DecompressionStream/TextDecoder/DataView,
+   которые есть и там, и там. Общий файл, а не третья копия алгоритма, потому что
+   термины закупки готовит сборщик (`tools/sources/tzterms.js`), а сравнивает с
+   ними ТЗ пользователя фронт — разъехавшийся стемминг дал бы разные проценты
+   на одних и тех же данных. См. CLAUDE.md, «Умная сверка». */
 
 const LKTZ = (() => {
 
   const UNIT = "(?:мм|см|м|кг|г|мл|л|шт|мкм|%|мпа|вт|квт|в|гц|гост|iso|ту)";
-  const NUM_RE = new RegExp("[a-zа-яё0-9().,-]*\\s*[\\u2265\\u2264=<>]?\\s*\\d+[.,]?\\d*\\s*" + UNIT + "\\b", "giu");
+  // Конец единицы измерения — через отрицательный просмотр вперёд, а НЕ через \b.
+  // В JS \b опирается на \w = [A-Za-z0-9_], кириллица туда не входит: после «мм»
+  // граница слова не возникает никогда, и регэксп не матчил ни «0,1 мм», ни
+  // «500 шт» — то есть числовые требования не извлекались вообще. В Python-порте
+  // (server/app/matching.py) тот же шаблон работает, потому что там \b юникодный.
+  // Та же грабля уже стоила цикла сборки на сроках ЕИС (см. скилл lekalo-ship).
+  const NUM_RE = new RegExp("[a-zа-яё0-9().,-]*\\s*[\\u2265\\u2264=<>]?\\s*\\d+[.,]?\\d*\\s*" + UNIT + "(?![а-яёa-z])", "giu");
   const WORD_RE = /[а-яёa-z0-9]{4,}/giu;
   const STOP = ["поставка","закупка","товар","оказание","услуги","выполнение","работ","нужд",
     "государственн","бюджетн","учреждение","который","должен","также","соответствии",
@@ -42,19 +54,32 @@ const LKTZ = (() => {
   }
 
   function compare(purchaseText, productText) {
-    const req = terms(purchaseText);
-    const have = terms(productText);
-    const haveArr = [...have];
-    const haveJoin = haveArr.join(" ");
+    return compareTerms(terms(purchaseText), terms(productText));
+  }
+
+  // Ядро сравнения — на уже извлечённых терминах, а не на тексте. Отдельно от
+  // compare() потому, что в ленте термины закупки приходят готовыми из снапшота
+  // (их извлёк сборщик из .docx, который браузеру недоступен из-за CORS), и
+  // перегонять их обратно в текст ради одного API было бы враньём и потерей.
+  //
+  // Совпадение — строгое, по множествам. Раньше тут был подстрочный перебор
+  // (`haveArr.some(h => h.includes(t) || t.includes(h))`), и он ушёл по двум
+  // причинам. Во-первых, цена: в ленте сравнение гоняется по всем ~4200 закупкам
+  // на каждую сортировку, а перебор — это O(терминов ТЗ × моих терминов) на
+  // закупку, счёт шёл на сотни миллионов операций и подвешивал вкладку.
+  // Во-вторых, честность: обе стороны теперь проходят ОДИН стеммер (термины
+  // закупки готовит сборщик этим же файлом), поэтому настоящее совпадение и так
+  // даёт точное равенство, а подстрока добавляла ложные — ровно тот случай, о
+  // котором предупреждает комментарий у RU_ENDINGS: «клиника» покрывала «клин».
+  function compareTerms(reqTerms, haveTerms) {
+    const req = reqTerms instanceof Set ? reqTerms : new Set(reqTerms || []);
+    const have = haveTerms instanceof Set ? haveTerms : new Set(haveTerms || []);
     if (!req.size) {
       return { score: 0, verdict: "eligible_with_gaps", checks: [],
         explanation: "Не удалось извлечь требования из текста ТЗ закупки (пустой текст или скан)." };
     }
     const covered = [], missing = [];
-    [...req].sort().forEach(t => {
-      if (have.has(t) || haveJoin.includes(t) || haveArr.some(h => h.includes(t) || t.includes(h))) covered.push(t);
-      else missing.push(t);
-    });
+    [...req].sort().forEach(t => (have.has(t) ? covered : missing).push(t));
     const score = Math.round(100 * covered.length / req.size);
     const checks = [];
     covered.slice(0, 8).forEach(t => checks.push({ req: t, status: "pass" }));
@@ -85,7 +110,13 @@ const LKTZ = (() => {
   // Центральный каталог всегда содержит настоящий размер и офсет — так же, как
   // это делают JSZip/zip.js/python zipfile.
   async function readDocx(file) {
-    const buf = new Uint8Array(await file.arrayBuffer());
+    return await docxTextFromBytes(new Uint8Array(await file.arrayBuffer()));
+  }
+
+  // Тот же разбор, но от голых байт — так им пользуется сборщик в Node, где
+  // никакого File нет, а есть буфер скачанного документа.
+  async function docxTextFromBytes(buf) {
+    if (!(buf instanceof Uint8Array)) buf = new Uint8Array(buf);
     const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
 
     const EOCD_SIG = 0x06054b50;
@@ -138,5 +169,10 @@ const LKTZ = (() => {
     return xml.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
   }
 
-  return { compare, extractText };
+  return { compare, compareTerms, extractText, terms, stem, docxTextFromBytes };
 })();
+
+// Сборщик (Node) подключает этот же файл через require, чтобы термины закупки и
+// термины пользовательского ТЗ считались ОДНИМ кодом. В браузере ветка не
+// исполняется: `module` там не определён.
+if (typeof module !== "undefined" && module.exports) module.exports = LKTZ;

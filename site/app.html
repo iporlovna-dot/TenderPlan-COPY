@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Поиск торгов — Лекало</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/styles.css?v=6146a5a7">
+<link rel="stylesheet" href="css/styles.css?v=300222d1">
 </head>
 <body>
 
@@ -121,18 +121,17 @@
       <button class="filter-reset" id="filter-reset">Сбросить</button>
     </div>
 
-    <!-- надстройка: сверка по ТЗ (скрыта по требованию). display:none инлайном, а НЕ
-         атрибут hidden: правило .match-bar{display:flex} перебивает [hidden] по
-         приоритету, и строка оставалась видимой. Элементы оставлены в DOM (на них
-         ссылается appview.js: #match-enable/#match-product) — вернуть = убрать style. -->
-    <div class="match-bar" id="match-bar" style="display:none">
+    <!-- Умная сверка: своё ТЗ ↔ ТЗ каждой закупки ленты. Термины ТЗ закупок
+         готовит сборщик (tools/sources/tzterms.js) и кладёт в снапшот — браузер
+         сам их достать не может, документы лежат на гос-сайтах без CORS. -->
+    <div class="match-bar" id="match-bar">
       <label class="match-toggle">
-        <input type="checkbox" id="match-enable">
+        <input type="checkbox" id="match-enable" disabled>
         <span class="match-toggle__track"><span class="match-toggle__thumb"></span></span>
         <span class="match-toggle__label">Умная сверка по ТЗ</span>
       </label>
-      <select id="match-product" disabled></select>
-      <span class="match-hint" id="match-hint">— сверяем текст ТЗ каждой закупки с характеристиками товара и показываем % совпадения</span>
+      <button class="btn btn-ghost btn-sm" id="match-tz-btn">Загрузить своё ТЗ</button>
+      <span class="match-hint" id="match-hint">— загрузите своё ТЗ, и лента покажет % совпадения по каждой закупке</span>
     </div>
 
     <div class="feed-wrap">
@@ -146,7 +145,7 @@
           <option value="deadline">По сроку подачи</option>
           <option value="price-desc">НМЦК: по убыванию</option>
           <option value="price-asc">НМЦК: по возрастанию</option>
-          <option value="score">По % совпадения с товаром</option>
+          <option value="score">По % совпадения с вашим ТЗ</option>
         </select>
       </div>
 
@@ -209,6 +208,32 @@
   </div>
 </div>
 
+<!-- ---------- модалка: моё ТЗ (одно на всю ленту) ---------- -->
+<div class="modal-backdrop" id="mytz-modal">
+  <div class="modal-box">
+    <h2>Ваше ТЗ</h2>
+    <p style="color:var(--ink-faint);font-size:0.9rem;">
+      Загрузите один раз — лента посчитает % совпадения по каждой закупке.
+      Храним не сам файл, а извлечённые требования, и только в этом браузере.
+    </p>
+
+    <div class="tz-col">
+      <label>Файл ТЗ или описание товара</label>
+      <input type="file" id="mytz-file" accept=".txt,.docx">
+      <textarea id="mytz-text" placeholder="…или вставьте текст сюда"></textarea>
+    </div>
+
+    <p style="color:var(--ink-faint);font-size:0.85rem;margin-top:10px;" id="mytz-current"></p>
+    <div id="mytz-result"></div>
+
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="mytz-remove">Убрать</button>
+      <button type="button" class="btn btn-ghost btn-block" id="mytz-cancel">Закрыть</button>
+      <button type="button" class="btn btn-primary btn-block" id="mytz-save">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <!-- ---------- модалка: сверка своего ТЗ с ТЗ закупки ---------- -->
 <div class="modal-backdrop" id="tz-modal">
   <div class="modal-box">
@@ -238,8 +263,8 @@
 </div>
 
 <script src="js/config.js?v=9c2cdfe5"></script>
-<script src="js/tzmatch.js?v=ab534545"></script>
-<script src="js/app.js?v=ea2c07a9"></script>
-<script src="js/appview.js?v=f3436554"></script>
+<script src="js/tzmatch.js?v=525c7f88"></script>
+<script src="js/app.js?v=aa89025a"></script>
+<script src="js/appview.js?v=cd2fabea"></script>
 </body>
 </html>

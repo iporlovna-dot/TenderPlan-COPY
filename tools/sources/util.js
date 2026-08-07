@@ -9,7 +9,7 @@ const RETRY_DELAY_MS = Number(process.env.LK_CURL_RETRY_DELAY_MS || 800);
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function curlOnce(args) {
+function curlOnce(args, binary) {
   return new Promise((resolve, reject) => {
     // -s (тихий прогресс) + -S (но ошибки всё же печатать) — раньше -s одна
     // глушила и реальный текст ошибки curl, поэтому сбои были нечитаемыми
@@ -22,7 +22,9 @@ function curlOnce(args) {
       "-H", "Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
       "--max-time", "30", ...args,
     ],
-      { maxBuffer: 40 * 1024 * 1024, encoding: "utf8" },
+      // encoding "buffer" — для документов (.docx это ZIP): прогон бинарника через
+      // utf8-декодер необратимо портит байты, и ZIP потом не разбирается.
+      { maxBuffer: 40 * 1024 * 1024, encoding: binary ? "buffer" : "utf8" },
       // node сам подставляет stderr в err.message при ненулевом коде возврата —
       // достаточно, что -S заставляет curl вообще что-то туда написать.
       (err, stdout) => (err ? reject(err) : resolve(stdout)));
@@ -34,17 +36,25 @@ function curlOnce(args) {
 // один большой запрос списка падал — и весь источник возвращал 0 закупок).
 // HTTP-статусы curl сам ошибкой не считает (нет --fail) — это на совести
 // вызывающего кода, повтор тут только про сетевые сбои самого curl.
-async function curlAsync(args) {
+async function curlAsync(args, binary) {
   let lastErr;
   for (let attempt = 0; attempt <= RETRIES; attempt++) {
     try {
-      return await curlOnce(args);
+      return await curlOnce(args, binary);
     } catch (e) {
       lastErr = e;
       if (attempt < RETRIES) await sleep(RETRY_DELAY_MS * (attempt + 1));
     }
   }
   throw lastErr;
+}
+
+// Скачать файл как Buffer. `-L` обязателен: ссылки на документы у обеих площадок
+// ведут через редиректы (в отличие от поиска ЕИС, где -L наоборот ломает запрос —
+// см. CLAUDE.md). Потолок размера — чтобы одна гигантская смета не съела память.
+const MAX_DOC_BYTES = Number(process.env.LK_DOC_MAX_BYTES || 20 * 1024 * 1024);
+function curlBinary(url) {
+  return curlAsync(["-L", "--max-filesize", String(MAX_DOC_BYTES), url], true);
 }
 
 // Прогнать fn по массиву с не более чем `limit` одновременными запросами.
@@ -63,4 +73,4 @@ async function mapLimit(arr, limit, fn, onDone) {
   return ret;
 }
 
-module.exports = { curlAsync, mapLimit, sleep, UA };
+module.exports = { curlAsync, curlBinary, mapLimit, sleep, UA };

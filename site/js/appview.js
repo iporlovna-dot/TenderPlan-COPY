@@ -43,8 +43,7 @@
     pageSize: LK.getPageSize(),
     filters: DEFAULT_FILTERS(),
     sort: "fresh",
-    matchEnabled: false,
-    matchProductId: null
+    matchEnabled: false
   };
 
   // ---------- шапка / юзер ----------
@@ -283,37 +282,79 @@
 
   // ---------- надстройка: сверка по ТЗ ----------
 
-  function renderMatchProducts() {
-    const products = LK.getProducts();
-    const sel = document.getElementById("match-product");
+  // Своё ТЗ живёт в localStorage как {name, terms[], savedAt}; в памяти держим
+  // Set — сравнение идёт по всей ленте, а пересоздавать Set на каждую закупку
+  // означало бы тысячи лишних аллокаций на каждую сортировку.
+  let myTzSet = null;
+  const matchMemo = new Map();   // id закупки → результат; сбрасывается при смене ТЗ
+
+  function loadMyTz() {
+    const tz = LK.getMyTz();
+    myTzSet = tz && tz.terms && tz.terms.length ? new Set(tz.terms) : null;
+    matchMemo.clear();
+    return tz;
+  }
+
+  function renderMatchBar() {
+    const tz = loadMyTz();
     const toggle = document.getElementById("match-enable");
-    if (!products.length) {
-      sel.innerHTML = `<option>нет карточек товара</option>`;
-      sel.disabled = true;
+    const hint = document.getElementById("match-hint");
+    const btn = document.getElementById("match-tz-btn");
+    if (!myTzSet) {
+      toggle.checked = false;
       toggle.disabled = true;
-      document.getElementById("match-hint").textContent = "— добавьте карточку товара, чтобы включить сверку по ТЗ";
+      state.matchEnabled = false;
+      btn.textContent = "Загрузить своё ТЗ";
+      hint.textContent = "— загрузите своё ТЗ, и лента покажет % совпадения по каждой закупке";
+      document.getElementById("match-bar").classList.remove("is-on");
       return;
     }
-    sel.innerHTML = products.map(p => `<option value="${p.id}">${lkEscape(p.name)}</option>`).join("");
-    state.matchProductId = state.matchProductId || products[0].id;
-    sel.value = state.matchProductId;
+    // ТЗ загружено — значит сверка нужна: включаем сразу, без лишнего клика.
+    // Сортировку при этом НЕ трогаем: на старте у человека может быть свой
+    // выбор («сначала новые»), навязывать ему ранжир по совпадению — грубо.
+    // При ручном включении тумблера сортировку меняем, там это уместно.
+    toggle.disabled = false;
+    toggle.checked = true;
+    state.matchEnabled = true;
+    document.getElementById("match-bar").classList.add("is-on");
+    btn.textContent = "Заменить ТЗ";
+    hint.textContent = `— сверяем с «${tz.name}» (${tz.terms.length} требований)`;
   }
 
   document.getElementById("match-enable").addEventListener("change", (e) => {
     state.matchEnabled = e.target.checked;
-    document.getElementById("match-product").disabled = !state.matchEnabled;
     document.getElementById("match-bar").classList.toggle("is-on", state.matchEnabled);
-    document.getElementById("match-hint").style.display = state.matchEnabled ? "none" : "";
-    renderFeed();
-  });
-  document.getElementById("match-product").addEventListener("change", (e) => {
-    state.matchProductId = e.target.value;
+    // при включении полезно сразу увидеть лучшее сверху, но выбор пользователя
+    // не перетираем, если он уже сам задал сортировку по совпадению
+    if (state.matchEnabled && state.sort !== "score") {
+      state.sort = "score";
+      document.getElementById("sort-select").value = "score";
+    }
     renderFeed();
   });
 
   function matchFor(p) {
-    if (!state.matchEnabled || !state.matchProductId) return null;
-    return (p.matches && p.matches[state.matchProductId]) || null;
+    if (!state.matchEnabled || !myTzSet) return null;
+    // нет разобранного ТЗ у закупки — процент не выдумываем, карточка объяснит почему
+    if (!p.tzTerms || !p.tzTerms.length) return null;
+    if (matchMemo.has(p.id)) return matchMemo.get(p.id);
+    const m = LKTZ.compareTerms(p.tzTerms, myTzSet);
+    matchMemo.set(p.id, m);
+    return m;
+  }
+
+  // Почему у закупки нет процента — человеку это важнее, чем пустое место.
+  const TZ_STATUS_NOTE = {
+    "no-doc": "у закупки не приложены документы — сверять нечего",
+    "pending": "ТЗ ещё не разобрано, появится в ближайшем обновлении",
+    "unsupported": "ТЗ приложено не в .docx — автоматически не разбирается",
+    "empty": "в документе не нашлось текста (похоже на скан)",
+    "error": "документ не удалось скачать",
+  };
+  function matchNote(p) {
+    if (!state.matchEnabled || !myTzSet) return "";
+    if (p.tzTerms && p.tzTerms.length) return "";
+    return TZ_STATUS_NOTE[p.tzStatus] || "ТЗ недоступно для автоматической сверки";
   }
 
   // ---------- фильтрация и поиск ----------
@@ -689,6 +730,7 @@
             <div class="facts-grid">${facts}</div>
           </div>
           ${docsHtml}
+          ${matchDetail(p, m)}
           <div class="tender-actions">
             ${p.href
               ? `<a class="btn btn-primary btn-sm" href="${lkEscape(platformHref(p))}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
@@ -699,16 +741,43 @@
       </div>`;
   }
 
+  // Разбор совпадения внутри карточки: сам процент без объяснения бесполезен —
+  // человеку нужно видеть, ЧТО именно совпало и чего не хватает.
+  function matchDetail(p, m) {
+    if (!state.matchEnabled || !myTzSet) return "";
+    const note = matchNote(p);
+    if (note) {
+      return `<div class="detail-block">
+        <div class="detail-block__title">Сверка с вашим ТЗ</div>
+        <div class="tz-hint">${lkEscape(note)}</div>
+      </div>`;
+    }
+    if (!m) return "";
+    const rows = m.checks.map(c => `
+      <div class="check-row"><span>${lkEscape(c.req)}${c.note ? ` — <span class="check-note">${lkEscape(c.note)}</span>` : ""}</span>
+      <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span></div>`).join("");
+    return `<div class="detail-block">
+      <div class="detail-block__title">Сверка с вашим ТЗ${p.tzDoc ? ` — по «${lkEscape(p.tzDoc)}»` : ""}</div>
+      <div class="explanation">${lkEscape(m.explanation)}</div>
+      ${rows}
+    </div>`;
+  }
+
   function cardHtml(p) {
     const m = matchFor(p);
     const fresh = p.publishedDaysAgo <= 2 ? `<span class="badge badge-fresh">новая</span>` : "";
     const lot = p.lotNote ? `<span class="lot-note">позиция ${p.lotNote.position} из ${p.lotNote.total}</span>` : "";
+    const note = matchNote(p);
+    // прочерк вместо числа: в колонку шириной 78px причина не влезет, её место —
+    // в детали карточки (matchDetail), а тут важно не сломать выравнивание ленты
     const scoreCol = m
       ? `<div class="tender-score"><div class="tender-score__num ${verdictClass(m.verdict)}">${m.score}<span class="tender-score__pct">%</span></div><span class="tender-score__cap">совпадение ТЗ</span></div>`
-      : "";
+      : (note
+        ? `<div class="tender-score"><div class="tender-score__num tender-score__num--none" title="${lkEscape(note)}">—</div><span class="tender-score__cap">нет ТЗ</span></div>`
+        : "");
 
     return `
-    <article class="tender-card ${m ? "has-match" : ""} ${LK.isViewed(p.id) ? "is-viewed" : ""}" data-id="${p.id}">
+    <article class="tender-card ${m || note ? "has-match" : ""} ${LK.isViewed(p.id) ? "is-viewed" : ""}" data-id="${p.id}">
       <div class="tender-card__main">
         ${scoreCol}
         <div class="tender-body">
@@ -974,6 +1043,64 @@
     loadSearch(id);
   });
 
+  // ---------- модалка: моё ТЗ (для сверки по всей ленте) ----------
+
+  const myTzModal = document.getElementById("mytz-modal");
+  function openMyTzModal() {
+    const tz = LK.getMyTz();
+    document.getElementById("mytz-file").value = "";
+    document.getElementById("mytz-text").value = "";
+    document.getElementById("mytz-current").textContent = tz
+      ? `Сейчас загружено: «${tz.name}» — ${tz.terms.length} требований`
+      : "Пока ничего не загружено.";
+    document.getElementById("mytz-remove").style.display = tz ? "" : "none";
+    document.getElementById("mytz-result").innerHTML = "";
+    myTzModal.classList.add("is-open");
+  }
+  function closeMyTzModal() { myTzModal.classList.remove("is-open"); }
+  document.getElementById("match-tz-btn").addEventListener("click", openMyTzModal);
+  document.getElementById("mytz-cancel").addEventListener("click", closeMyTzModal);
+  myTzModal.addEventListener("click", (e) => { if (e.target === myTzModal) closeMyTzModal(); });
+
+  document.getElementById("mytz-remove").addEventListener("click", () => {
+    LK.setMyTz(null);
+    renderMatchBar();
+    renderFeed();
+    closeMyTzModal();
+    lkToast("Своё ТЗ убрано");
+  });
+
+  document.getElementById("mytz-save").addEventListener("click", async () => {
+    const res = document.getElementById("mytz-result");
+    const file = document.getElementById("mytz-file").files[0];
+    const typed = document.getElementById("mytz-text").value.trim();
+    let text, name;
+    res.innerHTML = `<div class="tz-hint">Читаю…</div>`;
+    try {
+      if (file) { text = await LKTZ.extractText(file); name = file.name; }
+      else { text = typed; name = "вставленный текст"; }
+    } catch (e) {
+      res.innerHTML = `<div class="tz-hint tz-err">${lkEscape(e.message)}</div>`;
+      return;
+    }
+    if (!text || text.length < 20) {
+      res.innerHTML = `<div class="tz-hint tz-err">Слишком мало текста — загрузите .docx/.txt или вставьте описание товара.</div>`;
+      return;
+    }
+    const terms = [...LKTZ.terms(text)];
+    if (!terms.length) {
+      res.innerHTML = `<div class="tz-hint tz-err">Не удалось выделить требования из этого текста.</div>`;
+      return;
+    }
+    LK.setMyTz({ name, terms, savedAt: new Date().toISOString() });
+    renderMatchBar();
+    // включаем сразу: человек грузил ТЗ именно ради процентов, лишний клик тут лишний
+    document.getElementById("match-enable").checked = true;
+    document.getElementById("match-enable").dispatchEvent(new Event("change"));
+    closeMyTzModal();
+    lkToast(`ТЗ загружено — ${terms.length} требований`);
+  });
+
   // ---------- модалка: сверка своего ТЗ с ТЗ закупки ----------
 
   const tzModal = document.getElementById("tz-modal");
@@ -1037,7 +1164,7 @@
 
   // ---------- init ----------
 
-  renderMatchProducts();
+  renderMatchBar();
   renderSidebar();
 
   employees = await LK.getEmployees();  // для селекта ответственного в карточках
