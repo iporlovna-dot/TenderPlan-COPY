@@ -26,7 +26,11 @@ const DOCS_CACHE = path.join(CACHE_DIR, "eis-docs.json");
 // Термины ТЗ (для «Умной сверки») — свой кэш: ТЗ у закупки не меняется от часа к
 // часу, а качать документы каждый прогон заново — гигабайты трафика впустую.
 const TZ_CACHE = path.join(CACHE_DIR, "tz-terms.json");
-const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 120);
+// Бюджет разбора ТЗ за прогон. Держать ВЫШЕ EIS_DOCS: документы прибывают по
+// EIS_DOCS за час и каждый становится кандидатом на разбор, так что при меньшем
+// бюджете очередь растёт быстрее, чем разгребается, и покрытие не сходится.
+// Проверено на живом прогоне 2026-08-07: 120 против 150 — очередь копилась.
+const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 220);
 
 function loadCache(file) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); }
