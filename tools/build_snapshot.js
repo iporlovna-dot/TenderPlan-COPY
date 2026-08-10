@@ -32,20 +32,37 @@ const TZ_CACHE = path.join(CACHE_DIR, "tz-terms.json");
 // Проверено на живом прогоне 2026-08-07: 120 против 150 — очередь копилась.
 const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 220);
 
-function loadCache(file) {
-  try { return JSON.parse(fs.readFileSync(file, "utf8")); }
-  catch (e) { return {}; }   // нет файла/битый — начинаем с чистого, это не ошибка
+// Версия алгоритма отбора терминов ТЗ. Кэш хранит уже ОТОБРАННЫЕ термины, а не
+// текст документа, поэтому при смене отбора старые записи остаются старыми
+// навсегда — пока кто-нибудь не удалит файл руками. А руками некому: сборщик
+// живёт на другой машине и ходит по расписанию. Поэтому версия лежит в самом
+// кэше, и при расхождении он выбрасывается сам.
+// ПОДНИМАТЬ при любом изменении topTerms / termFreq / NUM_RE.
+const TZ_ALGO = 2;
+const ALGO_KEY = "__algo";
+
+function loadCache(file, algo) {
+  try {
+    const cache = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (algo != null && cache[ALGO_KEY] !== algo) {
+      console.log(`  кэш ${path.basename(file)}: алгоритм отбора изменился — разбираю заново`);
+      return {};
+    }
+    delete cache[ALGO_KEY];
+    return cache;
+  } catch (e) { return {}; }   // нет файла/битый — начинаем с чистого, это не ошибка
 }
 
 function loadDocsCache() { return loadCache(DOCS_CACHE); }
 
 // Чистим кэш от закупок, которых больше нет в снапшоте (истёк срок подачи и т.п.),
 // иначе он растёт без предела и тащит мусор годами.
-function saveCache(file, cache, keep) {
-  for (const n of Object.keys(cache)) if (!keep.has(n)) delete cache[n];
+function saveCache(file, cache, keep, algo) {
+  for (const n of Object.keys(cache)) if (n !== ALGO_KEY && !keep.has(n)) delete cache[n];
+  if (algo != null) cache[ALGO_KEY] = algo;
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   fs.writeFileSync(file, JSON.stringify(cache), "utf8");
-  return Object.keys(cache).length;
+  return Object.keys(cache).length - (algo != null ? 1 : 0);
 }
 
 function saveDocsCache(cache, keepNumbers) { return saveCache(DOCS_CACHE, cache, keepNumbers); }
@@ -94,10 +111,10 @@ async function main() {
   // Термины ТЗ — после фильтра по сроку: качать документы закупки, которая уже
   // закрылась, бессмысленно. Сбой здесь не должен ронять снапшот: лента без
   // «Умной сверки» полезна, а сверка без ленты — нет.
-  const tzCache = loadCache(TZ_CACHE);
+  const tzCache = loadCache(TZ_CACHE, TZ_ALGO);
   try {
     await annotateTz(purchases, tzCache, TZ_BUDGET);
-    const kept = saveCache(TZ_CACHE, tzCache, new Set(purchases.map(p => p.id)));
+    const kept = saveCache(TZ_CACHE, tzCache, new Set(purchases.map(p => p.id)), TZ_ALGO);
     console.log(`  кэш терминов ТЗ: ${kept} записей -> ${path.relative(process.cwd(), TZ_CACHE)}`);
   } catch (e) {
     console.error("ТЗ: ошибка разбора —", e.message, "(снапшот пишу без терминов)");
