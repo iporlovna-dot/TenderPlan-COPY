@@ -1304,10 +1304,34 @@ section { padding: 92px 0; position: relative; }
 .match-row__v.muted { color: var(--ink-faint); }
 .term-chip { display: inline-block; margin: 0 5px 5px 0; padding: 2px 8px; border-radius: 6px;
   font-family: var(--font-mono); font-size: 0.78rem; background: var(--paper-alt); border: 1px solid var(--line); }
+/* Значок внутри фишки, а не только цвет: в строке позиции лота совпавшие и
+   недостающие слова идут подряд, и одним цветом они читаются как один список —
+   проверено на стенде. Плюс это не полагается на различение цвета. */
 .term-chip.is-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.term-chip.is-ok::before { content: "✓ "; opacity: 0.75; }
 .term-chip.is-gap { color: var(--gap); border-color: color-mix(in srgb, var(--gap) 35%, transparent); }
+.term-chip.is-gap::before { content: "✗ "; opacity: 0.75; }
 .term-more { font-size: 0.78rem; color: var(--ink-faint); }
 @media (max-width: 760px) { .match-row { display: block; } .match-row__k { margin-bottom: 4px; } }
+
+/* разбор совпадения: предмет / позиции лота / требования — отдельными блоками,
+   каждый со своим объяснением, откуда взялось число */
+.match-sub { padding: 12px 0; border-top: 1px dashed var(--line); }
+.match-sub:first-of-type { border-top: none; padding-top: 4px; }
+.match-sub__title { font-weight: 600; font-size: 0.92rem; margin-bottom: 6px; }
+.match-why { margin-top: 8px; font-size: 0.8rem; line-height: 1.5; color: var(--ink-faint);
+  border-left: 2px solid var(--line); padding-left: 10px; }
+
+.lot-match { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.lot-match__row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line-soft, var(--line)); align-items: baseline; }
+.lot-match__row:last-child { border-bottom: none; }
+.lot-match__row.is-none { opacity: 0.55; }
+.lot-match__score { flex: 0 0 46px; text-align: right; font-family: var(--font-mono);
+  font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.lot-match__pct { font-size: 0.7em; color: var(--ink-faint); }
+.lot-match__body { flex: 1; min-width: 0; }
+.lot-match__name { display: block; font-size: 0.88rem; margin-bottom: 4px; }
+.lot-match__terms { display: block; }
 
 .tender-body { flex-grow: 1; min-width: 0; }
 .tender-body__top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; flex-wrap: wrap; }

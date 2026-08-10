@@ -165,6 +165,30 @@ const LKTZ = (() => {
     return scored.slice(0, limit);
   }
 
+  // Читаемая форма слова для показа человеку: основа «перчатк» в интерфейсе
+  // выглядит обрубком, а «перчатки» — нормально. Берём самую частую исходную
+  // форму из текста. Считается ТОЛЬКО для ТЗ пользователя: в снапшоте лежат одни
+  // основы, восстановить по ним исходное написание уже нельзя.
+  function surfaceForms(text) {
+    const byStem = new Map();          // основа → Map(форма → сколько раз)
+    let m;
+    WORD_RE.lastIndex = 0;
+    while ((m = WORD_RE.exec(text))) {
+      const w = m[0].toLowerCase();
+      const s = stem(w);
+      if (!byStem.has(s)) byStem.set(s, new Map());
+      const forms = byStem.get(s);
+      forms.set(w, (forms.get(w) || 0) + 1);
+    }
+    const out = {};
+    byStem.forEach((forms, s) => {
+      let best = s, top = -1;
+      forms.forEach((c, w) => { if (c > top) { top = c; best = w; } });
+      out[s] = best;
+    });
+    return out;
+  }
+
   // Основы текста закупки (название + лоты) — по ним ищем предмет. Отдельно от
   // terms(): здесь не нужны ни частоты, ни отсев стоп-слов, нужен быстрый Set.
   function stemSet(text) {
@@ -334,7 +358,7 @@ const LKTZ = (() => {
   }
 
   return { compare, compareTerms, extractText, terms, termFreq, stem, docxTextFromBytes,
-    makeIdf, subjectTerms, subjectMatch, stemSet, isMeasured, expandVariants };
+    makeIdf, subjectTerms, subjectMatch, stemSet, isMeasured, expandVariants, surfaceForms };
 })();
 
 // Сборщик (Node) подключает этот же файл через require, чтобы термины закупки и

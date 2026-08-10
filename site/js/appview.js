@@ -287,6 +287,7 @@
   // означало бы тысячи лишних аллокаций на каждую сортировку.
   let myTzSet = null;        // все требования моего ТЗ — для сверки с ТЗ закупки
   let mySubject = null;      // предмет: что за товар (топ основ по частоте × редкости)
+  let myForms = null;        // основа → исходное написание, только для показа
   let corpusIdf = null;      // вес термина по редкости, считается из снапшота
   const matchMemo = new Map();   // id закупки → результат; сбрасывается при смене ТЗ
   const SUBJECT_SIZE = 8;
@@ -324,6 +325,7 @@
     mySubject = (tz && tz.freq && corpusIdf)
       ? LKTZ.subjectTerms(new Map(Object.entries(tz.freq)), corpusIdf, SUBJECT_SIZE)
       : null;
+    myForms = (tz && tz.forms) || null;
     matchMemo.clear();
     return tz;
   }
@@ -834,41 +836,107 @@
 
   // Разбор совпадения внутри карточки: сам процент без объяснения бесполезен —
   // человеку нужно видеть, ЧТО именно совпало и чего не хватает.
+  // Показываем слово, а не основу: «перчатки» вместо «перчатк». Исходные написания
+  // есть только для ТЗ пользователя — в снапшоте лежат одни основы.
+  function label(t) { return (myForms && myForms[t]) || t; }
+
+  function chips(arr, cls, limit = 10) {
+    return arr.slice(0, limit).map(t => `<span class="term-chip ${cls}">${lkEscape(label(t))}</span>`).join("")
+      + (arr.length > limit ? `<span class="term-more">и ещё ${arr.length - limit}</span>` : "");
+  }
+
+  // Разбор по позициям лота. Есть у 4% закупок (замер по живому снапшоту: 157 из
+  // 4084, и все — Портал; у ЕИС лот один и его имя дословно повторяет название).
+  // Зато там, где позиций несколько, это и важнее всего: лот в РФ «всё или
+  // ничего», заявка подаётся на весь набор, и человеку нужно видеть, какие
+  // позиции он закрывает, а какие придётся добирать.
+  function lotBreakdown(p) {
+    const lots = p.lots || [];
+    if (!mySubject || lots.length < 2) return "";
+    const rows = lots.map(l => {
+      const sm = LKTZ.subjectMatch(mySubject, LKTZ.stemSet(l.name || ""));
+      const missed = mySubject.map(s => s.term).filter(t => !sm.matched.includes(t));
+      return { l, sm, missed };
+    }).sort((a, b) => b.sm.score - a.sm.score);
+
+    const covered = rows.filter(r => r.sm.score > 0).length;
+    return `
+      <div class="match-sub">
+        <div class="match-sub__title">По позициям лота — ваш товар закрывает ${covered} из ${rows.length}</div>
+        <div class="lot-match">
+          ${rows.map(r => `
+            <div class="lot-match__row ${r.sm.score ? "" : "is-none"}">
+              <span class="lot-match__score">${r.sm.score}<span class="lot-match__pct">%</span></span>
+              <span class="lot-match__body">
+                <span class="lot-match__name">${lkEscape(r.l.name || "без названия")}</span>
+                <span class="lot-match__terms">
+                  ${r.sm.matched.length ? chips(r.sm.matched, "is-ok", 6) : `<span class="muted">ничего из вашего ТЗ не совпало</span>`}
+                  ${r.missed.length && r.sm.matched.length ? chips(r.missed, "is-gap", 4) : ""}
+                </span>
+              </span>
+            </div>`).join("")}
+        </div>
+        <div class="match-why">Лот «всё или ничего»: заявка подаётся на весь набор сразу.
+          Позиции без совпадений придётся закупать или производить дополнительно.</div>
+      </div>`;
+  }
+
   function matchDetail(p, m) {
     if (!state.matchEnabled || !myTzSet || !m) return "";
+    if (!mySubject) {
+      return `<div class="detail-block detail-match">
+        <div class="detail-block__title">Сверка с вашим ТЗ</div>
+        <div class="tz-hint">Ваше ТЗ сохранено прежней версией — загрузите файл заново, чтобы видеть разбор.</div>
+      </div>`;
+    }
 
-    const chips = (arr, cls, limit = 10) =>
-      arr.slice(0, limit).map(t => `<span class="term-chip ${cls}">${lkEscape(t)}</span>`).join("")
-      + (arr.length > limit ? `<span class="term-more">и ещё ${arr.length - limit}</span>` : "");
+    // ---- предмет: почему именно столько ----
+    const missedSubj = mySubject.map(s => s.term).filter(t => !m.subject.matched.includes(t));
+    const subj = `
+      <div class="match-sub">
+        <div class="match-sub__title">Предмет — ${m.subject.score}%</div>
+        ${m.subject.matched.length
+          ? `<div class="match-row"><span class="match-row__k">Совпало</span>
+               <span class="match-row__v">${chips(m.subject.matched, "is-ok")}</span></div>`
+          : `<div class="match-row"><span class="match-row__k">Совпало</span>
+               <span class="match-row__v muted">ничего — закупка, скорее всего, про другой товар</span></div>`}
+        ${missedSubj.length ? `<div class="match-row"><span class="match-row__k">Не нашлось у заказчика</span>
+          <span class="match-row__v">${chips(missedSubj, "is-gap")}</span></div>` : ""}
+        <div class="match-why">Сравниваем ключевые слова вашего ТЗ с названием закупки и позициями лота —
+          они заполнены у каждой закупки. Слово весит тем больше, чем реже встречается в закупках:
+          «${lkEscape(label(mySubject[0].term))}» значит больше, чем «изделия» или «поставка».</div>
+      </div>`;
 
-    const subj = !mySubject
-      ? `<div class="tz-hint">Ваше ТЗ сохранено старой версией — загрузите файл заново, чтобы искать по предмету.</div>`
-      : m.subject.matched.length
-        ? `<div class="match-row"><span class="match-row__k">Предмет совпал</span>
-             <span class="match-row__v">${chips(m.subject.matched, "is-ok")}</span></div>`
-        : `<div class="match-row"><span class="match-row__k">Предмет</span>
-             <span class="match-row__v muted">слов вашего ТЗ в названии закупки нет</span></div>`;
-
-    // Требования разбираем только там, где ТЗ закупки реально скачано и разобрано.
-    // Иначе честно говорим почему, а не показываем ноль как результат сверки.
+    // ---- требования: только там, где ТЗ закупки скачано и разобрано ----
     let req;
     if (!m.req) {
-      req = `<div class="tz-hint">${lkEscape(matchNote(p) || "ТЗ закупки ещё не разобрано")}</div>`;
+      req = `<div class="match-sub">
+        <div class="match-sub__title">Требования ТЗ — нет данных</div>
+        <div class="tz-hint">${lkEscape(matchNote(p) || "ТЗ закупки ещё не разобрано")}</div>
+      </div>`;
     } else {
       const words = m.req.missing.filter(t => !LKTZ.isMeasured(t));
       req = `
-        <div class="explanation">${lkEscape(m.req.explanation)}</div>
-        ${m.req.measured.covered.length ? `<div class="match-row"><span class="match-row__k">Числовые требования, которые вы покрываете</span>
-          <span class="match-row__v">${chips(m.req.measured.covered, "is-ok")}</span></div>` : ""}
-        ${m.req.measured.missing.length ? `<div class="match-row"><span class="match-row__k">Числовых требований нет в вашем ТЗ</span>
-          <span class="match-row__v">${chips(m.req.measured.missing, "is-gap")}</span></div>` : ""}
-        ${words.length ? `<div class="match-row"><span class="match-row__k">Чего ещё нет у вас</span>
-          <span class="match-row__v">${chips(words, "is-gap", 12)}</span></div>` : ""}`;
+        <div class="match-sub">
+          <div class="match-sub__title">Требования ТЗ — ${m.req.score}%</div>
+          <div class="explanation">${lkEscape(m.req.explanation)}</div>
+          ${m.req.measured.covered.length ? `<div class="match-row"><span class="match-row__k">Размеры и количества, которые вы закрываете</span>
+            <span class="match-row__v">${chips(m.req.measured.covered, "is-ok")}</span></div>` : ""}
+          ${m.req.measured.missing.length ? `<div class="match-row"><span class="match-row__k">Требует заказчик, а у вас не указано</span>
+            <span class="match-row__v">${chips(m.req.measured.missing, "is-gap")}</span></div>` : ""}
+          ${words.length ? `<div class="match-row"><span class="match-row__k">Формулировки ТЗ без пары в вашем</span>
+            <span class="match-row__v">${chips(words, "is-gap", 12)}</span></div>` : ""}
+          <div class="match-why">Разбор идёт по всему документу ТЗ целиком, а не по отдельной позиции:
+            заказчик пишет требования сплошным текстом. Совпадение здесь ниже, чем по предмету,
+            почти всегда — это нормально: часть требований у заказчика про поставку и приёмку,
+            а не про сам товар.</div>
+        </div>`;
     }
 
     return `<div class="detail-block detail-match">
-      <div class="detail-block__title">Сверка с вашим ТЗ${p.tzDoc ? ` — по «${lkEscape(p.tzDoc)}»` : ""}</div>
+      <div class="detail-block__title">Разбор совпадения${p.tzDoc ? ` — ТЗ закупки «${lkEscape(p.tzDoc)}»` : ""}</div>
       ${subj}
+      ${lotBreakdown(p)}
       ${req}
     </div>`;
   }
@@ -1221,11 +1289,13 @@
     // localStorage (~5 МБ на домен) выдерживает с запасом.
     const freqMap = LKTZ.termFreq(text);
     const terms = [...freqMap.keys()];
+    // исходные написания — только чтобы показывать человеку слова, а не обрубки основ
+    const forms = LKTZ.surfaceForms(text);
     if (!terms.length) {
       res.innerHTML = `<div class="tz-hint tz-err">Не удалось выделить требования из этого текста.</div>`;
       return;
     }
-    LK.setMyTz({ name, terms, freq: Object.fromEntries(freqMap), savedAt: new Date().toISOString() });
+    LK.setMyTz({ name, terms, freq: Object.fromEntries(freqMap), forms, savedAt: new Date().toISOString() });
     renderMatchBar();
     // включаем сразу: человек грузил ТЗ именно ради процентов, лишний клик тут лишний
     document.getElementById("match-enable").checked = true;
