@@ -101,8 +101,18 @@ async function fetchResultsPageViaBrowser(browserPage, pageNum, searchString) {
 let _browserPromise = null;
 async function getBrowser() {
   if (!_browserPromise) {
-    const { chromium } = require("playwright");
-    _browserPromise = chromium.launch({ headless: true });
+    // `playwright` тянет собственный chromium (~150 МБ) при установке. Там, где
+    // его нет, хватает `playwright-core` + уже стоящего в системе Chrome: движку
+    // важен настоящий браузерный отпечаток (см. CLAUDE.md, «Грабли» §8), а чей
+    // это бинарник — неважно. Так сборщик поднимается на второй машине без
+    // выкачивания браузера.
+    let chromium;
+    try { ({ chromium } = require("playwright")); }
+    catch (e) { ({ chromium } = require("playwright-core")); }
+    const opts = { headless: true };
+    if (process.env.LK_CHROME_PATH) opts.executablePath = process.env.LK_CHROME_PATH;
+    else if (process.env.LK_CHROME_CHANNEL) opts.channel = process.env.LK_CHROME_CHANNEL;
+    _browserPromise = chromium.launch(opts);
   }
   return _browserPromise;
 }

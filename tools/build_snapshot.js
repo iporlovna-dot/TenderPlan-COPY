@@ -38,7 +38,7 @@ const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 220);
 // живёт на другой машине и ходит по расписанию. Поэтому версия лежит в самом
 // кэше, и при расхождении он выбрасывается сам.
 // ПОДНИМАТЬ при любом изменении topTerms / termFreq / NUM_RE.
-const TZ_ALGO = 2;
+const TZ_ALGO = 4;
 const ALGO_KEY = "__algo";
 
 function loadCache(file, algo) {
