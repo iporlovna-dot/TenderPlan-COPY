@@ -17,7 +17,28 @@ const LKTZ = (() => {
   // «500 шт» — то есть числовые требования не извлекались вообще. В Python-порте
   // (server/app/matching.py) тот же шаблон работает, потому что там \b юникодный.
   // Та же грабля уже стоила цикла сборки на сроках ЕИС (см. скилл lekalo-ship).
-  const NUM_RE = new RegExp("[a-zа-яё0-9().,-]*\\s*[\\u2265\\u2264=<>]?\\s*\\d+[.,]?\\d*\\s*" + UNIT + "(?![а-яёa-z])", "giu");
+  // Захватываем ТОЛЬКО само требование: знак сравнения, необязательное начало
+  // диапазона, число, единица. Раньше шаблон начинался с «[a-zа-яё0-9().,-]*» и
+  // тащил в термин всё, что стояло перед числом, — на живых ТЗ получались
+  // «черепаха-2, 18 мм» и «документами. 6. в». Такие строки у каждого документа
+  // свои, поэтому числовые требования не совпадали НИКОГДА.
+  const NUM_RE = new RegExp(
+    "(?:[\\u2265\\u2264=<>]\\s*)?" +
+    "(?:\\d+(?:[.,]\\d+)?\\s*[-\\u2013\\u2014]\\s*)?" +
+    "\\d+(?:[.,]\\d+)?\\s*" + UNIT + "(?![а-яёa-z])", "giu");
+
+  // Даты и номера реестров, притворяющиеся требованиями. Единицы «г» и «в»
+  // односимвольные и в русском совпадают с суффиксом года («2011 г.») и
+  // предлогом («в»), а КТРУ/ОГРН — просто длинные числа. Отличить их регэкспом
+  // единиц нельзя, отличаем по виду самого числа.
+  // Проверять надо ОБЕ ветки разбора: «2011г» приходит не из числового шаблона,
+  // а из словесного — `[а-яёa-z0-9]{4,}` глотает цифры с буквой целиком, и
+  // такой «термин» потом считается измеримым требованием.
+  function isNumericJunk(t) {
+    return /(?:19|20)\d{2}\s*г$/.test(t)   // «2011 г» — год, а не граммы
+      || /^(?:19|20)\d{2}$/.test(t)        // голый год: он есть в каждом ТЗ, различать нечего
+      || /\d{6,}/.test(t);                 // КТРУ/ОГРН/номер позиции, а не размер
+  }
   const WORD_RE = /[а-яёa-z0-9]{4,}/giu;
   const STOP = ["поставка","закупка","товар","оказание","услуги","выполнение","работ","нужд",
     "государственн","бюджетн","учреждение","который","должен","также","соответствии",
@@ -49,21 +70,91 @@ const LKTZ = (() => {
     return m ? m[1] + "к" : null;
   }
 
-  function terms(text) {
-    const set = new Set();
+  // Частоты, а не множество. Сколько раз основа встретилась в документе — это и
+  // есть сигнал «о чём ТЗ»: в ТЗ на перчатки «перчатк» стоит полсотни раз, а
+  // «законодательств» — три. Раньше мы это выбрасывали (хранили Set) и отбирали
+  // термины по ДЛИНЕ — а в русском длинные слова канцелярские
+  // («конкурентоспособност»), предмет же короткий («перчатк»). Замер на живом
+  // снапшоте: предмета закупки в сохранённых терминах не оказывалось вовсе.
+  function termFreq(text) {
+    const freq = new Map();
+    const bump = (t) => freq.set(t, (freq.get(t) || 0) + 1);
     let m;
     NUM_RE.lastIndex = 0;
-    while ((m = NUM_RE.exec(text))) set.add(m[0].trim().toLowerCase().replace(/\s+/g, " "));
+    while ((m = NUM_RE.exec(text))) {
+      const t = m[0].trim().toLowerCase().replace(/\s+/g, " ");
+      if (!isNumericJunk(t)) bump(t);
+    }
     WORD_RE.lastIndex = 0;
     while ((m = WORD_RE.exec(text))) {
       const s = stem(m[0]);
+      if (isNumericJunk(s)) continue;
       if (!STOP.some(x => s.startsWith(x.slice(0, 5)))) {
-        set.add(s);
+        bump(s);
         const alt = fleetingVowelVariant(s);
-        if (alt) set.add(alt);
+        if (alt) bump(alt);
       }
     }
+    return freq;
+  }
+
+  function terms(text) {
+    return new Set(termFreq(text).keys());
+  }
+
+  // ---------- редкость термина по корпусу ----------
+
+  // Вес термина = насколько он редок. Термин, который есть у всех ТЗ, весит ~0.
+  // Без этого «характеристик» (83% всех ТЗ) весил столько же, сколько «нитрилов»,
+  // и два НИКАК не связанных ТЗ совпадали на 16% — шумовой пол, на котором любой
+  // показанный процент врал. С весом по редкости пол падает до 6%.
+  function makeIdf(df, docCount) {
+    const N = Math.max(1, docCount || 0);
+    const get = df instanceof Map ? (t) => df.get(t) || 0 : (t) => (df && df[t]) || 0;
+    return (t) => Math.log((N + 1) / (get(t) + 1));
+  }
+
+  // ---------- предмет ТЗ ----------
+
+  // «Предмет» — что за товар, а не какие у него параметры. Берём основы, частые у
+  // меня и редкие в корпусе. Числа сюда не пускаем: «0,1 мм» — это требование к
+  // предмету, а не сам предмет, и в названии закупки его не бывает.
+  const SUBJECT_MIN_LEN = 5;
+  function subjectTerms(freq, idf, limit = 10) {
+    const scored = [];
+    freq.forEach((tf, t) => {
+      if (t.length < SUBJECT_MIN_LEN || /\d/.test(t)) return;
+      scored.push({ term: t, weight: tf * (idf ? idf(t) : 1) });
+    });
+    scored.sort((a, b) => b.weight - a.weight || a.term.localeCompare(b.term));
+    return scored.slice(0, limit);
+  }
+
+  // Основы текста закупки (название + лоты) — по ним ищем предмет. Отдельно от
+  // terms(): здесь не нужны ни частоты, ни отсев стоп-слов, нужен быстрый Set.
+  function stemSet(text) {
+    const set = new Set();
+    let m;
+    WORD_RE.lastIndex = 0;
+    while ((m = WORD_RE.exec(text || ""))) {
+      const s = stem(m[0]);
+      set.add(s);
+      const alt = fleetingVowelVariant(s);
+      if (alt) set.add(alt);
+    }
     return set;
+  }
+
+  // Совпал ли предмет: доля веса предметных слов, найденных в тексте закупки.
+  // Это главный сигнал ленты — название и лоты есть у 100% закупок, тогда как
+  // разобранное ТЗ пока у 4,6%.
+  function subjectMatch(subject, hayStems) {
+    const total = (subject || []).reduce((s, x) => s + x.weight, 0);
+    if (!total) return { score: 0, matched: [] };
+    const matched = subject.filter(x => hayStems.has(x.term));
+    if (!matched.length) return { score: 0, matched: [] };
+    const got = matched.reduce((s, x) => s + x.weight, 0);
+    return { score: Math.round(100 * got / total), matched: matched.map(x => x.term) };
   }
 
   function compare(purchaseText, productText) {
@@ -84,25 +175,39 @@ const LKTZ = (() => {
   // закупки готовит сборщик этим же файлом), поэтому настоящее совпадение и так
   // даёт точное равенство, а подстрока добавляла ложные — ровно тот случай, о
   // котором предупреждает комментарий у RU_ENDINGS: «клиника» покрывала «клин».
-  function compareTerms(reqTerms, haveTerms) {
+  // Измеримое требование — число с единицей («0,1 мм», «500 шт»). Именно по ним
+  // отклоняют заявку, поэтому в карточке они идут отдельным списком, а не тонут
+  // среди слов.
+  function isMeasured(t) { return /\d/.test(t) && /[а-яё%]/i.test(t); }
+
+  function compareTerms(reqTerms, haveTerms, idf) {
     const req = reqTerms instanceof Set ? reqTerms : new Set(reqTerms || []);
     const have = haveTerms instanceof Set ? haveTerms : new Set(haveTerms || []);
     if (!req.size) {
-      return { score: 0, verdict: "eligible_with_gaps", checks: [],
+      return { score: 0, verdict: "eligible_with_gaps", covered: [], missing: [],
+        measured: { covered: [], missing: [] },
         explanation: "Не удалось извлечь требования из текста ТЗ закупки (пустой текст или скан)." };
     }
     const covered = [], missing = [];
     [...req].sort().forEach(t => (have.has(t) ? covered : missing).push(t));
-    const score = Math.round(100 * covered.length / req.size);
-    const checks = [];
-    covered.slice(0, 8).forEach(t => checks.push({ req: t, status: "pass" }));
-    missing.slice(0, 8).forEach(t => checks.push({ req: t, status: "gap", note: "нет в вашем ТЗ" }));
+
+    // Вес по редкости, а не «одно требование — один голос». Без него термин из
+    // 83% всех ТЗ («характеристик») значил столько же, сколько «нитрилов».
+    const w = idf ? idf : () => 1;
+    const sum = (arr) => arr.reduce((s, t) => s + w(t), 0);
+    const total = sum(covered) + sum(missing);
+    const score = total > 0 ? Math.round(100 * sum(covered) / total) : 0;
+
+    const measured = {
+      covered: covered.filter(isMeasured),
+      missing: missing.filter(isMeasured),
+    };
     let verdict, expl;
-    if (score >= 80) { verdict = "eligible"; expl = "Ваш товар/ТЗ покрывает большинство требований."; }
-    else if (score >= 45) { verdict = "eligible_with_gaps"; expl = "Частичное совпадение — проверьте пробелы."; }
-    else { verdict = "disqualified"; expl = "Совпадение низкое — вероятно, речь о другом товаре."; }
-    return { score, verdict, checks,
-      explanation: `${expl} Покрыто ${covered.length} из ${req.size} требований.` };
+    if (score >= 60) { verdict = "eligible"; expl = "Требования закупки в основном покрыты вашим ТЗ."; }
+    else if (score >= 30) { verdict = "eligible_with_gaps"; expl = "Совпадение частичное — посмотрите, чего не хватает."; }
+    else { verdict = "disqualified"; expl = "Совпадение слабое — вероятно, закупка про другой товар."; }
+    return { score, verdict, covered, missing, measured,
+      explanation: `${expl} Совпало ${covered.length} требований из ${req.size}.` };
   }
 
   // ---------- извлечение текста из файла ----------
@@ -193,7 +298,8 @@ const LKTZ = (() => {
     return xml.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
   }
 
-  return { compare, compareTerms, extractText, terms, stem, docxTextFromBytes };
+  return { compare, compareTerms, extractText, terms, termFreq, stem, docxTextFromBytes,
+    makeIdf, subjectTerms, subjectMatch, stemSet, isMeasured };
 })();
 
 // Сборщик (Node) подключает этот же файл через require, чтобы термины закупки и

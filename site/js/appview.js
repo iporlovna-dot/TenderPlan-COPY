@@ -285,12 +285,41 @@
   // Своё ТЗ живёт в localStorage как {name, terms[], savedAt}; в памяти держим
   // Set — сравнение идёт по всей ленте, а пересоздавать Set на каждую закупку
   // означало бы тысячи лишних аллокаций на каждую сортировку.
-  let myTzSet = null;
+  let myTzSet = null;        // все требования моего ТЗ — для сверки с ТЗ закупки
+  let mySubject = null;      // предмет: что за товар (топ основ по частоте × редкости)
+  let corpusIdf = null;      // вес термина по редкости, считается из снапшота
   const matchMemo = new Map();   // id закупки → результат; сбрасывается при смене ТЗ
+  const SUBJECT_SIZE = 8;
+
+  // Корпус для оценки редкости — сам снапшот: у разобранных закупок есть tzTerms.
+  // Считаем один раз при загрузке, потому что вес нужен на каждой закупке ленты.
+  // Зачем вообще: замер на проде показал, что без веса два НИКАК не связанных ТЗ
+  // совпадают на 16% (медиана), а 37% случайных пар дают больше 20% — на таком
+  // шумовом полу любой показанный процент врёт. С весом пол падает до 6%.
+  // Корпус берём из ТЗ, а не из названий закупок: проверено на живых данных —
+  // на корпусе названий редкими оказываются как раз названия товаров, «перчатк»
+  // вылетает из предмета, и в выдачу по ТЗ на перчатки лезут «ТОВАРЫ СПОРТИВНЫЕ».
+  function buildCorpus() {
+    const df = new Map();
+    let docs = 0;
+    LK.allPurchases().forEach(p => {
+      if (!p.tzTerms || !p.tzTerms.length) return;
+      docs++;
+      new Set(p.tzTerms).forEach(t => df.set(t, (df.get(t) || 0) + 1));
+    });
+    corpusIdf = LKTZ.makeIdf(df, docs);
+    matchMemo.clear();
+  }
 
   function loadMyTz() {
     const tz = LK.getMyTz();
     myTzSet = tz && tz.terms && tz.terms.length ? new Set(tz.terms) : null;
+    // Предмет считаем по частотам. Старые ТЗ, сохранённые до этой версии, частот
+    // не имеют — тогда предмета нет, и сверка честно работает только по
+    // требованиям, пока человек не перезагрузит файл.
+    mySubject = (tz && tz.freq && corpusIdf)
+      ? LKTZ.subjectTerms(new Map(Object.entries(tz.freq)), corpusIdf, SUBJECT_SIZE)
+      : null;
     matchMemo.clear();
     return tz;
   }
@@ -305,20 +334,29 @@
       toggle.disabled = true;
       state.matchEnabled = false;
       btn.textContent = "Загрузить своё ТЗ";
-      hint.textContent = "— загрузите своё ТЗ, и лента покажет % совпадения по каждой закупке";
+      hint.textContent = "— загрузите своё ТЗ, и лента оставит только закупки по вашему товару";
       document.getElementById("match-bar").classList.remove("is-on");
       return;
     }
     // ТЗ загружено — значит сверка нужна: включаем сразу, без лишнего клика.
-    // Сортировку при этом НЕ трогаем: на старте у человека может быть свой
-    // выбор («сначала новые»), навязывать ему ранжир по совпадению — грубо.
-    // При ручном включении тумблера сортировку меняем, там это уместно.
+    // И сразу ранжируем по совпадению: со включённой сверкой лента — это уже
+    // результат поиска по ТЗ, а не общий список. В порядке «сначала новые»
+    // закупки с 52% совпадения оказывались под одиннадцатипроцентными —
+    // проверено на стенде с реальным ТЗ.
     toggle.disabled = false;
     toggle.checked = true;
     state.matchEnabled = true;
+    if (state.sort === "fresh") {
+      state.sort = "score";
+      document.getElementById("sort-select").value = "score";
+    }
     document.getElementById("match-bar").classList.add("is-on");
     btn.textContent = "Заменить ТЗ";
-    hint.textContent = `— сверяем с «${tz.name}» (${tz.terms.length} требований)`;
+    // Показываем именно предмет: человеку важно видеть, ЧТО система в его ТЗ
+    // считает товаром — если она ошиблась, это видно сразу, а не через пустую ленту.
+    hint.textContent = mySubject && mySubject.length
+      ? `— ищем по «${tz.name}»: ${mySubject.slice(0, 5).map(s => s.term).join(", ")}`
+      : `— сверяем с «${tz.name}» (${tz.terms.length} требований)`;
   }
 
   document.getElementById("match-enable").addEventListener("change", (e) => {
@@ -333,14 +371,49 @@
     renderFeed();
   });
 
+  // Предмет закупки берём из названия и лотов, а не из её ТЗ: название есть у
+  // ВСЕХ 4121 закупки, а разобранное ТЗ — у 4,6%. И название заказчик пишет сам,
+  // канцелярита в нём нет — это уже готовый, курированный предмет.
+  const stemCache = new Map();
+  function purchaseStems(p) {
+    let s = stemCache.get(p.id);
+    if (!s) {
+      s = LKTZ.stemSet([p.title, ...(p.lots || []).map(l => l.name)].filter(Boolean).join(" "));
+      stemCache.set(p.id, s);
+    }
+    return s;
+  }
+
+  // Два сигнала, и они намеренно НЕ смешиваются в одно число.
+  //   subject — про то ли это вообще товар (есть у каждой закупки);
+  //   req     — насколько сходятся требования (только там, где ТЗ разобрано).
+  // Слить их в один процент значило бы выдать «предмет не тот, зато шаблонные
+  // формулировки совпали» за совпадение.
   function matchFor(p) {
     if (!state.matchEnabled || !myTzSet) return null;
-    // нет разобранного ТЗ у закупки — процент не выдумываем, карточка объяснит почему
-    if (!p.tzTerms || !p.tzTerms.length) return null;
     if (matchMemo.has(p.id)) return matchMemo.get(p.id);
-    const m = LKTZ.compareTerms(p.tzTerms, myTzSet);
+    const subject = mySubject
+      ? LKTZ.subjectMatch(mySubject, purchaseStems(p))
+      : { score: 0, matched: [] };
+    const req = (p.tzTerms && p.tzTerms.length)
+      ? LKTZ.compareTerms(p.tzTerms, myTzSet, corpusIdf)
+      : null;
+    const m = { subject, req };
     matchMemo.set(p.id, m);
     return m;
+  }
+
+  // Со включённой сверкой лента становится поиском по своему ТЗ: показываем
+  // только закупки, чей предмет совпал. Иначе «умная сверка» была бы просто
+  // пересортировкой всех 4121 закупок, где подавляющее большинство — не про ваш товар.
+  function passesMatch(p) {
+    if (!state.matchEnabled || !mySubject) return true;
+    const m = matchFor(p);
+    return Boolean(m && m.subject.score > 0);
+  }
+
+  function subjectVerdict(score) {
+    return score >= 60 ? "eligible" : score >= 25 ? "eligible_with_gaps" : "disqualified";
   }
 
   // Почему у закупки нет процента — человеку это важнее, чем пустое место.
@@ -594,20 +667,6 @@
     return `<span class="deadline muted">${STAGE[liveStage(p)].label}</span>`;
   }
 
-  function matchDetail(m) {
-    const checks = m.checks.map(c => `
-      <div class="check-row">
-        <span>${lkEscape(c.req)}${c.note ? ` — <span class="check-note">${lkEscape(c.note)}</span>` : ""}</span>
-        <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span>
-      </div>`).join("");
-    return `
-      <div class="detail-block detail-match">
-        <div class="detail-block__title">Сверка с ТЗ ${verdictBadge(m.verdict)}</div>
-        ${checks}
-        <div class="explanation">${lkEscape(m.explanation)}</div>
-      </div>`;
-  }
-
   function analyticsDetail(p) {
     const cat = categoryFor(p);
     const cust = customerFor(p);
@@ -749,7 +808,6 @@
       <div class="tender-detail">
         <div class="tender-detail__inner">
           ${boardControls(p)}
-          ${m ? matchDetail(m) : ""}
           <div class="detail-block">
             <div class="detail-block__title">Позиции лота${p.lots.length > 1 ? ` (${p.lots.length})` : ""}</div>
             ${lots}
@@ -773,22 +831,41 @@
   // Разбор совпадения внутри карточки: сам процент без объяснения бесполезен —
   // человеку нужно видеть, ЧТО именно совпало и чего не хватает.
   function matchDetail(p, m) {
-    if (!state.matchEnabled || !myTzSet) return "";
-    const note = matchNote(p);
-    if (note) {
-      return `<div class="detail-block">
-        <div class="detail-block__title">Сверка с вашим ТЗ</div>
-        <div class="tz-hint">${lkEscape(note)}</div>
-      </div>`;
+    if (!state.matchEnabled || !myTzSet || !m) return "";
+
+    const chips = (arr, cls, limit = 10) =>
+      arr.slice(0, limit).map(t => `<span class="term-chip ${cls}">${lkEscape(t)}</span>`).join("")
+      + (arr.length > limit ? `<span class="term-more">и ещё ${arr.length - limit}</span>` : "");
+
+    const subj = !mySubject
+      ? `<div class="tz-hint">Ваше ТЗ сохранено старой версией — загрузите файл заново, чтобы искать по предмету.</div>`
+      : m.subject.matched.length
+        ? `<div class="match-row"><span class="match-row__k">Предмет совпал</span>
+             <span class="match-row__v">${chips(m.subject.matched, "is-ok")}</span></div>`
+        : `<div class="match-row"><span class="match-row__k">Предмет</span>
+             <span class="match-row__v muted">слов вашего ТЗ в названии закупки нет</span></div>`;
+
+    // Требования разбираем только там, где ТЗ закупки реально скачано и разобрано.
+    // Иначе честно говорим почему, а не показываем ноль как результат сверки.
+    let req;
+    if (!m.req) {
+      req = `<div class="tz-hint">${lkEscape(matchNote(p) || "ТЗ закупки ещё не разобрано")}</div>`;
+    } else {
+      const words = m.req.missing.filter(t => !LKTZ.isMeasured(t));
+      req = `
+        <div class="explanation">${lkEscape(m.req.explanation)}</div>
+        ${m.req.measured.covered.length ? `<div class="match-row"><span class="match-row__k">Числовые требования, которые вы покрываете</span>
+          <span class="match-row__v">${chips(m.req.measured.covered, "is-ok")}</span></div>` : ""}
+        ${m.req.measured.missing.length ? `<div class="match-row"><span class="match-row__k">Числовых требований нет в вашем ТЗ</span>
+          <span class="match-row__v">${chips(m.req.measured.missing, "is-gap")}</span></div>` : ""}
+        ${words.length ? `<div class="match-row"><span class="match-row__k">Чего ещё нет у вас</span>
+          <span class="match-row__v">${chips(words, "is-gap", 12)}</span></div>` : ""}`;
     }
-    if (!m) return "";
-    const rows = m.checks.map(c => `
-      <div class="check-row"><span>${lkEscape(c.req)}${c.note ? ` — <span class="check-note">${lkEscape(c.note)}</span>` : ""}</span>
-      <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span></div>`).join("");
-    return `<div class="detail-block">
+
+    return `<div class="detail-block detail-match">
       <div class="detail-block__title">Сверка с вашим ТЗ${p.tzDoc ? ` — по «${lkEscape(p.tzDoc)}»` : ""}</div>
-      <div class="explanation">${lkEscape(m.explanation)}</div>
-      ${rows}
+      ${subj}
+      ${req}
     </div>`;
   }
 
@@ -797,16 +874,22 @@
     const fresh = p.publishedDaysAgo <= 2 ? `<span class="badge badge-fresh">новая</span>` : "";
     const lot = p.lotNote ? `<span class="lot-note">позиция ${p.lotNote.position} из ${p.lotNote.total}</span>` : "";
     const note = matchNote(p);
-    // прочерк вместо числа: в колонку шириной 78px причина не влезет, её место —
-    // в детали карточки (matchDetail), а тут важно не сломать выравнивание ленты
+    // Крупно — предмет: он есть у каждой закупки и отвечает на главный вопрос
+    // «это вообще про мой товар?». Мелкой строкой — требования, если ТЗ закупки
+    // разобрано; если нет, прочерк с причиной в подсказке, а не выдуманный ноль.
+    // Причина в колонку шириной 78px не влезает, её место — в детали карточки.
     const scoreCol = m
-      ? `<div class="tender-score"><div class="tender-score__num ${verdictClass(m.verdict)}">${m.score}<span class="tender-score__pct">%</span></div><span class="tender-score__cap">совпадение ТЗ</span></div>`
-      : (note
-        ? `<div class="tender-score"><div class="tender-score__num tender-score__num--none" title="${lkEscape(note)}">—</div><span class="tender-score__cap">нет ТЗ</span></div>`
-        : "");
+      ? `<div class="tender-score">
+           <div class="tender-score__num ${verdictClass(subjectVerdict(m.subject.score))}">${m.subject.score}<span class="tender-score__pct">%</span></div>
+           <span class="tender-score__cap">предмет</span>
+           ${m.req
+             ? `<span class="tender-score__req" title="совпадение по требованиям разобранного ТЗ закупки">ТЗ ${m.req.score}%</span>`
+             : `<span class="tender-score__req tender-score__req--none" title="${lkEscape(note)}">ТЗ —</span>`}
+         </div>`
+      : "";
 
     return `
-    <article class="tender-card ${m || note ? "has-match" : ""} ${LK.isViewed(p.id) ? "is-viewed" : ""}" data-id="${p.id}">
+    <article class="tender-card ${m ? "has-match" : ""} ${LK.isViewed(p.id) ? "is-viewed" : ""}" data-id="${p.id}">
       <div class="tender-card__main">
         ${scoreCol}
         <div class="tender-body">
@@ -894,7 +977,7 @@
       ? LK.getSaved().filter(boardVisible)
           .filter(p => state.boardStatus === "all" || (p.boardStatus || BOARD_STATUSES[0]) === state.boardStatus)
           .filter(passesSearch)
-      : LK.allPurchases().filter(notDone).filter(passesSearch).filter(passesFilters);
+      : LK.allPurchases().filter(notDone).filter(passesSearch).filter(passesFilters).filter(passesMatch);
 
     const sortFn = {
       fresh: (a, b) => a.publishedDaysAgo - b.publishedDaysAgo,
@@ -904,19 +987,31 @@
       score: (a, b) => (score(b) - score(a)) || a.publishedDaysAgo - b.publishedDaysAgo
     }[state.sort];
     function rank(p) { return liveStage(p) === "active" ? 0 : 1; }
-    function score(p) { const m = matchFor(p); return m ? m.score : -1; }
+    // Сначала предмет, и лишь при равном предмете — совпадение требований:
+    // закупка про ваш товар с неразобранным ТЗ полезнее, чем чужая с разобранным.
+    function score(p) {
+      const m = matchFor(p);
+      if (!m) return -1;
+      return m.subject.score * 100 + (m.req ? m.req.score : 0);
+    }
 
     list.sort(sortFn);
 
+    // Пустая лента сразу после загрузки ТЗ — самый обидный тупик: человек не
+    // понимает, фильтр это или закупок правда нет. Называем причину и показываем,
+    // ЧТО именно система сочла предметом — ошибку видно сразу.
+    const emptyByMatch = !savedView && state.matchEnabled && mySubject && mySubject.length;
     if (!list.length) {
       count.textContent = savedView ? "" : "ничего не найдено";
       feed.innerHTML = `<div class="empty-state">
         <h3>${savedView
           ? (state.boardStatus === "all" ? "Пока нет закупок на доске" : `В статусе «${lkEscape(state.boardStatus)}» пусто`)
-          : "Ничего не найдено"}</h3>
+          : emptyByMatch ? "Закупок по вашему ТЗ сейчас нет" : "Ничего не найдено"}</h3>
         <p>${savedView
           ? "В карточке закупки выберите статус (＋ На доску), чтобы добавить её в работу."
-          : "Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап."}</p>
+          : emptyByMatch
+            ? `Искали по предмету: ${lkEscape(mySubject.slice(0, 5).map(s => s.term).join(", "))}. Выключите «Умную сверку», чтобы вернуть всю ленту, или загрузите ТЗ, где товар назван прямее.`
+            : "Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап."}</p>
       </div>`;
       document.getElementById("feed-pagination").innerHTML = "";
       return;
@@ -928,6 +1023,7 @@
 
     count.textContent =
       `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}` +
+      (!savedView && state.matchEnabled && mySubject && mySubject.length ? " по вашему ТЗ" : "") +
       (totalPages > 1 ? ` · страница ${state.page} из ${totalPages}` : "");
 
     const start = (state.page - 1) * state.pageSize;
@@ -1116,12 +1212,16 @@
       res.innerHTML = `<div class="tz-hint tz-err">Слишком мало текста — загрузите .docx/.txt или вставьте описание товара.</div>`;
       return;
     }
-    const terms = [...LKTZ.terms(text)];
+    // Храним и частоты: именно по ним определяется предмет ТЗ (что за товар), а
+    // не по длине слов. Объект на ~1500 основ — это десятки килобайт, лимит
+    // localStorage (~5 МБ на домен) выдерживает с запасом.
+    const freqMap = LKTZ.termFreq(text);
+    const terms = [...freqMap.keys()];
     if (!terms.length) {
       res.innerHTML = `<div class="tz-hint tz-err">Не удалось выделить требования из этого текста.</div>`;
       return;
     }
-    LK.setMyTz({ name, terms, savedAt: new Date().toISOString() });
+    LK.setMyTz({ name, terms, freq: Object.fromEntries(freqMap), savedAt: new Date().toISOString() });
     renderMatchBar();
     // включаем сразу: человек грузил ТЗ именно ради процентов, лишний клик тут лишний
     document.getElementById("match-enable").checked = true;
@@ -1204,6 +1304,9 @@
   updateSavedCount();
 
   LK.loadPurchases().then(() => {
+    buildCorpus();     // редкость терминов — из самого снапшота, до первой сверки
+    loadMyTz();        // предмет считается уже с корпусом
+    renderMatchBar();
     populateFacets();  // регион/площадка из реальных данных
     // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
     selectAllPurchases();

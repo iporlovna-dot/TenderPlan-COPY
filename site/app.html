@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Поиск торгов — Лекало</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/styles.css?v=300222d1">
+<link rel="stylesheet" href="css/styles.css?v=cdbce80a">
 </head>
 <body>
 
@@ -131,7 +131,7 @@
         <span class="match-toggle__label">Умная сверка по ТЗ</span>
       </label>
       <button class="btn btn-ghost btn-sm" id="match-tz-btn">Загрузить своё ТЗ</button>
-      <span class="match-hint" id="match-hint">— загрузите своё ТЗ, и лента покажет % совпадения по каждой закупке</span>
+      <span class="match-hint" id="match-hint">— загрузите своё ТЗ, и лента оставит только закупки по вашему товару</span>
     </div>
 
     <div class="feed-wrap">
@@ -145,7 +145,7 @@
           <option value="deadline">По сроку подачи</option>
           <option value="price-desc">НМЦК: по убыванию</option>
           <option value="price-asc">НМЦК: по возрастанию</option>
-          <option value="score">По % совпадения с вашим ТЗ</option>
+          <option value="score">По совпадению с вашим ТЗ</option>
         </select>
       </div>
 
@@ -213,7 +213,8 @@
   <div class="modal-box">
     <h2>Ваше ТЗ</h2>
     <p style="color:var(--ink-faint);font-size:0.9rem;">
-      Загрузите один раз — лента посчитает % совпадения по каждой закупке.
+      Загрузите один раз — лента оставит закупки по вашему товару и покажет,
+      что в требованиях сходится, а чего не хватает.
       Храним не сам файл, а извлечённые требования, и только в этом браузере.
     </p>
 
@@ -263,8 +264,8 @@
 </div>
 
 <script src="js/config.js?v=9c2cdfe5"></script>
-<script src="js/tzmatch.js?v=05f493ea"></script>
+<script src="js/tzmatch.js?v=94f913d5"></script>
 <script src="js/app.js?v=aa89025a"></script>
-<script src="js/appview.js?v=2170f4b7"></script>
+<script src="js/appview.js?v=c4438419"></script>
 </body>
 </html>

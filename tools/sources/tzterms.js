@@ -29,8 +29,8 @@ const LKTZ = require("../../site/js/tzmatch.js");
 
 const CONC = Number(process.env.LK_TZ_CONC || 4);
 // сколько терминов оставляем на закупку: длинные ТЗ дают тысячи, но снапшот и так
-// ~8 МБ. 120 самых длинных покрывают числовые требования и специфичные слова, а
-// отсекают общую воду — она всё равно есть у всех и на различение не влияет.
+// ~9 МБ. 120 отобранных (см. topTerms) покрывают предмет и числовые требования,
+// а вода отсекается — она есть у всех и на различение не влияет.
 const MAX_TERMS = Number(process.env.LK_TZ_MAX_TERMS || 120);
 
 // Имена, по которым документ похож на ТЗ. Порядок важен: «техническое задание»
@@ -72,21 +72,31 @@ function looksLikeZip(buf) {
 // совпадёт ни с чьим ТЗ, но, будучи самым длинным, вытеснял настоящие термины.
 const MAX_TERM_LEN = 24;
 
-// Из множества терминов оставить самые информативные.
-// Порядок: сначала измеримые требования (число + единица) — это то, по чему
-// заявку реально отклоняют; потом слова по длине как мере специфичности
-// («нитриловые» несёт больше, чем «шт»).
-function topTerms(set, limit) {
-  const clean = [...set].filter(t =>
-    t.length <= MAX_TERM_LEN
-    // длинные числовые «слова» — это КТРУ, ИНН, номера позиций: они уникальны у
-    // каждой закупки, совпасть не могут в принципе и только занимают место
-    && !/^\d{5,}$/.test(t));
-  const measured = clean.filter(t => /\d/.test(t) && /[а-яё%]/i.test(t));
+// Из терминов документа оставить самые информативные.
+// Принимает КАРТУ частот (основа → сколько раз встретилась), а не множество:
+// частота — единственный дешёвый признак предмета закупки. Отбор слов по длине,
+// который стоял здесь раньше, выбирал ровно наоборот: в русском длинные слова
+// канцелярские («конкурентоспособност», «антитеррористическ»), а предмет
+// короткий. Замер на живом снапшоте: у ТЗ на перчатки слова «перчатк» в
+// сохранённых терминах не оказывалось вовсе, зато 24% мест занимал шаблон,
+// встречающийся у 70–83% всех ТЗ.
+function topTerms(freq, limit) {
+  const entries = [...(freq instanceof Map ? freq : new Map(Object.entries(freq || {})))]
+    .filter(([t]) =>
+      t.length <= MAX_TERM_LEN
+      // длинные числовые «слова» — это КТРУ, ИНН, номера позиций: они уникальны у
+      // каждой закупки, совпасть не могут в принципе и только занимают место
+      && !/^\d{5,}$/.test(t));
+  const measured = entries.filter(([t]) => /\d/.test(t) && /[а-яё%]/i.test(t)).map(([t]) => t);
   const measuredSet = new Set(measured);
-  const words = clean.filter(t => !measuredSet.has(t));
-  const byLen = (a, b) => b.length - a.length || a.localeCompare(b);
-  measured.sort(byLen); words.sort(byLen);
+  const words = entries.filter(([t]) => !measuredSet.has(t));
+  // Измеримые требования частотой не ранжируются: «0,1 мм» стоит в документе
+  // один раз, а «2 шт» может повторяться в каждой строке спецификации — здесь
+  // информативнее длина, она отделяет «1195-1205 мм» от «5 шт».
+  measured.sort((a, b) => b.length - a.length || a.localeCompare(b));
+  const wordList = words
+    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length || a[0].localeCompare(b[0]))
+    .map(([t]) => t);
 
   // Бюджет делим пополам, а не отдаём числам целиком. Проверено на реальном ТЗ
   // (57 тыс. знаков, 1577 терминов): при приоритете чисел все 120 слотов
@@ -96,8 +106,8 @@ function topTerms(set, limit) {
   // «это про мой товар», числа — «и по параметрам проходим».
   // Недобор одной стороны отдаём другой, чтобы бюджет не пропадал.
   const half = Math.ceil(limit / 2);
-  const takeMeasured = Math.min(measured.length, Math.max(half, limit - words.length));
-  return measured.slice(0, takeMeasured).concat(words.slice(0, limit - takeMeasured));
+  const takeMeasured = Math.min(measured.length, Math.max(half, limit - wordList.length));
+  return measured.slice(0, takeMeasured).concat(wordList.slice(0, limit - takeMeasured));
 }
 
 // Разобрать один документ → термины. Возвращает { terms, docName, status }.
@@ -117,9 +127,9 @@ async function termsForDoc(doc) {
     // это ZIP, но не Word (часто .xlsx под именем без расширения) — не наш формат
     return { terms: [], docName: doc.name || "", status: "unsupported" };
   }
-  const set = LKTZ.terms(text || "");
-  if (!set.size) return { terms: [], docName: doc.name || "", status: "empty" };
-  return { terms: topTerms(set, MAX_TERMS), docName: doc.name || "", status: "ok" };
+  const freq = LKTZ.termFreq(text || "");
+  if (!freq.size) return { terms: [], docName: doc.name || "", status: "empty" };
+  return { terms: topTerms(freq, MAX_TERMS), docName: doc.name || "", status: "ok" };
 }
 
 // Проставить закупкам tzTerms/tzDoc/tzStatus. Мутирует переданные закупки.

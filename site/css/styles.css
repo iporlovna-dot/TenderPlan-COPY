@@ -1290,6 +1290,24 @@ section { padding: 92px 0; position: relative; }
 /* ТЗ закупки не разобрано — честный прочерк вместо выдуманного процента.
    Причина висит в title и разворачивается в детали карточки. */
 .tender-score__num--none { color: var(--ink-faint); cursor: help; }
+/* второй строкой — совпадение по требованиям разобранного ТЗ; отдельно от
+   предмета намеренно: смешать их в одно число значило бы выдать совпадение
+   шаблонных формулировок за совпадение товара */
+.tender-score__req { display: block; margin-top: 5px; font-family: var(--font-mono); font-size: 0.72rem;
+  color: var(--ink-soft); cursor: help; }
+.tender-score__req--none { color: var(--ink-faint); }
+
+/* разбор сверки в детали карточки */
+.match-row { display: flex; gap: 10px; padding: 7px 0; font-size: 0.86rem; align-items: baseline; }
+.match-row__k { flex: 0 0 200px; color: var(--ink-faint); }
+.match-row__v { flex: 1; min-width: 0; }
+.match-row__v.muted { color: var(--ink-faint); }
+.term-chip { display: inline-block; margin: 0 5px 5px 0; padding: 2px 8px; border-radius: 6px;
+  font-family: var(--font-mono); font-size: 0.78rem; background: var(--paper-alt); border: 1px solid var(--line); }
+.term-chip.is-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+.term-chip.is-gap { color: var(--gap); border-color: color-mix(in srgb, var(--gap) 35%, transparent); }
+.term-more { font-size: 0.78rem; color: var(--ink-faint); }
+@media (max-width: 760px) { .match-row { display: block; } .match-row__k { margin-bottom: 4px; } }
 
 .tender-body { flex-grow: 1; min-width: 0; }
 .tender-body__top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; flex-wrap: wrap; }
