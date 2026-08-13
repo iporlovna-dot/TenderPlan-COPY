@@ -40,25 +40,41 @@ const TZ_NAME_HINTS = [
   "описание объекта", "объект закупки", "характеристик", "спецификац",
 ];
 
-function pickTzDoc(documents) {
-  const docs = (documents || []).filter(d => d && d.url);
-  if (!docs.length) return null;
-  const scored = docs.map(d => {
-    const name = (d.name || "").toLowerCase();
-    let score = 0;
-    TZ_NAME_HINTS.forEach((hint, i) => {
-      if (name.includes(hint)) score = Math.max(score, TZ_NAME_HINTS.length - i);
-    });
-    // .docx предпочитаем при равном имени — только его мы и умеем разобрать
-    if (name.endsWith(".docx")) score += 0.5;
-    return { doc: d, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  // ничего не похоже на ТЗ по имени — берём первый .docx, если он есть: у ЕИС
-  // имена часто без расширения и без слова «задание», но документ всё равно тот
-  return scored[0].score > 0 ? scored[0].doc
-    : (docs.find(d => (d.name || "").toLowerCase().endsWith(".docx")) || docs[0]);
+// Форматы, которые мы заведомо не разберём. Скачивать их незачем: ответ известен
+// заранее, а трафик и место в бюджете реальные. `.zip`/`.rar` тоже сюда — архив
+// проходит проверку сигнатуры PK, но Word'ом не оказывается, и скачивание уходит
+// впустую. Файлы БЕЗ расширения не в списке намеренно: у ЕИС их половина всех
+// документов (5702 из 11427), и среди них полно настоящих .docx.
+const HOPELESS_EXT = /\.(pdf|docx?|xlsx?|rtf|odt|ods|txt|jpe?g|png|tiff?|sig|zip|rar|7z|gz)$/i;
+function isHopeless(name) {
+  const n = (name || "").trim().toLowerCase();
+  // .docx разбираем — из общего запрета на doc-подобные его надо вернуть
+  return HOPELESS_EXT.test(n) && !n.endsWith(".docx");
 }
+
+// Кандидаты в ТЗ, от самого правдоподобного к наименее. Раньше здесь выбирался
+// РОВНО ОДИН документ, и если он оказывался не .docx, закупка получала
+// `unsupported` навсегда — при том что рядом в той же закупке лежали другие
+// файлы. Замер на 40 таких закупках: перебор следующих кандидатов спасает 68%
+// ценой ~1.7 лишних скачиваний.
+function rankTzDocs(documents) {
+  const docs = (documents || []).filter(d => d && d.url && !isHopeless(d.name));
+  return docs
+    .map(d => {
+      const name = (d.name || "").toLowerCase();
+      let score = 0;
+      TZ_NAME_HINTS.forEach((hint, i) => {
+        if (name.includes(hint)) score = Math.max(score, TZ_NAME_HINTS.length - i);
+      });
+      // .docx предпочитаем при равном имени — только его мы и умеем разобрать
+      if (name.endsWith(".docx")) score += 0.5;
+      return { doc: d, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.doc);
+}
+
+function pickTzDoc(documents) { return rankTzDocs(documents)[0] || null; }
 
 // ZIP (а значит потенциально .docx) начинается с "PK\x03\x04". Проверяем байты, а
 // не имя: у ЕИС масса документов вообще без расширения в названии.
@@ -110,6 +126,11 @@ function topTerms(freq, limit) {
   return measured.slice(0, takeMeasured).concat(wordList.slice(0, limit - takeMeasured));
 }
 
+// Сколько кандидатов перебирать. Хвост длинных списков — это, как правило,
+// проекты контракта и обоснования НМЦК, а не ТЗ: перебирать все 20 приложений
+// ради них дорого, а отдача падает.
+const MAX_TRIES = Number(process.env.LK_TZ_TRIES || 4);
+
 // Разобрать один документ → термины. Возвращает { terms, docName, status }.
 // status: ok | unsupported (не docx) | empty (разобрали, но текста нет — скан) | error
 async function termsForDoc(doc) {
@@ -132,6 +153,25 @@ async function termsForDoc(doc) {
   return { terms: topTerms(freq, MAX_TERMS), docName: doc.name || "", status: "ok" };
 }
 
+// Перебрать кандидатов закупки, пока один не разберётся. `spend()` списывает
+// одно скачивание с общего бюджета прогона и отвечает, было ли что списывать.
+//
+// Если бюджет кончился на середине перебора, возвращаем `pending`, а НЕ вердикт
+// последней неудачи: «не разобралось» и «мы не дочитали до конца» — разные вещи,
+// и закэшированный на полпути `unsupported` закрыл бы закупке дорогу навсегда.
+// `parse` — шов для тестов: перебор кандидатов проверяется без сети.
+async function termsForPurchase(docs, spend, parse = termsForDoc) {
+  const tries = Math.min(MAX_TRIES, docs.length);
+  let lastBad = null;
+  for (let i = 0; i < tries; i++) {
+    if (!spend()) return { terms: [], docName: "", status: "pending", spent: i };
+    const res = await parse(docs[i]);
+    if (res.status === "ok") return { ...res, spent: i + 1 };
+    lastBad = res;
+  }
+  return { ...lastBad, spent: tries };
+}
+
 // Термины у закупки уже есть — значит её ТЗ когда-то разобрали. Такая запись
 // приходит из накопителя (tools/sources/store.js) и переживает прогоны.
 function hasTerms(p) { return Boolean(p.tzTerms && p.tzTerms.length); }
@@ -145,25 +185,34 @@ function unparsedFirst(a, b) { return Number(hasTerms(a.p)) - Number(hasTerms(b.
 // `budget` — сколько документов скачиваем за прогон.
 async function annotateTz(purchases, cache = {}, budget = 120) {
   const need = [];
-  let reused = 0, noDoc = 0;
+  let reused = 0, noDoc = 0, hopeless = 0;
   for (const p of purchases) {
     const hit = cache[p.id];
     if (hit) { applyTz(p, hit); reused++; continue; }
-    const doc = pickTzDoc(p.documents);
-    if (!doc) {
+    // Если термины у закупки уже есть, статус не трогаем вовсе: он про них и
+    // рассказывает, а «документов не видели» означало бы, что мы забыли
+    // собственную работу.
+    const known = hasTerms(p);
+    const docs = rankTzDocs(p.documents);
+    if (!docs.length) {
+      if (known) continue;
+      if ((p.documents || []).length) {
+        // Приложения есть, но все — форматы, которые мы не разбираем. Это
+        // окончательный ответ, и он не стоит ни одного скачивания: расширение
+        // уже всё сказало. Кэшируем, чтобы не пересчитывать каждый прогон.
+        const res = { terms: [], docName: (p.documents[0].name || ""), status: "unsupported" };
+        cache[p.id] = res; applyTz(p, res); hopeless++;
+        continue;
+      }
       // Пустой documents[] значит разное. У Портала карточка приходит целиком, и
       // пусто — это правда «приложений нет». У ЕИС в карточку надо заходить
       // отдельно, и до большинства закупок бюджет docsLimit ещё не дошёл — там
       // честный ответ «ещё не смотрели», а не «документов нет».
-      // Если термины у закупки уже есть, статус не трогаем вовсе: он про них и
-      // рассказывает, а «документов не видели» здесь означало бы, что мы забыли
-      // собственную работу.
-      if (hasTerms(p)) continue;
       p.tzStatus = p.docsFetched === false ? "pending" : "no-doc";
       if (p.tzStatus === "no-doc") noDoc++;
       continue;
     }
-    need.push({ p, doc });
+    need.push({ p, docs });
   }
   // Сначала те, у кого терминов нет вовсе: разбор такой закупки добавляет знание,
   // а повторный разбор уже разобранной лишь обновляет версию алгоритма. Без этого
@@ -172,16 +221,29 @@ async function annotateTz(purchases, cache = {}, budget = 120) {
   // Сортировка стабильна (Node 11+), поэтому внутри каждой группы сохраняется
   // порядок по близости дедлайна, заданный вызывающим кодом.
   need.sort(unparsedFirst);
+
+  // Бюджет считает СКАЧИВАНИЯ, а не закупки: с перебором кандидатов закупка
+  // стоит от одного до MAX_TRIES документов, и ограничивать надо то, что
+  // упирается в канал и во время, — трафик. Отсюда общий счётчик на прогон,
+  // а очередь берём с запасом: сколько успеется, столько и разберём.
+  let left = budget;
+  const spend = () => (left > 0 ? (left--, true) : false);
   const queue = need.slice(0, budget);
   // остальным честно говорим, что до них просто ещё не дошли — это не «нет ТЗ»
   need.slice(budget).forEach(({ p }) => { if (!hasTerms(p)) p.tzStatus = "pending"; });
 
-  await mapLimit(queue, CONC, async ({ p, doc }) => {
-    const res = await termsForDoc(doc);
-    cache[p.id] = res;
+  let done = 0, retried = 0;
+  await mapLimit(queue, CONC, async ({ p, docs }) => {
+    const res = await termsForPurchase(docs, spend);
+    if (res.spent > 1) retried++;
+    // `pending` означает «бюджет кончился на середине перебора» — такой вердикт
+    // кэшировать нельзя, иначе закупка застрянет на нём навсегда.
+    if (res.status !== "pending") cache[p.id] = res;
     applyTz(p, res);
-  }, (k, t) => process.stdout.write(`\r  ТЗ: разбираю ${k}/${t}`));
+    done++;
+  }, () => process.stdout.write(`\r  ТЗ: разбираю ${done}/${queue.length}, скачиваний ${budget - left}`));
   if (queue.length) process.stdout.write("\n");
+  const spent = budget - left;
 
   // Термины у закупки есть только если разбор когда-то удался (applyTz кладёт их
   // единственным путём — из успешного termsForDoc). Значит статус обязан это
@@ -193,10 +255,12 @@ async function annotateTz(purchases, cache = {}, budget = 120) {
   // Считаем именно термины, а не статус «ok»: запись из накопителя несёт термины
   // прошлых прогонов, и по статусу их не видно — так строка врала бы в разы.
   const withTerms = purchases.filter(hasTerms).length;
-  const waiting = Math.max(0, need.length - budget);
-  console.log(`  ТЗ: ${withTerms} закупок с терминами | скачано сейчас ${queue.length}, `
-    + `из кэша ${reused}, без документов ${noDoc}, ждут очереди ${waiting} `
-    + `(из них ни разу не разобраны ${need.slice(budget).filter(({ p }) => !hasTerms(p)).length})`);
+  const waiting = Math.max(0, need.length - queue.length);
+  console.log(`  ТЗ: ${withTerms} закупок с терминами | разобрано сейчас ${done} `
+    + `за ${spent} скачиваний (с перебором кандидатов ${retried}), `
+    + `из кэша ${reused}, формат не тот без скачивания ${hopeless}, без документов ${noDoc}, `
+    + `ждут очереди ${waiting} (из них ни разу не разобраны `
+    + `${need.slice(queue.length).filter(({ p }) => !hasTerms(p)).length})`);
   return cache;
 }
 
@@ -206,4 +270,5 @@ function applyTz(p, res) {
   if (res.terms && res.terms.length) p.tzTerms = res.terms;
 }
 
-module.exports = { annotateTz, pickTzDoc, looksLikeZip, topTerms, termsForDoc, hasTerms, unparsedFirst };
+module.exports = { annotateTz, pickTzDoc, rankTzDocs, isHopeless, looksLikeZip, topTerms,
+                    termsForDoc, termsForPurchase, hasTerms, unparsedFirst };

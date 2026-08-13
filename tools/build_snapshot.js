@@ -55,6 +55,16 @@ const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 900);
 const TZ_ALGO = 4;
 const ALGO_KEY = "__algo";
 
+// Версия правила ВЫБОРА документа (rankTzDocs / перебор кандидатов). Отдельно от
+// TZ_ALGO намеренно: смена отбора терминов обесценивает весь кэш, а смена выбора
+// документа — только НЕУДАЧНЫЕ вердикты. Успешно разобранный .docx остался
+// успешно разобранным, а вот «формат не тот» мог быть выдан лишь потому, что
+// старый код смотрел ровно один документ и не пробовал следующие.
+// ПОДНИМАТЬ при изменении rankTzDocs / HOPELESS_EXT / MAX_TRIES.
+const TZ_PICK = 1;
+const PICK_KEY = "__pick";
+const META_KEYS = [ALGO_KEY, PICK_KEY];
+
 // Статусы разбора ТЗ, означающие «вопрос закрыт»: документ скачан и что-то про
 // него теперь известно окончательно. Ровно их и кладёт в кэш annotateTz.
 // `pending` («не дошла очередь») и `no-doc` («документов ещё не видели») сюда НЕ
@@ -62,14 +72,25 @@ const ALGO_KEY = "__algo";
 // намертво закрыли бы ей дорогу к разбору.
 const TZ_FINAL = new Set(["ok", "unsupported", "empty", "error"]);
 
-function loadCache(file, algo) {
+function loadCache(file, algo, pick) {
   try {
     const cache = JSON.parse(fs.readFileSync(file, "utf8"));
     if (algo != null && cache[ALGO_KEY] !== algo) {
       console.log(`  кэш ${path.basename(file)}: алгоритм отбора изменился — разбираю заново`);
       return {};
     }
-    delete cache[ALGO_KEY];
+    if (pick != null && cache[PICK_KEY] !== pick) {
+      // Переоткрываем только неудачи: удачные разборы правило выбора документа
+      // не затрагивает, а перекачивать их заново — впустую потраченный канал.
+      let reopened = 0;
+      for (const [k, v] of Object.entries(cache)) {
+        if (META_KEYS.includes(k)) continue;
+        if (!v || v.status !== "ok") { delete cache[k]; reopened++; }
+      }
+      console.log(`  кэш ${path.basename(file)}: правило выбора документа изменилось — `
+        + `переоткрыл ${reopened} неудачных вердиктов`);
+    }
+    for (const k of META_KEYS) delete cache[k];
     return cache;
   } catch (e) { return {}; }   // нет файла/битый — начинаем с чистого, это не ошибка
 }
@@ -78,12 +99,13 @@ function loadDocsCache() { return loadCache(DOCS_CACHE); }
 
 // Чистим кэш от закупок, которых больше нет в снапшоте (истёк срок подачи и т.п.),
 // иначе он растёт без предела и тащит мусор годами.
-function saveCache(file, cache, keep, algo) {
-  for (const n of Object.keys(cache)) if (n !== ALGO_KEY && !keep.has(n)) delete cache[n];
+function saveCache(file, cache, keep, algo, pick) {
+  for (const n of Object.keys(cache)) if (!META_KEYS.includes(n) && !keep.has(n)) delete cache[n];
   if (algo != null) cache[ALGO_KEY] = algo;
+  if (pick != null) cache[PICK_KEY] = pick;
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   fs.writeFileSync(file, JSON.stringify(cache), "utf8");
-  return Object.keys(cache).length - (algo != null ? 1 : 0);
+  return Object.keys(cache).length - META_KEYS.filter(k => cache[k] !== undefined).length;
 }
 
 function saveDocsCache(cache, keepNumbers) { return saveCache(DOCS_CACHE, cache, keepNumbers); }
@@ -150,7 +172,7 @@ async function main() {
   // Термины ТЗ — по всему накопителю: качать документы закупки, которая уже
   // закрылась, бессмысленно, а она отсюда уже выселена. Сбой здесь не должен
   // ронять снапшот: лента без «Умной сверки» полезна, а сверка без ленты — нет.
-  const tzCache = loadCache(TZ_CACHE, TZ_ALGO);
+  const tzCache = loadCache(TZ_CACHE, TZ_ALGO, TZ_PICK);
   // Записи, разобранные ТЕКУЩИМ алгоритмом, возвращаем в кэш: он мог быть
   // подчищен старым поведением или отсутствовать на этой машине, а перекачивать
   // уже разобранное — впустую. Записи без отметки версии не трогаем: чем их
@@ -166,7 +188,7 @@ async function main() {
   try {
     await annotateTz(purchases, tzCache, TZ_BUDGET);
     for (const p of purchases) if (TZ_FINAL.has(p.tzStatus)) p.tzAlgo = TZ_ALGO;
-    const kept = saveCache(TZ_CACHE, tzCache, new Set(purchases.map(p => p.id)), TZ_ALGO);
+    const kept = saveCache(TZ_CACHE, tzCache, new Set(purchases.map(p => p.id)), TZ_ALGO, TZ_PICK);
     console.log(`  кэш терминов ТЗ: ${kept} записей -> ${path.relative(process.cwd(), TZ_CACHE)}`);
   } catch (e) {
     console.error("ТЗ: ошибка разбора —", e.message, "(снапшот пишу без терминов)");
