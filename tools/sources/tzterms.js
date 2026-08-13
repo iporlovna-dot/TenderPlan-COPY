@@ -27,7 +27,7 @@
 const { curlBinary, mapLimit } = require("./util");
 const LKTZ = require("../../site/js/tzmatch.js");
 
-const CONC = Number(process.env.LK_TZ_CONC || 4);
+const CONC = Number(process.env.LK_TZ_CONC || 8);
 // сколько терминов оставляем на закупку: длинные ТЗ дают тысячи, но снапшот и так
 // ~9 МБ. 120 отобранных (см. topTerms) покрывают предмет и числовые требования,
 // а вода отсекается — она есть у всех и на различение не влияет.
@@ -132,10 +132,6 @@ async function termsForDoc(doc) {
   return { terms: topTerms(freq, MAX_TERMS), docName: doc.name || "", status: "ok" };
 }
 
-// Проставить закупкам tzTerms/tzDoc/tzStatus. Мутирует переданные закупки.
-// `cache` — накопительный, тот же приём, что у документов ЕИС: ТЗ у закупки не
-// меняется от часа к часу, а перекачивать его каждый прогон — тысячи мегабайт.
-// `budget` — сколько документов скачиваем за прогон.
 // Термины у закупки уже есть — значит её ТЗ когда-то разобрали. Такая запись
 // приходит из накопителя (tools/sources/store.js) и переживает прогоны.
 function hasTerms(p) { return Boolean(p.tzTerms && p.tzTerms.length); }
@@ -143,6 +139,10 @@ function hasTerms(p) { return Boolean(p.tzTerms && p.tzTerms.length); }
 // Компаратор очереди разбора: ни разу не разобранные — вперёд.
 function unparsedFirst(a, b) { return Number(hasTerms(a.p)) - Number(hasTerms(b.p)); }
 
+// Проставить закупкам tzTerms/tzDoc/tzStatus. Мутирует переданные закупки.
+// `cache` — накопительный, тот же приём, что у документов ЕИС: ТЗ у закупки не
+// меняется от часа к часу, а перекачивать его каждый прогон — тысячи мегабайт.
+// `budget` — сколько документов скачиваем за прогон.
 async function annotateTz(purchases, cache = {}, budget = 120) {
   const need = [];
   let reused = 0, noDoc = 0;

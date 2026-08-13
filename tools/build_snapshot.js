@@ -16,6 +16,7 @@ const { annotateTz } = require("./sources/tzterms");
 const {
   mergeWindow, evictStore, refreshVolatile, sortedPurchases, loadStore, saveStore,
 } = require("./sources/store");
+const { buildRegionIndex } = require("./sources/eisregion");
 
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
@@ -36,7 +37,14 @@ const TZ_CACHE = path.join(CACHE_DIR, "tz-terms.json");
 // EIS_DOCS за час и каждый становится кандидатом на разбор, так что при меньшем
 // бюджете очередь растёт быстрее, чем разгребается, и покрытие не сходится.
 // Проверено на живом прогоне 2026-08-07: 120 против 150 — очередь копилась.
-const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 220);
+// Замер сети (2026-08-13): троттлинга нет даже при 20 одновременных запросах —
+// 60 запросов подряд отдали 200 с медианой 0.7–0.9 с. Документ ТЗ весит в среднем
+// 157 КБ и качается ~0.5 с. Прежние 220 были занижены примерно на порядок против
+// того, что источник спокойно держит, и покрытие сверки упиралось в них, а не в
+// площадку. ⚠️ Это трафик на домашнем канале: 900 документов ≈ 140 МБ за прогон,
+// при ежечасном расписании ~3.4 ГБ в сутки, пока накопитель не разобран. Когда
+// догонит — останется только приток (замер: ~1200 новых закупок в сутки).
+const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 900);
 
 // Версия алгоритма отбора терминов ТЗ. Кэш хранит уже ОТОБРАННЫЕ термины, а не
 // текст документа, поэтому при смене отбора старые записи остаются старыми
@@ -92,7 +100,10 @@ const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 500);
 // не задет антибот-мерой на поиск (см. plan.md); подняли повыше как страховку,
 // чтобы редкие темы всё же попадали в снапшот хоть по объёму, если поиск глушится
 const EIS_LIST = Number(process.env.LK_EIS_TAKE || 2000);
-const EIS_DOCS = Number(process.env.LK_EIS_DOCS || 150);   // для скольких ближайших качать документы
+// Для скольких закупок за прогон добывать документы. Подняли со 150: 44-ФЗ теперь
+// стоит один запрос вместо двух (см. docsUrlDirect), а источник держит на порядок
+// больше, чем мы просили. 900 при conc 10 — это около минуты прогона.
+const EIS_DOCS = Number(process.env.LK_EIS_DOCS || 900);
 // прицельные проходы по темам (полнотекстовый поиск ЕИС), поверх общего списка —
 // иначе узкие темы почти не попадают в топ «последних обновлённых по всей РФ»
 const EIS_KEYWORDS = process.env.LK_EIS_KEYWORDS
@@ -103,18 +114,21 @@ async function main() {
   let purchases = [];
 
   const docsCache = loadDocsCache();
+  // Накопитель читаем ДО сбора: из него строится справочник «код в номере →
+  // регион», который позволяет не заходить в карточки 44-ФЗ (см. eisregion.js).
+  const store = loadStore(STORE, OUT);
+  const regionIndex = buildRegionIndex(Object.values(store.purchases));
 
   // обе площадки — параллельно
   const [portal, eis] = await Promise.all([
     collectPortal(PORTAL_TAKE).catch(e => (console.error("Портал: ошибка —", e.message), [])),
-    collectEis(EIS_LIST, EIS_DOCS, EIS_KEYWORDS, docsCache)
+    collectEis(EIS_LIST, EIS_DOCS, EIS_KEYWORDS, docsCache, regionIndex)
       .catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
   ]);
 
   // Свежее окно вливаем в накопитель, а не заменяем им состав. Закупка, которой
   // в этот час не оказалось в окне, остаётся жить со всем добытым.
   const now = Date.now();
-  const store = loadStore(STORE, OUT);
   const fresh = portal.concat(eis);
   const added = mergeWindow(store, fresh, now);
   const ev = evictStore(store, now);

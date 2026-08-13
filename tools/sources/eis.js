@@ -13,10 +13,11 @@
 // Экспортирует async collectEis(listLimit, docsLimit, keywords).
 
 const { curlAsync, mapLimit, sleep } = require("./util");
+const { regionFromNumber } = require("./eisregion");
 
 const RESULTS = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html";
 const DAY = 86400000;
-const CONC = Number(process.env.LK_EIS_CONC || 6);
+const CONC = Number(process.env.LK_EIS_CONC || 10);   // замер: троттлинга нет и при 20
 // сколько кэш документов считается свежим: ТЗ закупок правят, но не ежечасно —
 // перепроверяем остатком бюджета, не отнимая его у ещё не покрытых закупок
 const DOCS_TTL_MS = Number(process.env.LK_EIS_DOCS_TTL_DAYS || 7) * 86400000;
@@ -216,6 +217,21 @@ function extractDeliveryDays(html) {
   return d ? Number(d[1]) : null;
 }
 
+// Вкладка документов 44-ФЗ открывается ПРЯМО, без захода в карточку: у неё тот
+// же адрес, только common-info.html → documents.html. Проверено на 15 закупках —
+// 14 отдали документ-в-документ то же, что двухшаговый путь, одна отдала больше
+// (в кэше лежало 20 из-за потолка в fetchDocs). Это половина стоимости: один
+// запрос вместо двух, а 44-ФЗ — 68% закупок ЕИС.
+//
+// У 223-ФЗ так нельзя: их documents.html требует noticeGuid, который есть только
+// в карточке (без него — 301 на страницу, отдающую 404). Возвращаем null, и
+// вызывающий идёт длинным путём.
+function docsUrlDirect(link) {
+  return /\/epz\/order\/notice\/[a-z0-9]+\/view\/common-info\.html\?regNumber=\d+/i.test(link || "")
+    ? link.replace("common-info.html", "documents.html")
+    : null;
+}
+
 // со страницы карточки: ссылка на вкладку документов + регион + срок (один заход)
 async function fetchCardMeta(link) {
   try {
@@ -250,7 +266,7 @@ async function fetchDocs(docsUrl) {
   } catch (e) { return []; }
 }
 
-function toPurchase(it, documents, region, deliveryDays) {
+function toPurchase(it, documents, region, deliveryDays, regionGuessed) {
   const now = Date.now();
   const end = it.endIso ? new Date(it.endIso).getTime() : null;
   return {
@@ -262,6 +278,9 @@ function toPurchase(it, documents, region, deliveryDays) {
     law: it.law,
     source: "ЕИС (zakupki.gov.ru)",
     region: region || "", okpd: "", price: it.price, stage: "active",
+    // регион не из карточки, а угадан по номеру (см. eisregion.js) — точность
+    // 98.4% на отложенной выборке, но это всё же догадка, и она помечена
+    ...(regionGuessed ? { regionGuessed: true } : {}),
     endDate: it.endIso,
     beginDate: it.pubIso,
     deadlineDays: end ? Math.max(0, Math.ceil((end - now) / DAY)) : 0,
@@ -309,7 +328,7 @@ async function fetchPool(seen, items, take, searchString, label, browserPage) {
 // переживающий пересборку снапшота (см. шаг 3). Владелец файла — build_snapshot.js,
 // сюда приходит уже загруженным и мутируется на месте.
 async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_KEYWORDS,
-                          docsCache = {}) {
+                          docsCache = {}, regionIndex = new Map()) {
   const seen = new Set();
   let items = [];
 
@@ -370,7 +389,25 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   fresh.sort((a, b) => Number(Boolean(b.viaKeyword)) - Number(Boolean(a.viaKeyword)));
   const queue = fresh.concat(stale).slice(0, docsLimit);
 
+  // Коротким путём (documents.html напрямую, один запрос) идём только там, где
+  // карточка больше ни за чем не нужна — то есть регион уже выводится из номера.
+  // Незнакомый код региона отправляет закупку длинным путём, и её карточка
+  // пополняет справочник: так он дообучается сам, вместо зашитой таблицы,
+  // которая устарела бы молча. Срок поставки при коротком пути теряем осознанно —
+  // он был заполнен лишь у 8% посещённых карточек, а стоил целого запроса.
+  for (const it of queue) {
+    it.directDocsUrl = regionFromNumber(it.number, regionIndex) ? docsUrlDirect(it.link) : null;
+  }
+  const direct = queue.filter(it => it.directDocsUrl).length;
+
   await mapLimit(queue, CONC, async (it) => {
+    if (it.directDocsUrl) {
+      docsCache[it.number] = {
+        docs: await fetchDocs(it.directDocsUrl),
+        region: "", deliveryDays: null, direct: true, fetchedAt: Date.now(),
+      };
+      return;
+    }
     const meta = await fetchCardMeta(it.link);
     docsCache[it.number] = {
       docs: meta.docsUrl ? await fetchDocs(meta.docsUrl) : [],
@@ -385,11 +422,20 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   const reused = items.filter(it => docsCache[it.number] && !queued.has(it.number)).length;
   console.log(`  ЕИС карточки: ${queue.length} запрошено (новых ${fresh.length}, `
     + `тематических ${fresh.filter(it => it.viaKeyword).length}, протухших ${stale.length}), `
-    + `${reused} из кэша`);
+    + `${reused} из кэша | коротким путём ${direct} из ${queue.length}, `
+    + `сэкономлено запросов ${direct}`);
 
-  return items.map(it => {
+  let guessed = 0;
+  const out = items.map(it => {
     const m = docsCache[it.number];
-    const p = toPurchase(it, (m && m.docs) || [], (m && m.region) || "", (m && m.deliveryDays) ?? null);
+    let region = (m && m.region) || "";
+    let regionGuessed = false;
+    // Регион из карточки точнее — догадку применяем только когда его нет.
+    if (!region) {
+      region = regionFromNumber(it.number, regionIndex);
+      if (region) { regionGuessed = true; guessed++; }
+    }
+    const p = toPurchase(it, (m && m.docs) || [], region, (m && m.deliveryDays) ?? null, regionGuessed);
     // Заходили ли мы вообще в карточку. Без этого пустой documents[] неотличим от
     // «приложений нет», и «Умная сверка» говорила бы «у закупки нет документов» тем
     // тысячам закупок, до которых просто не дошёл бюджет docsLimit. Это разные вещи:
@@ -397,6 +443,10 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     p.docsFetched = Boolean(m);
     return p;
   });
+  console.log(`  ЕИС регионы: ${out.filter(p => p.region && !p.regionGuessed).length} из карточек, `
+    + `${guessed} угадано по номеру (справочник — ${regionIndex.size} кодов), `
+    + `${out.filter(p => !p.region).length} без региона`);
+  return out;
 }
 
-module.exports = { collectEis, DEFAULT_KEYWORDS };
+module.exports = { collectEis, DEFAULT_KEYWORDS, docsUrlDirect };
