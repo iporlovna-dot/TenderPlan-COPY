@@ -136,6 +136,13 @@ async function termsForDoc(doc) {
 // `cache` — накопительный, тот же приём, что у документов ЕИС: ТЗ у закупки не
 // меняется от часа к часу, а перекачивать его каждый прогон — тысячи мегабайт.
 // `budget` — сколько документов скачиваем за прогон.
+// Термины у закупки уже есть — значит её ТЗ когда-то разобрали. Такая запись
+// приходит из накопителя (tools/sources/store.js) и переживает прогоны.
+function hasTerms(p) { return Boolean(p.tzTerms && p.tzTerms.length); }
+
+// Компаратор очереди разбора: ни разу не разобранные — вперёд.
+function unparsedFirst(a, b) { return Number(hasTerms(a.p)) - Number(hasTerms(b.p)); }
+
 async function annotateTz(purchases, cache = {}, budget = 120) {
   const need = [];
   let reused = 0, noDoc = 0;
@@ -148,15 +155,26 @@ async function annotateTz(purchases, cache = {}, budget = 120) {
       // пусто — это правда «приложений нет». У ЕИС в карточку надо заходить
       // отдельно, и до большинства закупок бюджет docsLimit ещё не дошёл — там
       // честный ответ «ещё не смотрели», а не «документов нет».
+      // Если термины у закупки уже есть, статус не трогаем вовсе: он про них и
+      // рассказывает, а «документов не видели» здесь означало бы, что мы забыли
+      // собственную работу.
+      if (hasTerms(p)) continue;
       p.tzStatus = p.docsFetched === false ? "pending" : "no-doc";
       if (p.tzStatus === "no-doc") noDoc++;
       continue;
     }
     need.push({ p, doc });
   }
+  // Сначала те, у кого терминов нет вовсе: разбор такой закупки добавляет знание,
+  // а повторный разбор уже разобранной лишь обновляет версию алгоритма. Без этого
+  // бюджет уходил бы на ближайшие по дедлайну независимо от того, знаем мы про них
+  // что-нибудь или нет, и накопитель разрастался бы немыми записями.
+  // Сортировка стабильна (Node 11+), поэтому внутри каждой группы сохраняется
+  // порядок по близости дедлайна, заданный вызывающим кодом.
+  need.sort(unparsedFirst);
   const queue = need.slice(0, budget);
   // остальным честно говорим, что до них просто ещё не дошли — это не «нет ТЗ»
-  need.slice(budget).forEach(({ p }) => { p.tzStatus = "pending"; });
+  need.slice(budget).forEach(({ p }) => { if (!hasTerms(p)) p.tzStatus = "pending"; });
 
   await mapLimit(queue, CONC, async ({ p, doc }) => {
     const res = await termsForDoc(doc);
@@ -165,9 +183,20 @@ async function annotateTz(purchases, cache = {}, budget = 120) {
   }, (k, t) => process.stdout.write(`\r  ТЗ: разбираю ${k}/${t}`));
   if (queue.length) process.stdout.write("\n");
 
-  const ok = purchases.filter(p => p.tzStatus === "ok").length;
-  console.log(`  ТЗ: ${ok} закупок с терминами | скачано сейчас ${queue.length}, `
-    + `из кэша ${reused}, без документов ${noDoc}, ждут очереди ${Math.max(0, need.length - budget)}`);
+  // Термины у закупки есть только если разбор когда-то удался (applyTz кладёт их
+  // единственным путём — из успешного termsForDoc). Значит статус обязан это
+  // отражать, чем бы запись ни была помечена раньше: прогон до появления этой
+  // проверки успел записать «ждёт очереди» полутора тысячам уже разобранных
+  // закупок. Чиним здесь, в одном месте на выходе, а не в каждой ветке выше.
+  for (const p of purchases) if (hasTerms(p) && p.tzStatus !== "ok") p.tzStatus = "ok";
+
+  // Считаем именно термины, а не статус «ok»: запись из накопителя несёт термины
+  // прошлых прогонов, и по статусу их не видно — так строка врала бы в разы.
+  const withTerms = purchases.filter(hasTerms).length;
+  const waiting = Math.max(0, need.length - budget);
+  console.log(`  ТЗ: ${withTerms} закупок с терминами | скачано сейчас ${queue.length}, `
+    + `из кэша ${reused}, без документов ${noDoc}, ждут очереди ${waiting} `
+    + `(из них ни разу не разобраны ${need.slice(budget).filter(({ p }) => !hasTerms(p)).length})`);
   return cache;
 }
 
@@ -177,4 +206,4 @@ function applyTz(p, res) {
   if (res.terms && res.terms.length) p.tzTerms = res.terms;
 }
 
-module.exports = { annotateTz, pickTzDoc, looksLikeZip, topTerms, termsForDoc };
+module.exports = { annotateTz, pickTzDoc, looksLikeZip, topTerms, termsForDoc, hasTerms, unparsedFirst };

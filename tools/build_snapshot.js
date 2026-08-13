@@ -13,6 +13,9 @@ const path = require("path");
 const { collectPortal } = require("./sources/portal");
 const { collectEis } = require("./sources/eis");
 const { annotateTz } = require("./sources/tzterms");
+const {
+  mergeWindow, evictStore, refreshVolatile, sortedPurchases, loadStore, saveStore,
+} = require("./sources/store");
 
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
@@ -23,6 +26,9 @@ const OUT = path.join(OUT_DIR, "purchases.json");
 // карточек, а покрытие ленты документами навсегда упиралось бы в LK_EIS_DOCS.
 const CACHE_DIR = path.resolve(__dirname, ".cache");
 const DOCS_CACHE = path.join(CACHE_DIR, "eis-docs.json");
+// Накопитель активных закупок: закупка живёт в нём до истечения срока подачи, а
+// окно ЕИС только доливает новое. Зачем он и что было до него — в sources/store.js.
+const STORE = path.join(CACHE_DIR, "store.json");
 // Термины ТЗ (для «Умной сверки») — свой кэш: ТЗ у закупки не меняется от часа к
 // часу, а качать документы каждый прогон заново — гигабайты трафика впустую.
 const TZ_CACHE = path.join(CACHE_DIR, "tz-terms.json");
@@ -40,6 +46,13 @@ const TZ_BUDGET = Number(process.env.LK_TZ_DOCS || 220);
 // ПОДНИМАТЬ при любом изменении topTerms / termFreq / NUM_RE.
 const TZ_ALGO = 4;
 const ALGO_KEY = "__algo";
+
+// Статусы разбора ТЗ, означающие «вопрос закрыт»: документ скачан и что-то про
+// него теперь известно окончательно. Ровно их и кладёт в кэш annotateTz.
+// `pending` («не дошла очередь») и `no-doc` («документов ещё не видели») сюда НЕ
+// входят: они говорят о состоянии сборщика, а не о закупке, и, попав в кэш,
+// намертво закрыли бы ей дорогу к разбору.
+const TZ_FINAL = new Set(["ok", "unsupported", "empty", "error"]);
 
 function loadCache(file, algo) {
   try {
@@ -67,6 +80,13 @@ function saveCache(file, cache, keep, algo) {
 
 function saveDocsCache(cache, keepNumbers) { return saveCache(DOCS_CACHE, cache, keepNumbers); }
 
+// Сколько закупок уезжает в purchases.json. Намеренно ОТДЕЛЬНО от размера
+// накопителя: собирать можно сколько угодно, а фронт грузит и разбирает файл
+// целиком, и на 20 тыс. закупок с терминами это ~89 МБ (замер по прод-снапшоту:
+// 4689 Б на закупку с ТЗ). Пока доставка не разделена на ленту и термины,
+// накопитель растёт, а в снапшот уходят ближайшие по дедлайну.
+const SNAPSHOT_MAX = Number(process.env.LK_SNAPSHOT_MAX || 6000);
+
 const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 500);
 // общий список (без поиска по словам) — сейчас единственный канал ЕИС, который
 // не задет антибот-мерой на поиск (см. plan.md); подняли повыше как страховку,
@@ -78,8 +98,6 @@ const EIS_DOCS = Number(process.env.LK_EIS_DOCS || 150);   // для сколь�
 const EIS_KEYWORDS = process.env.LK_EIS_KEYWORDS
   ? process.env.LK_EIS_KEYWORDS.split(",").map(s => s.trim()).filter(Boolean)
   : undefined;  // undefined -> collectEis возьмёт свой список категорий по умолчанию
-
-function endTs(p) { return p.endDate ? new Date(p.endDate).getTime() : Infinity; }
 
 async function main() {
   let purchases = [];
@@ -93,32 +111,63 @@ async function main() {
       .catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
   ]);
 
-  // сохраняем кэш до фильтра по сроку: закупка, отсеянная как просроченная в этом
-  // прогоне, из кэша и так уйдёт, а вот сбой ЕИС (eis=[]) не должен стереть всё
-  // накопленное — при пустом ответе кэш оставляем как есть
+  // Свежее окно вливаем в накопитель, а не заменяем им состав. Закупка, которой
+  // в этот час не оказалось в окне, остаётся жить со всем добытым.
+  const now = Date.now();
+  const store = loadStore(STORE, OUT);
+  const fresh = portal.concat(eis);
+  const added = mergeWindow(store, fresh, now);
+  const ev = evictStore(store, now);
+  purchases = sortedPurchases(store);
+  console.log(`  накопитель: ${purchases.length} закупок (в окне ${fresh.length}, из них новых ${added}; `
+    + `выселено: истекло ${ev.expired}, без срока и старше TTL ${ev.stale}, сверх потолка ${ev.overflow})`);
+
+  // Кэши чистим по составу НАКОПИТЕЛЯ, а не снапшота. Раньше keep-множество
+  // строилось по снапшоту, и добытые документы/термины закупки удалялись, стоило
+  // ей выпасть из вращающегося окна — при том что сама закупка была ещё активна.
+  // Сбой ЕИС (eis=[]) кэш не тронет и так: записи ЕИС остаются в накопителе.
   if (eis.length) {
-    const kept = saveDocsCache(docsCache, new Set(eis.map(p => p.number)));
+    const eisNumbers = new Set(purchases.filter(p => p.number && String(p.id).startsWith("eis_"))
+      .map(p => p.number));
+    const kept = saveDocsCache(docsCache, eisNumbers);
     console.log(`  кэш карточек ЕИС: ${kept} записей -> ${path.relative(process.cwd(), DOCS_CACHE)}`);
   }
-  purchases = purchases.concat(portal, eis);
 
-  // убрать уже просроченные (на всякий случай) и отсортировать по близости дедлайна
-  const now = Date.now();
-  purchases = purchases
-    .filter(p => !p.endDate || new Date(p.endDate).getTime() > now)
-    .sort((a, b) => endTs(a) - endTs(b));
-
-  // Термины ТЗ — после фильтра по сроку: качать документы закупки, которая уже
-  // закрылась, бессмысленно. Сбой здесь не должен ронять снапшот: лента без
-  // «Умной сверки» полезна, а сверка без ленты — нет.
+  // Термины ТЗ — по всему накопителю: качать документы закупки, которая уже
+  // закрылась, бессмысленно, а она отсюда уже выселена. Сбой здесь не должен
+  // ронять снапшот: лента без «Умной сверки» полезна, а сверка без ленты — нет.
   const tzCache = loadCache(TZ_CACHE, TZ_ALGO);
+  // Записи, разобранные ТЕКУЩИМ алгоритмом, возвращаем в кэш: он мог быть
+  // подчищен старым поведением или отсутствовать на этой машине, а перекачивать
+  // уже разобранное — впустую. Записи без отметки версии не трогаем: чем их
+  // разобрали, неизвестно, честнее разобрать заново.
+  let seeded = 0;
+  for (const p of purchases) {
+    if (!tzCache[p.id] && p.tzAlgo === TZ_ALGO && TZ_FINAL.has(p.tzStatus)) {
+      tzCache[p.id] = { terms: p.tzTerms || [], docName: p.tzDoc || "", status: p.tzStatus };
+      seeded++;
+    }
+  }
+  if (seeded) console.log(`  кэш терминов ТЗ: вернул из накопителя ${seeded} записей`);
   try {
     await annotateTz(purchases, tzCache, TZ_BUDGET);
+    for (const p of purchases) if (TZ_FINAL.has(p.tzStatus)) p.tzAlgo = TZ_ALGO;
     const kept = saveCache(TZ_CACHE, tzCache, new Set(purchases.map(p => p.id)), TZ_ALGO);
     console.log(`  кэш терминов ТЗ: ${kept} записей -> ${path.relative(process.cwd(), TZ_CACHE)}`);
   } catch (e) {
     console.error("ТЗ: ошибка разбора —", e.message, "(снапшот пишу без терминов)");
   }
+
+  // Накопитель сохраняем ПОСЛЕ разбора ТЗ — иначе добытое за этот прогон
+  // пришлось бы добывать снова.
+  saveStore(STORE, store);
+
+  // В снапшот уходят ближайшие по дедлайну (см. SNAPSHOT_MAX). Накопитель при
+  // этом остаётся полным: разбор ТЗ идёт по нему, так что закупка приезжает в
+  // ленту уже с терминами, а не начинает знакомство с очереди.
+  const stored = purchases.length;
+  purchases = purchases.slice(0, SNAPSHOT_MAX);
+  for (const p of purchases) refreshVolatile(p, now);
 
   const bySrc = purchases.reduce((m, p) => (m[p.source] = (m[p.source] || 0) + 1, m), {});
   const withDocs = purchases.filter(p => p.documents && p.documents.length).length;
@@ -132,8 +181,8 @@ async function main() {
   };
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT, JSON.stringify(payload, null, 2), "utf8");
-  console.log(`wrote ${purchases.length} закупок (${JSON.stringify(bySrc)}), `
-    + `${withDocs} с документами, ${withTz} с терминами ТЗ -> ${OUT}`);
+  console.log(`wrote ${purchases.length} закупок из ${stored} в накопителе `
+    + `(${JSON.stringify(bySrc)}), ${withDocs} с документами, ${withTz} с терминами ТЗ -> ${OUT}`);
 }
 
 main();
