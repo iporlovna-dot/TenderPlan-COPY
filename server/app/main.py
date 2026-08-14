@@ -5,10 +5,15 @@
   GET  /api/purchases      — лента с фильтрами (поиск по ключевым словам — на нашей стороне)
   GET  /api/purchases/{id} — полная карточка (позиции, сроки, документы)
   GET  /api/documents/{fid}— прокси-скачивание вложения закупки
-  POST /api/match          — загрузить своё ТЗ + purchase_id → сверка
+  POST /api/match          — загрузить своё ТЗ + purchase_id → сверка текст↔текст
+  POST /api/match/spec     — карточки товара ↔ позиции закупки, движком matcher/
 
 Источник пока один (Портал поставщиков); добавление площадок — новый Source за тем
-же интерфейсом, ядро не меняется."""
+же интерфейсом, ядро не меняется.
+
+⚠️ Эндпоинты, ходящие в ИСТОЧНИК (/api/purchases, /api/documents, /api/match), на
+проде нерабочие: VPS заблокирован zakupki.gov.ru и mos.ru. /api/match/spec к ним
+не относится — он читает уже собранные данные с диска (site/data/tz.json)."""
 
 from __future__ import annotations
 
@@ -23,7 +28,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from app import matching
+from app import matching, spec_match
 from app.accounts import router as accounts_router
 from app.db import init_db
 from app.schema import Purchase, PurchasePage
@@ -31,6 +36,9 @@ from app.sources.portal import PortalPostavshikov
 
 POOL_TAKE = int(os.getenv("LK_POOL_TAKE", "200"))
 POOL_TTL = int(os.getenv("LK_POOL_TTL", "300"))  # сек
+# Потолок на размер каталога в одном запросе сверки: сверка идёт в процессе
+# API, и присланный кем-то список на десятки тысяч позиций съел бы его целиком.
+MATCH_MAX_PRODUCTS = int(os.getenv("LK_MATCH_MAX_PRODUCTS", "500"))
 # Фронт живёт на том же домене (nginx проксирует /api) → CORS-звёздочка не нужна.
 # Вход/кабинет работают на https://…nip.io — его и разрешаем. Несколько origin'ов — через запятую.
 CORS_ORIGINS = [o.strip() for o in os.getenv("LK_CORS_ORIGINS", "https://186.246.30.213.nip.io").split(",") if o.strip()]
@@ -157,6 +165,30 @@ async def document(file_id: str):
         media_type=d.content_type,
         headers={"Content-Disposition": f'attachment; filename="{d.filename}"'},
     )
+
+
+@app.post("/api/match/spec")
+async def match_spec(payload: dict):
+    """Сверка карточек товара с ПОЗИЦИЯМИ закупки — настоящим движком matcher/.
+
+    Отличие от /api/match ниже принципиальное: там текст против текста («это
+    вообще про мой товар?»), здесь структура против структуры («а по параметрам
+    проходим?»). Требования берутся из таблицы КТРУ, собранной сборщиком
+    (site/data/tz.json), товары приходят из кабинета.
+
+    Источники этому эндпоинту не нужны — он читает уже собранные данные с диска,
+    поэтому работает на VPS, заблокированном zakupki.gov.ru и mos.ru.
+
+    Тело: {"purchase_id": "eis_123", "products": [{id, name, ktru, attributes}]}
+    """
+    purchase_id = (payload or {}).get("purchase_id")
+    if not purchase_id:
+        raise HTTPException(status_code=400, detail="нужен purchase_id")
+    products = (payload or {}).get("products") or []
+    if len(products) > MATCH_MAX_PRODUCTS:
+        raise HTTPException(status_code=413,
+                            detail=f"слишком много товаров (максимум {MATCH_MAX_PRODUCTS})")
+    return spec_match.match_lot(str(purchase_id), products)
 
 
 @app.post("/api/match")
