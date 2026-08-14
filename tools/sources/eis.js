@@ -10,10 +10,16 @@
 // пулом, чтобы такие темы гарантированно были в снапшоте (и находились точным
 // поиском на сайте, а не только случайно).
 //
-// Экспортирует async collectEis(listLimit, docsLimit, keywords).
+// Общий список ограничен потолком выдачи в 5000 записей на запрос, поэтому вглубь
+// корпуса ходим дата-срезами (день публикации × закон) — см. eissweep.js.
+//
+// Экспортирует async collectEis(listLimit, docsLimit, keywords, docsCache, regionIndex, sweep).
 
 const { curlAsync, mapLimit, sleep } = require("./util");
 const { regionFromNumber } = require("./eisregion");
+const {
+  enumerateSlices, pickSlices, advance, pruneSweep, sweepStats, SLICE_PAGES, SWEEP_TAKE,
+} = require("./eissweep");
 
 const RESULTS = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html";
 const DAY = 86400000;
@@ -68,12 +74,23 @@ function parsePrice(s) {
   return parseFloat(t) || 0;
 }
 
-async function fetchResultsPage(page, searchString) {
+// slice (необязателен) — дата-срез: { law: 44|223, day: "дд.мм.гггг" }. Сужает
+// выдачу до одного дня публикации и одного закона, чтобы обойти потолок в 5000
+// записей на запрос (см. eissweep.js). Внутри среза сортируем по дате публикации,
+// а не обновления: обновления идут постоянно и перетасовывали бы страницы между
+// последовательными запросами — часть записей мы бы прочли дважды, часть не
+// увидели вовсе. Замер: одна и та же страница дважды подряд — совпало 50/50.
+async function fetchResultsPage(page, searchString, slice = null) {
   const args = [
-    "-G", "--data", "fz44=on", "--data", "fz223=on", "--data", "af=on",
-    "--data", "sortBy=UPDATE_DATE", "--data", "recordsPerPage=_50",
+    "-G", "--data", "af=on", "--data", "recordsPerPage=_50",
     "--data", "pageNumber=" + page,
+    "--data", "sortBy=" + (slice ? "PUBLISH_DATE" : "UPDATE_DATE"),
   ];
+  if (slice && slice.law) args.push("--data", `fz${slice.law}=on`);
+  else args.push("--data", "fz44=on", "--data", "fz223=on");
+  if (slice && slice.day) {
+    args.push("--data", "publishDateFrom=" + slice.day, "--data", "publishDateTo=" + slice.day);
+  }
   if (searchString) {
     args.push("--data-urlencode", "searchString=" + searchString, "--data", "morphology=on");
   }
@@ -324,11 +341,44 @@ async function fetchPool(seen, items, take, searchString, label, browserPage) {
   process.stdout.write("\n");
 }
 
+// Один дата-срез: страницы подряд от того места, где остановился прошлый прогон.
+// Останавливаемся по любому из четырёх поводов, и они РАЗНЫЕ по смыслу:
+//   • budget/maxPages — на сегодня хватит, срез не дочитан, вернёмся;
+//   • пустая страница — срез вычерпан, больше сюда не ходим;
+//   • CLAMP_PAGE — дальше выдача врёт (клон последней настоящей страницы), и
+//     отличить это от честных данных по содержимому нельзя, только по номеру.
+// Сетевую ошибку НЕ считаем концом среза: курсор остаётся на несработавшей
+// странице, иначе одно моргание канала навсегда выкинуло бы кусок корпуса.
+const CLAMP_PAGE = 100;
+
+// fetchPage — шов для тестов: логику остановки надо проверять без сети, иначе
+// единственный способ узнать, что курсор поехал, — авария в проде через сутки.
+async function sweepSlice(seen, items, slice, budget, maxPages = 12, fetchPage = fetchResultsPage) {
+  let page = slice.page || 1;
+  let got = 0, pages = 0, done = false;
+  while (pages < maxPages && got < budget && page < CLAMP_PAGE) {
+    let parsed;
+    try {
+      parsed = parseHtmlItems(await fetchPage(page, undefined, slice));
+    } catch (e) { break; }
+    pages++;
+    if (!parsed.length) { done = true; break; }
+    for (const it of parsed) {
+      if (seen.has(it.number)) continue;
+      it.viaKeyword = false;
+      seen.add(it.number); items.push(it); got++;
+    }
+    page++;
+  }
+  if (page >= CLAMP_PAGE) done = true;
+  return { nextPage: page, got, pages, done };
+}
+
 // docsCache — накопительный кэш «карточка ЕИС → документы/регион/срок поставки»,
 // переживающий пересборку снапшота (см. шаг 3). Владелец файла — build_snapshot.js,
 // сюда приходит уже загруженным и мутируется на месте.
 async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_KEYWORDS,
-                          docsCache = {}, regionIndex = new Map()) {
+                          docsCache = {}, regionIndex = new Map(), sweep = null) {
   const seen = new Set();
   let items = [];
 
@@ -360,6 +410,29 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   // 2) общий список (без поиска) — источник не глушит, оставляем на curl (дешевле)
   await fetchPool(seen, items, listLimit, undefined, "список");
   await closeBrowser();
+
+  // 2б) дата-срезы — единственный способ уйти глубже 5000 «последних обновлённых».
+  // Каждый прогон дочитывает несколько дней публикации с того места, где встал
+  // прошлый; состояние живёт в файле (см. eissweep.js). Идём последовательно и с
+  // общим бюджетом записей: приток, обгоняющий бюджет документов, только копит
+  // закупки со статусом «ждёт очереди».
+  if (sweep) {
+    const slices = enumerateSlices(Date.now());
+    pruneSweep(sweep, slices);
+    const picked = pickSlices(sweep, slices);
+    let left = SWEEP_TAKE, swept = 0;
+    for (const slice of picked) {
+      if (left <= 0) break;
+      const res = await sweepSlice(seen, items, slice, left, SLICE_PAGES);
+      advance(sweep, slice, res);
+      left -= res.got; swept += res.got;
+      process.stdout.write(`\r  ЕИС срез ${slice.law}-ФЗ ${slice.day}: +${res.got} `
+        + `(стр. ${slice.page}–${res.nextPage - 1}${res.done ? ", вычерпан" : ""})\n`);
+    }
+    const st = sweepStats(sweep, slices);
+    console.log(`  ЕИС срезы: +${swept} записей за ${picked.length} срезов | `
+      + `вычерпано ${st.done} из ${st.total} (тронуто ${st.touched})`);
+  }
 
   // только с будущим сроком, ближайшие сверху
   const now = Date.now();
@@ -449,4 +522,4 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   return out;
 }
 
-module.exports = { collectEis, DEFAULT_KEYWORDS, docsUrlDirect };
+module.exports = { collectEis, DEFAULT_KEYWORDS, docsUrlDirect, sweepSlice, CLAMP_PAGE };

@@ -17,6 +17,7 @@ const {
   mergeWindow, evictStore, refreshVolatile, sortedPurchases, loadStore, saveStore,
 } = require("./sources/store");
 const { buildRegionIndex } = require("./sources/eisregion");
+const { loadSweep, saveSweep } = require("./sources/eissweep");
 
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
@@ -30,6 +31,9 @@ const DOCS_CACHE = path.join(CACHE_DIR, "eis-docs.json");
 // Накопитель активных закупок: закупка живёт в нём до истечения срока подачи, а
 // окно ЕИС только доливает новое. Зачем он и что было до него — в sources/store.js.
 const STORE = path.join(CACHE_DIR, "store.json");
+// Докуда дочитан каждый дата-срез ЕИС. Без этого файла «следующий срез» каждый
+// прогон оказывался бы первым, и мы читали бы ту же голову, только другой формы.
+const SWEEP = path.join(CACHE_DIR, "eis-sweep.json");
 // Термины ТЗ (для «Умной сверки») — свой кэш: ТЗ у закупки не меняется от часа к
 // часу, а качать документы каждый прогон заново — гигабайты трафика впустую.
 const TZ_CACHE = path.join(CACHE_DIR, "tz-terms.json");
@@ -140,13 +144,17 @@ async function main() {
   // регион», который позволяет не заходить в карточки 44-ФЗ (см. eisregion.js).
   const store = loadStore(STORE, OUT);
   const regionIndex = buildRegionIndex(Object.values(store.purchases));
+  const sweep = loadSweep(SWEEP);
 
   // обе площадки — параллельно
   const [portal, eis] = await Promise.all([
     collectPortal(PORTAL_TAKE).catch(e => (console.error("Портал: ошибка —", e.message), [])),
-    collectEis(EIS_LIST, EIS_DOCS, EIS_KEYWORDS, docsCache, regionIndex)
+    collectEis(EIS_LIST, EIS_DOCS, EIS_KEYWORDS, docsCache, regionIndex, sweep)
       .catch(e => (console.error("ЕИС: ошибка —", e.message), [])),
   ]);
+  // Курсоры срезов сохраняем сразу после сбора: прочитанное прочитано, и падение
+  // на разборе ТЗ не должно заставлять читать те же страницы заново.
+  saveSweep(SWEEP, sweep);
 
   // Свежее окно вливаем в накопитель, а не заменяем им состав. Закупка, которой
   // в этот час не оказалось в окне, остаётся жить со всем добытым.
