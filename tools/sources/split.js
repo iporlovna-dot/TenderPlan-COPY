@@ -17,7 +17,7 @@
 const FEED_V = 2;
 
 // Поля, которые в ленте не нужны и уезжают в довески.
-const TZ_FIELDS = ["tzTerms", "tzDoc"];
+const TZ_FIELDS = ["tzTerms", "tzDoc", "lotItems"];
 const DOC_FIELDS = ["documents"];
 
 // «Вырожденный лот» — единственная позиция, дословно повторяющая название
@@ -60,8 +60,12 @@ function splitSnapshot(purchases) {
 
     feed.push(lite);
 
-    if ((p.tzTerms && p.tzTerms.length) || p.tzDoc) {
-      tz[p.id] = { terms: p.tzTerms || [], doc: p.tzDoc || "" };
+    if ((p.tzTerms && p.tzTerms.length) || p.tzDoc || (p.lotItems && p.lotItems.length)) {
+      const e = { terms: p.tzTerms || [], doc: p.tzDoc || "" };
+      // Спецификация из таблицы КТРУ есть далеко не у всех — пустое поле не пишем,
+      // иначе довесок раздуется скобками на ровном месте.
+      if (p.lotItems && p.lotItems.length) e.items = p.lotItems;
+      tz[p.id] = e;
     }
     if (p.documents && p.documents.length) docs[p.id] = p.documents;
   }
@@ -74,7 +78,11 @@ function splitSnapshot(purchases) {
 function mergeSidecars(feed, tz, docs) {
   for (const p of feed) {
     const t = tz && tz[p.id];
-    if (t) { p.tzTerms = t.terms || []; if (t.doc) p.tzDoc = t.doc; }
+    if (t) {
+      p.tzTerms = t.terms || [];
+      if (t.doc) p.tzDoc = t.doc;
+      if (t.items) p.lotItems = t.items;
+    }
     const d = docs && docs[p.id];
     if (d) p.documents = d;
     if (!p.documents) p.documents = [];

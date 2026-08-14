@@ -30,7 +30,7 @@ const MAX = Number(process.env.LK_STORE_MAX || 40000);
 // в этот час просто до неё не дошёл. Затирать ими уже добытое нельзя, иначе
 // накопитель забывает ровно то, ради чего заведён.
 const CARRY = ["documents", "region", "deliveryDays", "deliveryPlace", "okpd",
-               "tzTerms", "tzDoc", "tzStatus", "tzAlgo"];
+               "tzTerms", "tzDoc", "tzStatus", "tzAlgo", "tzItems", "lotItems"];
 
 function endTs(p) { return p && p.endDate ? new Date(p.endDate).getTime() : Infinity; }
 

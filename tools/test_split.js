@@ -121,6 +121,21 @@ test("лента без довесков остаётся рабочей", () =>
   assert.equal(back[1].lots.length, 2, "настоящие лоты не тронуты");
 });
 
+test("спецификация из таблицы КТРУ едет довеском, а не в ленте", () => {
+  const items = [{ name: "Перчатки", ktru: "32.50.13.190-00007686", qty: 50, unit: "шт",
+                   chars: [{ key: "Размер", operator: "gte", value: 8, unit: "", hardness: "hard", raw: "≥ 8" }] }];
+  const { feed, tz } = splitSnapshot([eis({ lotItems: items })]);
+  assert.equal("lotItems" in feed[0], false, "позиции с характеристиками тяжелее всего в записи");
+  assert.deepEqual(tz.eis_1.items, items);
+  const back = mergeSidecars(JSON.parse(JSON.stringify(feed)), tz, {});
+  assert.deepEqual(back[0].lotItems, items);
+});
+
+test("без спецификации поле items в довеске не появляется", () => {
+  const { tz } = splitSnapshot([eis()]);
+  assert.equal("items" in tz.eis_1, false, "пустое поле раздуло бы довесок на ровном месте");
+});
+
 test("исходный объект не мутируется", () => {
   const p = eis();
   splitSnapshot([p]);

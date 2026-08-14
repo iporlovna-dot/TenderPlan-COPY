@@ -11,7 +11,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 
 const {
-  annotateTz, hasTerms, unparsedFirst, rankTzDocs, isHopeless, termsForPurchase,
+  annotateTz, hasTerms, unparsedFirst, rankTzDocs, isHopeless, termsForPurchase, applyTz,
 } = require("./sources/tzterms");
 
 const DOC = { id: "d1", name: "Техническое задание.docx", url: "https://example.invalid/tz.docx" };
@@ -78,6 +78,43 @@ test("hasTerms не считает пустой массив разбором", 
   assert.equal(hasTerms({ tzTerms: [] }), false);
   assert.equal(hasTerms({}), false);
   assert.equal(hasTerms({ tzTerms: ["перчатк"] }), true);
+});
+
+// ------------------------------------------------ спецификация из таблицы КТРУ
+
+test("запись без отметки версии извлечения не считается разобранной", () => {
+  // Живой прогон 14.08: метка __items переоткрыла 1868 разборов, и 1848 из них
+  // тут же вернулись из накопителя БЕЗ спецификации — засев смотрел только на
+  // tzAlgo. Они застряли бы навсегда: перекачивать их больше нечему.
+  const TZ_ALGO = 4, TZ_ITEMS = 2;
+  const FINAL = new Set(["ok", "unsupported", "empty", "error"]);
+  const seedable = (p) => p.tzAlgo === TZ_ALGO && p.tzItems === TZ_ITEMS && FINAL.has(p.tzStatus);
+  assert.equal(seedable({ tzAlgo: 4, tzStatus: "ok" }), false, "старая запись без tzItems");
+  assert.equal(seedable({ tzAlgo: 4, tzItems: 1, tzStatus: "ok" }), false, "прошлая версия извлечения");
+  assert.equal(seedable({ tzAlgo: 4, tzItems: 2, tzStatus: "ok" }), true);
+  assert.equal(seedable({ tzAlgo: 4, tzItems: 2, tzStatus: "ok", lotItems: [] }), true,
+    "разобрали текущей версией и таблицы не нашли — это ответ, а не пробел");
+});
+
+test("позиции лота доезжают до закупки", () => {
+  const p = purchase("eis_10");
+  const items = [{ name: "Перчатки", ktru: "32.50.13.190-00007686", chars: [] }];
+  applyTz(p, { status: "ok", docName: "ТЗ.docx", terms: ["перчатк"], items });
+  assert.deepEqual(p.lotItems, items);
+});
+
+test("пустая спецификация полем не становится", () => {
+  const p = purchase("eis_11");
+  applyTz(p, { status: "ok", docName: "ТЗ.docx", terms: ["перчатк"], items: [] });
+  assert.equal("lotItems" in p, false,
+    "«таблицы в документе нет» и «мы её не извлекали» — разные вещи");
+});
+
+test("разбор без спецификации не стирает добытую раньше", () => {
+  // так бывает при перезаписи из кэша старого формата
+  const p = purchase("eis_12", { lotItems: [{ name: "Бинт", chars: [] }] });
+  applyTz(p, { status: "ok", docName: "ТЗ.docx", terms: ["бинт"] });
+  assert.equal(p.lotItems.length, 1, "дорого добытое затирать нечем");
 });
 
 // ------------------------------------------- перебор кандидатов вместо одного

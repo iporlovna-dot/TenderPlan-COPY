@@ -26,6 +26,7 @@
 
 const { curlBinary, mapLimit } = require("./util");
 const LKTZ = require("../../site/js/tzmatch.js");
+const { extractLotItems } = require("./ktrutable");
 
 const CONC = Number(process.env.LK_TZ_CONC || 8);
 // сколько терминов оставляем на закупку: длинные ТЗ дают тысячи, но снапшот и так
@@ -141,16 +142,27 @@ async function termsForDoc(doc) {
     return { terms: [], docName: doc.name || "", status: "error" };
   }
   if (!looksLikeZip(buf)) return { terms: [], docName: doc.name || "", status: "unsupported" };
-  let text;
+  let xml;
   try {
-    text = await LKTZ.docxTextFromBytes(new Uint8Array(buf));
+    // Берём XML, а не сразу текст: из него растут ОБА результата — мешок основ
+    // и спецификация из таблицы КТРУ. Документ уже скачан, второй проход по нему
+    // бесплатен, а второе скачивание стоило бы вдвое дороже всего разбора.
+    xml = await LKTZ.docxXmlFromBytes(new Uint8Array(buf));
   } catch (e) {
     // это ZIP, но не Word (часто .xlsx под именем без расширения) — не наш формат
     return { terms: [], docName: doc.name || "", status: "unsupported" };
   }
-  const freq = LKTZ.termFreq(text || "");
-  if (!freq.size) return { terms: [], docName: doc.name || "", status: "empty" };
-  return { terms: topTerms(freq, MAX_TERMS), docName: doc.name || "", status: "ok" };
+  const items = extractLotItems(xml).items;
+  const freq = LKTZ.termFreq(LKTZ.xmlToText(xml) || "");
+  // Пустой текст при непустой спецификации бывает: документ целиком в таблице.
+  // Объявлять такую закупку «пустой» нельзя — позиции у нас на руках.
+  if (!freq.size && !items.length) return { terms: [], docName: doc.name || "", status: "empty" };
+  return {
+    terms: freq.size ? topTerms(freq, MAX_TERMS) : [],
+    items,
+    docName: doc.name || "",
+    status: "ok",
+  };
 }
 
 // Перебрать кандидатов закупки, пока один не разберётся. `spend()` списывает
@@ -268,7 +280,11 @@ function applyTz(p, res) {
   p.tzStatus = res.status;
   p.tzDoc = res.docName || "";
   if (res.terms && res.terms.length) p.tzTerms = res.terms;
+  // Позиции лота из таблицы КТРУ. Пустой массив не пишем: «спецификации в
+  // документе нет» и «мы её ещё не извлекали» — разные вещи, и отсутствие поля
+  // честнее пустого массива (то же правило, что у docsFetched).
+  if (res.items && res.items.length) p.lotItems = res.items;
 }
 
 module.exports = { annotateTz, pickTzDoc, rankTzDocs, isHopeless, looksLikeZip, topTerms,
-                    termsForDoc, termsForPurchase, hasTerms, unparsedFirst };
+                    termsForDoc, termsForPurchase, hasTerms, unparsedFirst, applyTz };
