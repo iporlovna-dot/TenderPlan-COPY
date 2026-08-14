@@ -292,7 +292,12 @@ const LKTZ = (() => {
 
   // Тот же разбор, но от голых байт — так им пользуется сборщик в Node, где
   // никакого File нет, а есть буфер скачанного документа.
-  async function docxTextFromBytes(buf) {
+  //
+  // Распаковка отделена от превращения в текст намеренно: из того же XML растёт
+  // разбор ТАБЛИЦ (см. docxTables), а он обязан читать структуру, которую
+  // текстовая ветка как раз уничтожает — там </w:tc> и </w:tr> становятся
+  // переводом строки, и ячейка перестаёт отличаться от абзаца.
+  async function docxXmlFromBytes(buf) {
     if (!(buf instanceof Uint8Array)) buf = new Uint8Array(buf);
     const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -340,7 +345,14 @@ const LKTZ = (() => {
       const stream = new Blob([data]).stream().pipeThrough(ds);
       xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
     }
-    let xml = new TextDecoder("utf-8").decode(xmlBytes);
+    return new TextDecoder("utf-8").decode(xmlBytes);
+  }
+
+  async function docxTextFromBytes(buf) {
+    return xmlToText(await docxXmlFromBytes(buf));
+  }
+
+  function xmlToText(xml) {
     // Разделители расставляем ДО срезания тегов. Иначе соседние куски слипаются:
     // на живых ТЗ получались «директорруководител», «переключателемtimberk»,
     // «зубр,станина,глубина 3,5 мм» — и такие склейки, будучи самыми длинными,
@@ -357,7 +369,8 @@ const LKTZ = (() => {
     return xml.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
   }
 
-  return { compare, compareTerms, extractText, terms, termFreq, stem, docxTextFromBytes,
+  return { compare, compareTerms, extractText, terms, termFreq, stem,
+    docxTextFromBytes, docxXmlFromBytes, xmlToText,
     makeIdf, subjectTerms, subjectMatch, stemSet, isMeasured, expandVariants, surfaceForms };
 })();
 
