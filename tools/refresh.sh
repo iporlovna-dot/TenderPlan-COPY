@@ -37,7 +37,11 @@ REMOTE_DIR="/opt/lekalo/site/data"
 # tools/.cache) — если сверять только id, прогон, добывший документы или термины
 # ТЗ для сотни закупок без изменения состава, считался бы «ничего не поменялось»,
 # и покрытие никогда бы не доехало до прода.
-ids() { node -e 'try{console.log(require("./site/data/purchases.json").purchases.map(p=>p.id+":"+((p.documents||[]).length?1:0)+":"+((p.tzTerms||[]).length?1:0)).sort().join(","))}catch(e){console.log("")}'; }
+# ⚠️ documents и tzTerms живут теперь в довесках (tz.json/docs.json), в ленте от
+# них остались docsCount и tzStatus — по ним и считаем отпечаток. Смысл прежний:
+# «добыли документы/термины» обязано считаться изменением, иначе покрытие не
+# доедет до прода.
+ids() { node -e 'try{console.log(require("./site/data/purchases.json").purchases.map(p=>p.id+":"+(p.docsCount?1:0)+":"+(p.tzStatus==="ok"?1:0)).sort().join(","))}catch(e){console.log("")}'; }
 
 before="$(ids)"
 node tools/build_snapshot.js
@@ -67,16 +71,30 @@ fi
 if [ "$before" = "$after" ]; then
   echo "$(date +%F\ %H:%M) состав закупок не изменился — покупки не деплою"
 else
-  # scp во временный файл + атомарный mv на сервере — чтобы nginx никогда не
-  # отдал наполовину записанный JSON.
-  if scp -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
-       site/data/purchases.json "$VPS:$REMOTE_DIR/purchases.json.tmp" \
-     && ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
-       "$VPS" "mv $REMOTE_DIR/purchases.json.tmp $REMOTE_DIR/purchases.json"
+  # Лента и довески — три файла, и они обязаны быть ОДНОЙ версии: свежая лента
+  # поверх старого tz.json дала бы прочерки вместо процентов там, где термины
+  # уже добыты. Поэтому сначала заливаем все три во временные, и только потом
+  # переименовываем одной командой — окно рассогласования сжимается до
+  # миллисекунд. Временный файл + mv нужен и сам по себе: иначе nginx может
+  # отдать наполовину записанный JSON.
+  ok=1
+  for f in purchases.json tz.json docs.json; do
+    if [ ! -f "site/data/$f" ]; then
+      echo "$(date +%F\ %H:%M) нет site/data/$f — доставку отменяю"; ok=0; break
+    fi
+    scp -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
+      "site/data/$f" "$VPS:$REMOTE_DIR/$f.tmp" || { ok=0; break; }
+  done
+  if [ "$ok" = 1 ] \
+     && ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 "$VPS" \
+       "cd $REMOTE_DIR && mv purchases.json.tmp purchases.json && mv tz.json.tmp tz.json && mv docs.json.tmp docs.json"
   then
     echo "$(date +%F\ %H:%M) закупки обновлены и задеплоены по scp (состав изменился)"
   else
     echo "$(date +%F\ %H:%M) ОШИБКА доставки закупок по scp — на VPS остался прежний снапшот"
+    # недоехавшие .tmp убираем, иначе следующий прогон переименует чужой огрызок
+    ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 "$VPS" \
+      "rm -f $REMOTE_DIR/purchases.json.tmp $REMOTE_DIR/tz.json.tmp $REMOTE_DIR/docs.json.tmp" || true
   fi
 fi
 

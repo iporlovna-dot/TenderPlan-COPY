@@ -594,6 +594,51 @@ const LK = (() => {
   // реальные закупки грузятся из data/purchases.json (снапшот Портала поставщиков),
   // моки — фолбэк для file:// и офлайна.
   let _purchases = null;
+
+  // Лента приезжает БЕЗ тяжёлого: терминов ТЗ, документов и вырожденных лотов
+  // (см. tools/sources/split.js — на них уходило 56% байтов файла, а при
+  // открытии ленты они не нужны). Здесь восстанавливаем то, что синтезируется
+  // из самой закупки, чтобы остальной код не заботился о том, разделён снапшот
+  // или нет: пустой documents вместо undefined, лот из названия.
+  function normalizePurchase(p) {
+    if (!p.documents) p.documents = [];
+    if (!p.lots || !p.lots.length) {
+      p.lots = [{ name: p.title, qty: "—", unit: "", price: p.price }];
+    }
+    return p;
+  }
+
+  // Довески грузим лениво и по одному разу: термины — когда включили «Умную
+  // сверку», документы — когда открыли первую карточку. Оба необязательны:
+  // не загрузились — лента работает, просто без сверки/списка приложений.
+  // Обещание запоминаем, а не только флаг, иначе два одновременных вызова
+  // (тумблер и карточка) скачали бы файл дважды.
+  const _sidecar = {};
+  function loadSidecar(name, file, apply) {
+    if (_sidecar[name]) return _sidecar[name];
+    _sidecar[name] = (async () => {
+      try {
+        const r = await fetch(file, { cache: "no-store" });
+        if (!r.ok) return false;
+        const d = await r.json();
+        const map = d && d[name];
+        if (!map) return false;
+        for (const p of allPurchases()) if (map[p.id]) apply(p, map[p.id]);
+        return true;
+      } catch (e) { return false; }
+    })();
+    return _sidecar[name];
+  }
+  function loadTz() {
+    return loadSidecar("tz", "data/tz.json", (p, e) => {
+      p.tzTerms = e.terms || [];
+      if (e.doc) p.tzDoc = e.doc;
+    });
+  }
+  function loadDocs() {
+    return loadSidecar("docs", "data/docs.json", (p, docs) => { p.documents = docs; });
+  }
+
   async function loadPurchases() {
     const api = (typeof window !== "undefined" && window.LK_API_BASE) || "";
     const urls = [];
@@ -605,7 +650,7 @@ const LK = (() => {
         if (!r.ok) continue;
         const d = await r.json();
         if (d && Array.isArray(d.purchases) && d.purchases.length) {
-          _purchases = d.purchases;
+          _purchases = d.purchases.map(normalizePurchase);
           return allPurchases();
         }
       } catch (e) { /* пробуем следующий источник */ }
@@ -639,7 +684,7 @@ const LK = (() => {
     getViewed, isViewed, markViewed,
     getPageSize, setPageSize,
     initSession, apiLogout, isServerSession, apiGet, apiSend,
-    seedDemo, allPurchases, loadPurchases, loadAnalytics, getAnalytics
+    seedDemo, allPurchases, loadPurchases, loadTz, loadDocs, loadAnalytics, getAnalytics
   };
 })();
 

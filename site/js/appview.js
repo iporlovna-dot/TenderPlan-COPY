@@ -312,6 +312,24 @@
     matchMemo.clear();
   }
 
+  // Термины ТЗ приезжают ОТДЕЛЬНЫМ файлом (data/tz.json) и только когда нужны —
+  // то есть когда у человека вообще есть своё ТЗ. Без него ни корпус, ни сверка
+  // не считаются, и качать несколько мегабайт терминов незачем. Обещание
+  // запоминаем: тумблер и загрузка ТЗ могут дёрнуть это одновременно.
+  let tzReady = null;
+  function ensureTz() {
+    if (!tzReady) tzReady = LK.loadTz().then(() => { buildCorpus(); loadMyTz(); });
+    return tzReady;
+  }
+
+  // То же для списка приложений: он нужен только раскрытой карточке. Перерисовку
+  // делаем без сброса пагинации — человек уже стоит на своей странице.
+  let docsReady = null;
+  function ensureDocs() {
+    if (!docsReady) docsReady = LK.loadDocs().then(() => renderFeed(false));
+    return docsReady;
+  }
+
   function loadMyTz() {
     const tz = LK.getMyTz();
     // Варианты с беглой гласной раскрываем ТОЛЬКО здесь: в снапшоте они съедали
@@ -799,7 +817,16 @@
       ["Место поставки", p.deliveryPlace || canonicalRegion(p.region) || "—"]
     ].map(([k, v]) => `<div class="fact"><span class="fact__k">${k}</span><span class="fact__v">${lkEscape(String(v))}</span></div>`).join("");
 
-    const docsHtml = (p.documents && p.documents.length) ? `
+    // Список приложений лежит в отдельном файле (data/docs.json) и грузится при
+    // первом открытии карточки. docsCount приезжает с лентой, поэтому «файл ещё
+    // не скачан» отличимо от «приложений нет» — врать про отсутствие документов
+    // нельзя, это разные вещи (та же причина, что у docsFetched в сборщике).
+    const docsPending = !(p.documents && p.documents.length) && p.docsCount > 0;
+    const docsHtml = docsPending ? `
+        <div class="detail-block">
+          <div class="detail-block__title">Документы (${p.docsCount})</div>
+          <div class="doc-list"><span class="doc-name">загружаем список приложений…</span></div>
+        </div>` : (p.documents && p.documents.length) ? `
         <div class="detail-block">
           <div class="detail-block__title">Документы (${p.documents.length})</div>
           <div class="doc-list">
@@ -1113,6 +1140,12 @@
         if (card.classList.contains("is-open")) {
           LK.markViewed(card.dataset.id);
           card.classList.add("is-viewed");
+          // Список приложений грузим здесь, а не при отрисовке подробностей:
+          // HTML карточки строится сразу для всей страницы ленты (аккордеон
+          // анимирует grid-template-rows, значит содержимое должно уже быть в
+          // DOM), и запрос из purchaseDetail срабатывал бы на первой же ленте —
+          // то есть довесок перестал бы быть ленивым.
+          ensureDocs();
         }
       });
     });
@@ -1296,10 +1329,14 @@
       return;
     }
     LK.setMyTz({ name, terms, freq: Object.fromEntries(freqMap), forms, savedAt: new Date().toISOString() });
-    renderMatchBar();
-    // включаем сразу: человек грузил ТЗ именно ради процентов, лишний клик тут лишний
-    document.getElementById("match-enable").checked = true;
-    document.getElementById("match-enable").dispatchEvent(new Event("change"));
+    // Ждём термины закупок: без них сверка показала бы прочерки по всей ленте,
+    // и человек решил бы, что его ТЗ не подошло, а не что файл ещё едет.
+    ensureTz().then(() => {
+      renderMatchBar();
+      // включаем сразу: человек грузил ТЗ именно ради процентов, лишний клик тут лишний
+      document.getElementById("match-enable").checked = true;
+      document.getElementById("match-enable").dispatchEvent(new Event("change"));
+    });
     closeMyTzModal();
     lkToast(`ТЗ загружено — ${terms.length} требований`);
   });
@@ -1378,10 +1415,11 @@
   updateSavedCount();
 
   LK.loadPurchases().then(() => {
-    buildCorpus();     // редкость терминов — из самого снапшота, до первой сверки
-    loadMyTz();        // предмет считается уже с корпусом
     renderMatchBar();
     populateFacets();  // регион/площадка из реальных данных
+    // Термины ТЗ — отдельным файлом и только если человеку есть с чем сверять.
+    // Раньше корпус строился здесь же, потому что термины лежали в самой ленте.
+    if (LK.getMyTz()) ensureTz().then(() => { renderMatchBar(); renderFeed(false); });
     // по умолчанию показываем реальные «Все закупки»; сохранённые поиски — в сайдбаре
     selectAllPurchases();
     // живое устаревание: раз в минуту перерисовываем (без сброса пагинации) и

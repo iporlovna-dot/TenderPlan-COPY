@@ -18,9 +18,14 @@ const {
 } = require("./sources/store");
 const { buildRegionIndex } = require("./sources/eisregion");
 const { loadSweep, saveSweep } = require("./sources/eissweep");
+const { splitSnapshot, FEED_V } = require("./sources/split");
 
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
+// Довески к ленте: термины ТЗ и документы. Грузятся фронтом отдельно и только
+// когда понадобятся — см. sources/split.js.
+const OUT_TZ = path.join(OUT_DIR, "tz.json");
+const OUT_DOCS = path.join(OUT_DIR, "docs.json");
 
 // Кэш карточек ЕИС (документы/регион/срок поставки), переживающий пересборку.
 // Лежит вне site/ намеренно: это рабочий файл сборщика, он не деплоится и не
@@ -217,14 +222,31 @@ async function main() {
   const withDocs = purchases.filter(p => p.documents && p.documents.length).length;
   const withTz = purchases.filter(p => p.tzTerms && p.tzTerms.length).length;
 
+  // Лента и довески — разными файлами (см. sources/split.js). Пишем БЕЗ
+  // отступов: снапшот читает браузер, а не человек, а отступы стоили 23% байтов.
+  const generatedAt = new Date().toISOString();
+  const { feed, tz, docs } = splitSnapshot(purchases);
   const payload = {
-    generatedAt: new Date().toISOString(),
+    generatedAt, v: FEED_V,
     source: "Портал поставщиков + ЕИС (zakupki.gov.ru) — активные закупки",
-    total: purchases.length,
-    purchases,
+    total: feed.length,
+    purchases: feed,
   };
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  fs.writeFileSync(OUT, JSON.stringify(payload, null, 2), "utf8");
+  const write = (file, data) => {
+    fs.writeFileSync(file, JSON.stringify(data), "utf8");
+    return fs.statSync(file).size;
+  };
+  const sizes = {
+    "purchases.json": write(OUT, payload),
+    "tz.json": write(OUT_TZ, { generatedAt, v: FEED_V, tz }),
+    "docs.json": write(OUT_DOCS, { generatedAt, v: FEED_V, docs }),
+  };
+  const mb = (b) => (b / 1048576).toFixed(1) + " МБ";
+  console.log("  доставка: " + Object.entries(sizes)
+    .map(([f, b]) => `${f} ${mb(b)}`).join(" | ")
+    + ` (всего ${mb(Object.values(sizes).reduce((a, b) => a + b, 0))})`);
+
   console.log(`wrote ${purchases.length} закупок из ${stored} в накопителе `
     + `(${JSON.stringify(bySrc)}), ${withDocs} с документами, ${withTz} с терминами ТЗ -> ${OUT}`);
 }
