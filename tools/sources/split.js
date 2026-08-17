@@ -17,8 +17,15 @@
 const FEED_V = 2;
 
 // Поля, которые в ленте не нужны и уезжают в довески.
-const TZ_FIELDS = ["tzTerms", "tzDoc", "lotItems"];
+const TZ_FIELDS = ["tzTerms", "tzDoc"];
 const DOC_FIELDS = ["documents"];
+// Спецификация из таблицы КТРУ — довесок ОТДЕЛЬНЫЙ, а не часть tz.json, хотя
+// добывается тем же разбором. Причина в весе и в моменте нужды: tz.json на
+// живом снапшоте — 4.93 МБ, и 95% из них термины, которые читает только «Умная
+// сверка» (тумблер). Позиции же нужны раскрытой карточке — то есть всем и без
+// всякого ТЗ, — а весят 0.23 МБ. Слитые в один файл они заставляли бы качать
+// пять мегабайт ради двенадцати строк спецификации.
+const SPEC_FIELDS = ["lotItems"];
 
 // «Вырожденный лот» — единственная позиция, дословно повторяющая название
 // закупки и не несущая ничего сверх него. У ЕИС такой лот синтезирует сам
@@ -45,46 +52,48 @@ function splitSnapshot(purchases) {
   const feed = [];
   const tz = {};
   const docs = {};
+  const spec = {};
 
   for (const p of purchases) {
     const lite = {};
     for (const [k, v] of Object.entries(p)) {
-      if (TZ_FIELDS.includes(k) || DOC_FIELDS.includes(k)) continue;
+      if (TZ_FIELDS.includes(k) || DOC_FIELDS.includes(k) || SPEC_FIELDS.includes(k)) continue;
       lite[k] = v;
     }
     // Признак «документы есть» обязан остаться в ленте: без него пустой
     // documents[] неотличим от «ещё не загрузили довесок», и карточка сказала
     // бы «приложений нет» там, где мы просто не дочитали файл.
     lite.docsCount = (p.documents || []).length;
+    // То же и по той же причине для спецификации: «таблицы в ТЗ нет» и «довесок
+    // ещё не приехал» — разные вещи, и путать их значит врать в карточке.
+    lite.specCount = (p.lotItems || []).length;
     if (isDegenerateLots(p)) delete lite.lots;
 
     feed.push(lite);
 
-    if ((p.tzTerms && p.tzTerms.length) || p.tzDoc || (p.lotItems && p.lotItems.length)) {
-      const e = { terms: p.tzTerms || [], doc: p.tzDoc || "" };
-      // Спецификация из таблицы КТРУ есть далеко не у всех — пустое поле не пишем,
-      // иначе довесок раздуется скобками на ровном месте.
-      if (p.lotItems && p.lotItems.length) e.items = p.lotItems;
-      tz[p.id] = e;
+    if ((p.tzTerms && p.tzTerms.length) || p.tzDoc) {
+      tz[p.id] = { terms: p.tzTerms || [], doc: p.tzDoc || "" };
     }
     if (p.documents && p.documents.length) docs[p.id] = p.documents;
+    if (p.lotItems && p.lotItems.length) spec[p.id] = p.lotItems;
   }
 
-  return { feed, tz, docs };
+  return { feed, tz, docs, spec };
 }
 
 // Обратная операция — ею пользуются тесты и фронт (там своя копия на JS
 // браузера). Держим рядом, чтобы разъезд формата ловился тестом, а не в проде.
-function mergeSidecars(feed, tz, docs) {
+function mergeSidecars(feed, tz, docs, spec) {
   for (const p of feed) {
     const t = tz && tz[p.id];
     if (t) {
       p.tzTerms = t.terms || [];
       if (t.doc) p.tzDoc = t.doc;
-      if (t.items) p.lotItems = t.items;
     }
     const d = docs && docs[p.id];
     if (d) p.documents = d;
+    const s = spec && spec[p.id];
+    if (s) p.lotItems = s;
     if (!p.documents) p.documents = [];
     if (!p.lots) p.lots = [synthLot(p)];
   }

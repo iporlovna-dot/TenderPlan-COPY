@@ -638,6 +638,12 @@ const LK = (() => {
   function loadDocs() {
     return loadSidecar("docs", "data/docs.json", (p, docs) => { p.documents = docs; });
   }
+  // Спецификация из таблицы КТРУ. Отдельно от tz.json намеренно: там 4.9 МБ
+  // терминов для «Умной сверки», здесь 0.2 МБ позиций, нужных любой раскрытой
+  // карточке — в том числе тем, у кого своего ТЗ нет вовсе.
+  function loadSpec() {
+    return loadSidecar("spec", "data/spec.json", (p, items) => { p.lotItems = items; });
+  }
 
   async function loadPurchases() {
     const api = (typeof window !== "undefined" && window.LK_API_BASE) || "";
@@ -684,7 +690,7 @@ const LK = (() => {
     getViewed, isViewed, markViewed,
     getPageSize, setPageSize,
     initSession, apiLogout, isServerSession, apiGet, apiSend,
-    seedDemo, allPurchases, loadPurchases, loadTz, loadDocs, loadAnalytics, getAnalytics
+    seedDemo, allPurchases, loadPurchases, loadTz, loadDocs, loadSpec, loadAnalytics, getAnalytics
   };
 })();
 

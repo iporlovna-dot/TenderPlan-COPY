@@ -22,10 +22,11 @@ const { splitSnapshot, FEED_V } = require("./sources/split");
 
 const OUT_DIR = path.resolve(__dirname, "..", "site", "data");
 const OUT = path.join(OUT_DIR, "purchases.json");
-// Довески к ленте: термины ТЗ и документы. Грузятся фронтом отдельно и только
-// когда понадобятся — см. sources/split.js.
+// Довески к ленте: термины ТЗ, документы и спецификация из таблицы КТРУ.
+// Грузятся фронтом отдельно и только когда понадобятся — см. sources/split.js.
 const OUT_TZ = path.join(OUT_DIR, "tz.json");
 const OUT_DOCS = path.join(OUT_DIR, "docs.json");
+const OUT_SPEC = path.join(OUT_DIR, "spec.json");
 
 // Кэш карточек ЕИС (документы/регион/срок поставки), переживающий пересборку.
 // Лежит вне site/ намеренно: это рабочий файл сборщика, он не деплоится и не
@@ -243,11 +244,12 @@ async function main() {
   const bySrc = purchases.reduce((m, p) => (m[p.source] = (m[p.source] || 0) + 1, m), {});
   const withDocs = purchases.filter(p => p.documents && p.documents.length).length;
   const withTz = purchases.filter(p => p.tzTerms && p.tzTerms.length).length;
+  const withSpec = purchases.filter(p => p.lotItems && p.lotItems.length).length;
 
   // Лента и довески — разными файлами (см. sources/split.js). Пишем БЕЗ
   // отступов: снапшот читает браузер, а не человек, а отступы стоили 23% байтов.
   const generatedAt = new Date().toISOString();
-  const { feed, tz, docs } = splitSnapshot(purchases);
+  const { feed, tz, docs, spec } = splitSnapshot(purchases);
   const payload = {
     generatedAt, v: FEED_V,
     source: "Портал поставщиков + ЕИС (zakupki.gov.ru) — активные закупки",
@@ -263,6 +265,7 @@ async function main() {
     "purchases.json": write(OUT, payload),
     "tz.json": write(OUT_TZ, { generatedAt, v: FEED_V, tz }),
     "docs.json": write(OUT_DOCS, { generatedAt, v: FEED_V, docs }),
+    "spec.json": write(OUT_SPEC, { generatedAt, v: FEED_V, spec }),
   };
   const mb = (b) => (b / 1048576).toFixed(1) + " МБ";
   console.log("  доставка: " + Object.entries(sizes)
@@ -270,7 +273,8 @@ async function main() {
     + ` (всего ${mb(Object.values(sizes).reduce((a, b) => a + b, 0))})`);
 
   console.log(`wrote ${purchases.length} закупок из ${stored} в накопителе `
-    + `(${JSON.stringify(bySrc)}), ${withDocs} с документами, ${withTz} с терминами ТЗ -> ${OUT}`);
+    + `(${JSON.stringify(bySrc)}), ${withDocs} с документами, ${withTz} с терминами ТЗ, `
+    + `${withSpec} со спецификацией -> ${OUT}`);
 }
 
 main();

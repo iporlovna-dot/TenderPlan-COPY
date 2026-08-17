@@ -37,11 +37,11 @@ REMOTE_DIR="/opt/lekalo/site/data"
 # tools/.cache) — если сверять только id, прогон, добывший документы или термины
 # ТЗ для сотни закупок без изменения состава, считался бы «ничего не поменялось»,
 # и покрытие никогда бы не доехало до прода.
-# ⚠️ documents и tzTerms живут теперь в довесках (tz.json/docs.json), в ленте от
-# них остались docsCount и tzStatus — по ним и считаем отпечаток. Смысл прежний:
-# «добыли документы/термины» обязано считаться изменением, иначе покрытие не
-# доедет до прода.
-ids() { node -e 'try{console.log(require("./site/data/purchases.json").purchases.map(p=>p.id+":"+(p.docsCount?1:0)+":"+(p.tzStatus==="ok"?1:0)).sort().join(","))}catch(e){console.log("")}'; }
+# ⚠️ documents, tzTerms и lotItems живут теперь в довесках (tz/docs/spec.json), в
+# ленте от них остались docsCount, tzStatus и specCount — по ним и считаем
+# отпечаток. Смысл прежний: «добыли документы/термины/спецификацию» обязано
+# считаться изменением, иначе покрытие не доедет до прода.
+ids() { node -e 'try{console.log(require("./site/data/purchases.json").purchases.map(p=>p.id+":"+(p.docsCount?1:0)+":"+(p.tzStatus==="ok"?1:0)+":"+(p.specCount?1:0)).sort().join(","))}catch(e){console.log("")}'; }
 
 before="$(ids)"
 node tools/build_snapshot.js
@@ -71,30 +71,36 @@ fi
 if [ "$before" = "$after" ]; then
   echo "$(date +%F\ %H:%M) состав закупок не изменился — покупки не деплою"
 else
-  # Лента и довески — три файла, и они обязаны быть ОДНОЙ версии: свежая лента
-  # поверх старого tz.json дала бы прочерки вместо процентов там, где термины
-  # уже добыты. Поэтому сначала заливаем все три во временные, и только потом
-  # переименовываем одной командой — окно рассогласования сжимается до
-  # миллисекунд. Временный файл + mv нужен и сам по себе: иначе nginx может
+  # Лента и довески — четыре файла, и они обязаны быть ОДНОЙ версии: свежая
+  # лента поверх старого tz.json дала бы прочерки вместо процентов там, где
+  # термины уже добыты, а поверх старого spec.json — «загружаем спецификацию…»,
+  # которое никогда не сменится. Поэтому сначала заливаем все во временные, и
+  # только потом переименовываем одной командой — окно рассогласования сжимается
+  # до миллисекунд. Временный файл + mv нужен и сам по себе: иначе nginx может
   # отдать наполовину записанный JSON.
+  # Список файлов ОДИН на все три места (заливка, переименование, уборка): при
+  # трёх копиях добавленный довесок неминуемо забылся бы в одном из них.
+  DATA_FILES="purchases.json tz.json docs.json spec.json"
   ok=1
-  for f in purchases.json tz.json docs.json; do
+  for f in $DATA_FILES; do
     if [ ! -f "site/data/$f" ]; then
       echo "$(date +%F\ %H:%M) нет site/data/$f — доставку отменяю"; ok=0; break
     fi
     scp -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 \
       "site/data/$f" "$VPS:$REMOTE_DIR/$f.tmp" || { ok=0; break; }
   done
+  mv_cmd="cd $REMOTE_DIR"; rm_cmd="rm -f"
+  for f in $DATA_FILES; do
+    mv_cmd="$mv_cmd && mv $f.tmp $f"; rm_cmd="$rm_cmd $REMOTE_DIR/$f.tmp"
+  done
   if [ "$ok" = 1 ] \
-     && ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 "$VPS" \
-       "cd $REMOTE_DIR && mv purchases.json.tmp purchases.json && mv tz.json.tmp tz.json && mv docs.json.tmp docs.json"
+     && ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 "$VPS" "$mv_cmd"
   then
     echo "$(date +%F\ %H:%M) закупки обновлены и задеплоены по scp (состав изменился)"
   else
     echo "$(date +%F\ %H:%M) ОШИБКА доставки закупок по scp — на VPS остался прежний снапшот"
     # недоехавшие .tmp убираем, иначе следующий прогон переименует чужой огрызок
-    ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 "$VPS" \
-      "rm -f $REMOTE_DIR/purchases.json.tmp $REMOTE_DIR/tz.json.tmp $REMOTE_DIR/docs.json.tmp" || true
+    ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=20 "$VPS" "$rm_cmd" || true
   fi
 fi
 

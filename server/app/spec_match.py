@@ -15,7 +15,7 @@
 
 ⚠️ Источники этому модулю НЕ нужны. Бэкенд «Лекало» отложили, потому что VPS
 заблокирован zakupki.gov.ru и mos.ru, — но сверка считает по уже собранным
-данным, лежащим на диске рядом (site/data/tz.json, доставляется refresh.sh).
+данным, лежащим на диске рядом (site/data/spec.json, доставляется refresh.sh).
 Причина отказа от бэкенда к этой задаче не относится.
 """
 
@@ -40,11 +40,12 @@ from schema import (  # noqa: E402
     Attribute, Hardness, MatchResult, Operator, Product, Requirement, Verdict,
 )
 
-# Файл довеска с терминами и позициями — тот же, что грузит фронт. Отдельной
-# копии данных для бэкенда не заводим: разъехавшиеся копии врали бы по-разному.
-TZ_FILE = os.getenv(
-    "LK_TZ_FILE",
-    os.path.join(os.path.dirname(__file__), "..", "..", "site", "data", "tz.json"),
+# Файл довеска со спецификацией — тот же, что грузит фронт при раскрытии
+# карточки. Отдельной копии данных для бэкенда не заводим: разъехавшиеся копии
+# врали бы по-разному.
+SPEC_FILE = os.getenv(
+    "LK_SPEC_FILE",
+    os.path.join(os.path.dirname(__file__), "..", "..", "site", "data", "spec.json"),
 )
 
 _OPERATORS = {
@@ -59,37 +60,36 @@ _HARDNESS = {"hard": Hardness.HARD, "soft": Hardness.SOFT}
 
 # ─────────────────────────────────────────────────────── чтение позиций закупки
 
-_cache: dict = {"mtime": None, "tz": {}}
+_cache: dict = {"mtime": None, "spec": {}}
 _lock = threading.Lock()
 
 
-def _load_tz() -> Dict[str, dict]:
-    """Позиции всех закупок из tz.json. Перечитываем по времени изменения файла:
-    refresh.sh кладёт новый каждый час, а держать процесс на устаревших данных —
-    молча показывать вчерашние требования."""
+def _load_spec() -> Dict[str, list]:
+    """Позиции всех закупок из spec.json. Перечитываем по времени изменения
+    файла: refresh.sh кладёт новый каждый час, а держать процесс на устаревших
+    данных — молча показывать вчерашние требования."""
     try:
-        mtime = os.path.getmtime(TZ_FILE)
+        mtime = os.path.getmtime(SPEC_FILE)
     except OSError:
         return {}
     with _lock:
         if _cache["mtime"] == mtime:
-            return _cache["tz"]
+            return _cache["spec"]
         try:
-            with open(TZ_FILE, encoding="utf-8") as fh:
+            with open(SPEC_FILE, encoding="utf-8") as fh:
                 data = json.load(fh)
-            _cache["tz"] = data.get("tz") or {}
+            _cache["spec"] = data.get("spec") or {}
             _cache["mtime"] = mtime
         except (OSError, ValueError):
             # битый/недописанный файл — отдаём прежние данные, а не пустоту:
             # refresh.sh пишет через .tmp + mv, но подстраховаться дёшево
             pass
-        return _cache["tz"]
+        return _cache["spec"]
 
 
 def positions(purchase_id: str) -> List[dict]:
     """Позиции лота закупки (пусто, если спецификации нет)."""
-    entry = _load_tz().get(purchase_id) or {}
-    return entry.get("items") or []
+    return _load_spec().get(purchase_id) or []
 
 
 # ─────────────────────────────────────────────────────────── перевод словаря

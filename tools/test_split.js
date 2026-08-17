@@ -99,10 +99,10 @@ test("лот с другим названием не вырожденный", ()
 // ───────────────────────────────────────────────────────────── круговой тест
 
 test("разделили и собрали обратно — ничего не потеряли", () => {
-  const src = [eis(), portal()];
+  const src = [eis({ lotItems: [{ name: "Перчатки", ktru: "32.50.13.190-00007686", chars: [] }] }), portal()];
   const before = JSON.parse(JSON.stringify(src));
-  const { feed, tz, docs } = splitSnapshot(src);
-  const back = mergeSidecars(JSON.parse(JSON.stringify(feed)), tz, docs);
+  const { feed, tz, docs, spec } = splitSnapshot(src);
+  const back = mergeSidecars(JSON.parse(JSON.stringify(feed)), tz, docs, spec);
 
   for (const [i, orig] of before.entries()) {
     const got = back[i];
@@ -115,25 +115,45 @@ test("разделили и собрали обратно — ничего не 
 test("лента без довесков остаётся рабочей", () => {
   // так фронт выглядит ДО того, как подгрузил tz.json/docs.json
   const { feed } = splitSnapshot([eis(), portal()]);
-  const back = mergeSidecars(JSON.parse(JSON.stringify(feed)), null, null);
+  const back = mergeSidecars(JSON.parse(JSON.stringify(feed)), null, null, null);
   assert.deepEqual(back[0].documents, [], "не undefined — иначе .length упадёт");
   assert.deepEqual(back[0].lots, [synthLot(eis())], "вырожденный лот восстановлен из названия");
   assert.equal(back[1].lots.length, 2, "настоящие лоты не тронуты");
 });
 
+// ───────────────────────────────────── спецификация — ОТДЕЛЬНЫЙ довесок
+
+const ITEMS = [{ name: "Перчатки", ktru: "32.50.13.190-00007686", qty: 50, unit: "шт",
+                 chars: [{ key: "Размер", operator: "gte", value: 8, unit: "", hardness: "hard", raw: "≥ 8" }] }];
+
 test("спецификация из таблицы КТРУ едет довеском, а не в ленте", () => {
-  const items = [{ name: "Перчатки", ktru: "32.50.13.190-00007686", qty: 50, unit: "шт",
-                   chars: [{ key: "Размер", operator: "gte", value: 8, unit: "", hardness: "hard", raw: "≥ 8" }] }];
-  const { feed, tz } = splitSnapshot([eis({ lotItems: items })]);
+  const { feed, spec } = splitSnapshot([eis({ lotItems: ITEMS })]);
   assert.equal("lotItems" in feed[0], false, "позиции с характеристиками тяжелее всего в записи");
-  assert.deepEqual(tz.eis_1.items, items);
-  const back = mergeSidecars(JSON.parse(JSON.stringify(feed)), tz, {});
-  assert.deepEqual(back[0].lotItems, items);
+  assert.deepEqual(spec.eis_1, ITEMS);
+  const back = mergeSidecars(JSON.parse(JSON.stringify(feed)), null, null, spec);
+  assert.deepEqual(back[0].lotItems, ITEMS);
 });
 
-test("без спецификации поле items в довеске не появляется", () => {
-  const { tz } = splitSnapshot([eis()]);
-  assert.equal("items" in tz.eis_1, false, "пустое поле раздуло бы довесок на ровном месте");
+test("спецификация лежит отдельно от терминов, а не внутри них", () => {
+  // Замер на живом снапшоте: tz.json — 4.93 МБ, из них позиции 0.23 МБ.
+  // Термины читает только «Умная сверка» (тумблер), позиции — любая раскрытая
+  // карточка. Слитые в один файл они заставляли бы качать пять мегабайт ради
+  // двенадцати строк спецификации.
+  const { tz, spec } = splitSnapshot([eis({ lotItems: ITEMS })]);
+  assert.equal("items" in tz.eis_1, false, "довесок терминов о позициях знать не должен");
+  assert.ok(spec.eis_1);
+});
+
+test("признак «спецификация есть» остаётся в ленте", () => {
+  const { feed } = splitSnapshot([eis({ lotItems: ITEMS }), eis({ id: "eis_2" })]);
+  assert.equal(feed[0].specCount, 1);
+  assert.equal(feed[1].specCount, 0,
+    "иначе «таблицы в ТЗ нет» неотличимо от «довесок ещё не приехал»");
+});
+
+test("без спецификации закупка довеска spec не порождает", () => {
+  const { spec } = splitSnapshot([eis()]);
+  assert.deepEqual(spec, {}, "пустой массив раздул бы довесок на ровном месте");
 });
 
 test("исходный объект не мутируется", () => {

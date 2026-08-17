@@ -330,6 +330,15 @@
     return docsReady;
   }
 
+  // Спецификация из таблицы КТРУ — тот же момент нужды, что у приложений
+  // (раскрытая карточка), но ОТДЕЛЬНЫЙ файл: не всякая закупка её имеет, а
+  // грузить ради неё 4.9 МБ терминов «Умной сверки» незачем.
+  let specReady = null;
+  function ensureSpec() {
+    if (!specReady) specReady = LK.loadSpec().then(() => renderFeed(false));
+    return specReady;
+  }
+
   function loadMyTz() {
     const tz = LK.getMyTz();
     // Варианты с беглой гласной раскрываем ТОЛЬКО здесь: в снапшоте они съедали
@@ -786,6 +795,102 @@
       </div>`;
   }
 
+  // ─────────────────────────── спецификация из таблицы КТРУ (довесок spec.json)
+  //
+  // Это то, чего в структуре закупки нет ни у ЕИС, ни у Портала: настоящие
+  // позиции лота с требованиями к характеристикам. Их вытаскивает из документа
+  // ТЗ tools/sources/ktrutable.js — оператор (≥/≤/диапазон/равно/наличие),
+  // единица и жёсткость приходят уже разобранными, здесь только показ.
+  //
+  // Потолки нужны потому, что HTML карточек строится сразу для всей страницы
+  // ленты: одна закупка на 59 позиций × 7 характеристик — это 400 строк в DOM
+  // за каждую отрисовку. Остаток честно пересчитан, а не спрятан.
+  const SPEC_ITEMS_MAX = 25;
+  const SPEC_CHARS_MAX = 6;
+
+  // В таблицах КТРУ единица записана вместе с расшифровкой: «мм (Миллиметр)»,
+  // «шт (Штука)». В строке требования расшифровка — чистый шум, она вдвое длиннее
+  // самого значения. Сокращаем ТОЛЬКО показ: в данных остаётся как у заказчика.
+  function unitLabel(u) {
+    const short = String(u || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+    return short || String(u || "").trim();
+  }
+
+  function describeChar(ch) {
+    const unit = ch.unit ? " " + unitLabel(ch.unit) : "";
+    const v = Array.isArray(ch.value) ? ch.value.join("–") : ch.value;
+    switch (ch.operator) {
+      case "gte": return "≥ " + v + unit;
+      case "lte": return "≤ " + v + unit;
+      case "present": return "требуется";
+      default: return v + unit;             // range уже склеен, eq — как есть
+    }
+  }
+
+  // Требование «Назначение» заказчик пишет абзацем на полсотни слов, и в столбце
+  // значений оно вытесняет всё остальное — соседние требования перестают
+  // читаться. Обрезаем показ, полный текст оставляем в подсказке: спецификация
+  // здесь для того, чтобы пробежать глазами, а не заменить документ.
+  const SPEC_VALUE_MAX = 120;
+  function clipValue(s) {
+    return s.length > SPEC_VALUE_MAX ? s.slice(0, SPEC_VALUE_MAX - 1).trimEnd() + "…" : s;
+  }
+
+  function specChars(item) {
+    const chars = item.chars || [];
+    if (!chars.length) return `<div class="spec-chars__none">требований к характеристикам в таблице нет</div>`;
+    const rows = chars.slice(0, SPEC_CHARS_MAX).map(ch => {
+      const full = describeChar(ch);
+      return `
+      <div class="spec-char${ch.hardness === "hard" ? " is-hard" : ""}">
+        <span class="spec-char__k">${lkEscape(clipValue(ch.key || ""))}</span>
+        <span class="spec-char__v" title="${lkEscape(ch.raw || full)}">${lkEscape(clipValue(full))}</span>
+      </div>`;
+    }).join("");
+    const rest = chars.length - SPEC_CHARS_MAX;
+    return `<div class="spec-chars">${rows}${rest > 0
+      ? `<div class="spec-chars__more">и ещё ${rest} ${lkPlural(rest, ["характеристика", "характеристики", "характеристик"])}</div>`
+      : ""}</div>`;
+  }
+
+  function specBlock(p) {
+    const items = p.lotItems || [];
+    // «Таблицы в ТЗ нет» и «довесок ещё не приехал» — разные вещи, и путать их
+    // значит врать в карточке (та же причина, что у docsCount выше).
+    if (!items.length) {
+      return p.specCount > 0 ? `
+          <div class="detail-block">
+            <div class="detail-block__title">Спецификация (${p.specCount})</div>
+            <div class="spec-chars__none">загружаем требования к позициям…</div>
+          </div>` : "";
+    }
+    const shown = items.slice(0, SPEC_ITEMS_MAX);
+    const hard = items.reduce((n, it) => n + (it.chars || []).filter(c => c.hardness === "hard").length, 0);
+    const rows = shown.map((it, i) => {
+      const code = it.ktru || it.okpd || "";
+      const qty = it.qty != null && it.qty !== "" ? `${it.qty} ${lkEscape(unitLabel(it.unit))}`.trim() : "";
+      return `
+        <div class="spec-item">
+          <div class="spec-item__head">
+            <span class="spec-item__idx">${i + 1}.</span>
+            <span class="spec-item__name">${lkEscape(it.name || "без названия")}</span>
+            <span class="spec-item__qty">${qty || "—"}</span>
+          </div>
+          ${code ? `<div class="spec-item__code">${it.ktru ? "КТРУ" : "ОКПД2"} ${lkEscape(code)}</div>` : ""}
+          ${specChars(it)}
+        </div>`;
+    }).join("");
+    const rest = items.length - shown.length;
+    return `
+          <div class="detail-block">
+            <div class="detail-block__title">Спецификация — ${items.length} ${lkPlural(items.length, ["позиция", "позиции", "позиций"])}${hard ? ` · ${hard} ${lkPlural(hard, ["неизменяемое требование", "неизменяемых требования", "неизменяемых требований"])}` : ""}</div>
+            <div class="spec-list">${rows}</div>
+            ${rest > 0 ? `<div class="spec-chars__more">и ещё ${rest} ${lkPlural(rest, ["позиция", "позиции", "позиций"])} — смотрите в документе ТЗ</div>` : ""}
+            <div class="match-why">Разобрано из таблицы технического задания.${hard ? " Ржавым — значения, которые участник менять не вправе." : ""}
+              Лот «всё или ничего»: заявка подаётся на весь набор позиций сразу.</div>
+          </div>`;
+  }
+
   function purchaseDetail(p, m) {
     const lotsHead = `
       <div class="lot-line lot-head">
@@ -845,6 +950,7 @@
             <div class="detail-block__title">Позиции лота${p.lots.length > 1 ? ` (${p.lots.length})` : ""}</div>
             ${lots}
           </div>
+          ${specBlock(p)}
           <div class="detail-block">
             <div class="detail-block__title">Условия закупки</div>
             <div class="facts-grid">${facts}</div>
@@ -1127,7 +1233,16 @@
 
     const start = (state.page - 1) * state.pageSize;
     const shownList = list.slice(start, start + state.pageSize);
+    // Раскрытые карточки обязаны пережить перерисовку. Довески приезжают в
+    // ответ на само раскрытие (ensureDocs/ensureSpec → renderFeed), то есть
+    // карточка захлопывалась бы ровно тогда, когда в неё наконец приехало
+    // содержимое, — и человек видел бы, что клик «не сработал».
+    const openIds = new Set([...feed.querySelectorAll(".tender-card.is-open")].map(c => c.dataset.id));
     feed.innerHTML = shownList.map(cardHtml).join("");
+    openIds.forEach(id => {
+      const card = feed.querySelector('.tender-card[data-id="' + id + '"]');
+      if (card) card.classList.add("is-open");
+    });
     renderPagination(state.page, totalPages);
 
     const byId = {};
@@ -1146,19 +1261,14 @@
           // DOM), и запрос из purchaseDetail срабатывал бы на первой же ленте —
           // то есть довесок перестал бы быть ленивым.
           ensureDocs();
+          ensureSpec();
         }
       });
     });
-    // доска: перерисовать ленту, сохранив раскрытую карточку (если она осталась)
-    function afterBoardChange(el) {
-      const card = el.closest(".tender-card");
-      const openId = card && card.classList.contains("is-open") ? card.dataset.id : null;
+    // доска: перерисовать ленту — раскрытую карточку сохранит сама renderFeed
+    function afterBoardChange() {
       refreshBoard();
       renderFeed(false);
-      if (openId) {
-        const again = feed.querySelector('.tender-card[data-id="' + openId + '"]');
-        if (again) again.classList.add("is-open");
-      }
     }
     // статус на доске (селект в шапке и в детали): пусто = снять, статус = добавить/сменить
     feed.querySelectorAll("[data-board-status]").forEach(sel => {
@@ -1169,7 +1279,7 @@
         if (!val) LK.removeSaved(id);
         else if (LK.isSaved(id)) LK.setBoardStatus(id, val);
         else if (p) LK.addToBoard(p, val);
-        afterBoardChange(sel);
+        afterBoardChange();
       });
     });
     // ответственный
@@ -1179,7 +1289,7 @@
         e.stopPropagation();
         const opt = sel.options[sel.selectedIndex];
         LK.setBoardAssignee(sel.dataset.assignee, sel.value, opt ? opt.textContent : null);
-        afterBoardChange(sel);
+        afterBoardChange();
       });
     });
     // снять с доски
@@ -1187,7 +1297,7 @@
       btn.addEventListener("click", (e) => {
         e.preventDefault(); e.stopPropagation();
         LK.removeSaved(btn.dataset.boardRemove);
-        afterBoardChange(btn);
+        afterBoardChange();
       });
     });
     // сверить своё ТЗ

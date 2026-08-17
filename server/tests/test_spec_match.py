@@ -20,26 +20,30 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
-def _fresh_module(tz_path):
+def _fresh_module(spec_path):
     """Модуль читает tz.json по пути из окружения и кэширует по mtime — для
     каждого теста поднимаем его заново на своём файле.
 
     ⚠️ Одного sys.modules.pop мало: `from app import spec_match` сначала смотрит
     АТРИБУТ пакета `app`, а он после первого импорта остаётся и указывает на
-    старый модуль со старым TZ_FILE. Поэтому перезагружаем явно.
+    старый модуль со старым SPEC_FILE. Поэтому перезагружаем явно.
     """
     import importlib
-    os.environ["LK_TZ_FILE"] = tz_path
+    os.environ["LK_SPEC_FILE"] = spec_path
     import app
     if hasattr(app, "spec_match"):
         return importlib.reload(app.spec_match)
     return importlib.import_module("app.spec_match")
 
 
-def _write_tz(items, purchase_id="eis_1"):
+def _write_spec(items, purchase_id="eis_1"):
+    """Позиции живут в data/spec.json — ОТДЕЛЬНОМ довеске, а не в tz.json: там
+    4.93 МБ терминов «Умной сверки», а позиции весят 0.23 МБ и нужны каждой
+    раскрытой карточке. Закупка без спецификации в файле просто отсутствует."""
     fd, path = tempfile.mkstemp(suffix=".json")
+    spec = {purchase_id: items} if items else {}
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        json.dump({"v": 2, "tz": {purchase_id: {"terms": [], "doc": "ТЗ.docx", "items": items}}}, fh)
+        json.dump({"v": 2, "spec": spec}, fh)
     return path
 
 
@@ -76,7 +80,7 @@ def item(**over):
 
 class TestRequirements(unittest.TestCase):
     def setUp(self):
-        self.path = _write_tz([item()])
+        self.path = _write_spec([item()])
         self.sm = _fresh_module(self.path)
 
     def tearDown(self):
@@ -113,7 +117,7 @@ class TestRequirements(unittest.TestCase):
 
 class TestPickProduct(unittest.TestCase):
     def setUp(self):
-        self.path = _write_tz([item()])
+        self.path = _write_spec([item()])
         self.sm = _fresh_module(self.path)
 
     def tearDown(self):
@@ -150,7 +154,7 @@ class TestMatchLot(unittest.TestCase):
             os.unlink(self.path)
 
     def test_лот_закрыт_когда_закрыты_все_позиции(self):
-        self.path = _write_tz([item()])
+        self.path = _write_spec([item()])
         sm = _fresh_module(self.path)
         res = sm.match_lot("eis_1", [GLOVES])
         self.assertEqual(res["status"], "ok")
@@ -158,7 +162,7 @@ class TestMatchLot(unittest.TestCase):
         self.assertEqual(res["verdict"], "eligible")
 
     def test_лот_берут_целиком_частичное_покрытие_это_отказ(self):
-        self.path = _write_tz([item(), item(name="Бинт", ktru="21.20.23.110-00004254", okpd="21.20.23.110")])
+        self.path = _write_spec([item(), item(name="Бинт", ktru="21.20.23.110-00004254", okpd="21.20.23.110")])
         sm = _fresh_module(self.path)
         res = sm.match_lot("eis_1", [GLOVES])
         self.assertEqual(res["covered"], 1)
@@ -169,7 +173,7 @@ class TestMatchLot(unittest.TestCase):
     def test_нарушение_жёсткого_требования_дисквалифицирует(self):
         bad = item(chars=[{"key": "Материал", "operator": "eq", "value": "латекс",
                            "hardness": "hard", "raw": "латекс"}])
-        self.path = _write_tz([bad])
+        self.path = _write_spec([bad])
         sm = _fresh_module(self.path)
         res = sm.match_lot("eis_1", [GLOVES])
         self.assertEqual(res["positions"][0]["verdict"], "disqualified")
@@ -178,7 +182,7 @@ class TestMatchLot(unittest.TestCase):
     def test_статус_проверки_переводится_в_словарь_фронта(self):
         bad = item(chars=[{"key": "Материал", "operator": "eq", "value": "латекс",
                            "hardness": "hard", "raw": "латекс"}])
-        self.path = _write_tz([bad])
+        self.path = _write_spec([bad])
         sm = _fresh_module(self.path)
         checks = sm.match_lot("eis_1", [GLOVES])["positions"][0]["checks"]
         self.assertEqual(checks[0]["status"], "fail",
@@ -186,7 +190,7 @@ class TestMatchLot(unittest.TestCase):
         self.assertTrue(checks[0]["hard"])
 
     def test_нет_подходящего_товара_говорим_прямо(self):
-        self.path = _write_tz([item()])
+        self.path = _write_spec([item()])
         sm = _fresh_module(self.path)
         res = sm.match_lot("eis_1", [])
         pos = res["positions"][0]
@@ -195,7 +199,7 @@ class TestMatchLot(unittest.TestCase):
         self.assertEqual(res["covered"], 0)
 
     def test_закупка_без_спецификации_отвечает_статусом(self):
-        self.path = _write_tz([])
+        self.path = _write_spec([])
         sm = _fresh_module(self.path)
         res = sm.match_lot("eis_1", [GLOVES])
         self.assertEqual(res["status"], "no-spec",
@@ -203,18 +207,18 @@ class TestMatchLot(unittest.TestCase):
         self.assertEqual(res["total"], 0)
 
     def test_неизвестная_закупка_не_падает(self):
-        self.path = _write_tz([item()])
+        self.path = _write_spec([item()])
         sm = _fresh_module(self.path)
         self.assertEqual(sm.match_lot("eis_нет-такой", [GLOVES])["status"], "no-spec")
 
     def test_позиция_несёт_количество_и_единицу(self):
-        self.path = _write_tz([item()])
+        self.path = _write_spec([item()])
         sm = _fresh_module(self.path)
         pos = sm.match_lot("eis_1", [GLOVES])["positions"][0]
         self.assertEqual((pos["qty"], pos["unit"]), (100, "пара"))
 
 
-class TestTzFile(unittest.TestCase):
+class TestSpecFile(unittest.TestCase):
     def test_отсутствующий_файл_не_роняет_сверку(self):
         sm = _fresh_module(os.path.join(tempfile.gettempdir(), "нет-такого-файла.json"))
         self.assertEqual(sm.match_lot("eis_1", [GLOVES])["status"], "no-spec")
