@@ -1,7 +1,7 @@
 # Деплой на Timeweb-VPS (замена Nexara)
 
-VPS: `186.246.30.213` (тот же, где сейчас статика Nexara). SSH-ключ
-`C:/Users/nikit/.ssh/nexara_deploy`. **Nexara заменяем, но сперва бэкапим** —
+VPS: `104.171.137.131` (тот же, где сейчас статика Nexara). SSH-ключ
+`C:/Users/user/.ssh/nexara_deploy`. **Nexara заменяем, но сперва бэкапим** —
 удаление необратимо.
 
 > ⚠️ fail2ban: если SSH не подключился с первой попытки — не долбить повторно,
@@ -10,7 +10,7 @@ VPS: `186.246.30.213` (тот же, где сейчас статика Nexara). 
 ## 0. Бэкап Nexara (обязательно, до всего)
 
 ```bash
-ssh -i ~/.ssh/nexara_deploy root@186.246.30.213
+ssh -i ~/.ssh/nexara_deploy root@104.171.137.131
 # на сервере:
 mkdir -p /root/backups
 tar czf /root/backups/nexara-$(date +%F).tgz /var/www/nexara /etc/nginx/sites-available 2>/dev/null
@@ -18,7 +18,7 @@ ls -lh /root/backups            # убедиться, что архив созд
 ```
 Скачать бэкап к себе (по желанию):
 ```bash
-scp -i ~/.ssh/nexara_deploy root@186.246.30.213:/root/backups/nexara-*.tgz ./
+scp -i ~/.ssh/nexara_deploy root@104.171.137.131:/root/backups/nexara-*.tgz ./
 ```
 
 ## 1. Зависимости на сервере
@@ -77,7 +77,7 @@ ln -sf /etc/nginx/sites-available/lekalo /etc/nginx/sites-enabled/lekalo
 rm -f /etc/nginx/sites-enabled/nexara     # отключить Nexara (файл конфига остаётся в available)
 nginx -t && nginx -s reload
 ```
-Открыть `http://186.246.30.213/` → лендинг Лекало, `/(app.html)` → живая лента.
+Открыть `http://104.171.137.131/` → лендинг Лекало, `/(app.html)` → живая лента.
 
 ## 6. Авто-обновление снапшота (опционально, если фронт статичный)
 
@@ -90,16 +90,16 @@ crontab -e
 
 ## 7. HTTPS (Let's Encrypt через nip.io — без покупки домена)
 
-Голый IP сертификат от LE не получит. Обходим через `nip.io`: `186.246.30.213.nip.io`
+Голый IP сертификат от LE не получит. Обходим через `nip.io`: `104.171.137.131.nip.io`
 сам резолвится в этот IP, а LE выдаёт cert по HTTP-01. Один скрипт делает всё
 (ставит certbot, правит `server_name`, открывает 80/443, выпускает cert, включает
 редирект HTTP→HTTPS, проверяет автопродление):
 ```bash
 cd /opt/lekalo/server/deploy
 bash enable-https.sh
-# → https://186.246.30.213.nip.io/
+# → https://104.171.137.131.nip.io/
 ```
-Свой домен позже (сперва A-запись → 186.246.30.213):
+Свой домен позже (сперва A-запись → 104.171.137.131):
 ```bash
 LK_DOMAIN=lekalo.ru LK_LE_EMAIL=me@mail.ru bash enable-https.sh
 ```
@@ -171,7 +171,7 @@ journalctl -u tender-api | grep 'AUDIT admin_'        # доступ к адми
 ### 8.5. Мониторинг аптайма (узнать о падении первым)
 
 Внешний пинг (бесплатно, вне VPS — иначе не заметишь падение самого VPS):
-UptimeRobot → новый HTTP(s)-монитор на `https://186.246.30.213.nip.io/api/health`,
+UptimeRobot → новый HTTP(s)-монитор на `https://104.171.137.131.nip.io/api/health`,
 тип «keyword», ключевое слово `ok`, интервал 5 мин, алерт на почту.
 
 ## Откат к Nexara

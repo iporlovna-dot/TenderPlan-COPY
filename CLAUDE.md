@@ -411,8 +411,8 @@ gitignore): холодный прогон на второй машине выд�
 Обычный порядок:
 ```bash
 node tools/build_snapshot.js         # пишет site/data/purchases.json (~5-6 мин)
-scp -i ~/.ssh/nexara_deploy site/data/purchases.json root@186.246.30.213:/opt/lekalo/site/data/purchases.json.tmp
-ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'mv /opt/lekalo/site/data/purchases.json{.tmp,}'
+scp -i ~/.ssh/nexara_deploy site/data/purchases.json root@104.171.137.131:/opt/lekalo/site/data/purchases.json.tmp
+ssh -i ~/.ssh/nexara_deploy root@104.171.137.131 'mv /opt/lekalo/site/data/purchases.json{.tmp,}'
 ```
 Или разом: `bash tools/refresh.sh` (доставляет по scp только если изменился состав).
 
@@ -422,7 +422,7 @@ ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'mv /opt/lekalo/site/data/purcha
 через обычный `git push` + `ssh … git pull` на VPS, вручную.
 
 **Автообновление:** Планировщик Windows `LekaloSnapshotRefresh` запускает `refresh.cmd` каждый
-час (лог `C:\Users\nikit\lekalo-refresh.log`). Управление: `schtasks /Run|/Change /TN LekaloSnapshotRefresh`.
+час (лог `C:\Users\user\lekalo-refresh.log`). Управление: `schtasks /Run|/Change /TN LekaloSnapshotRefresh`.
 Проверено: интервал ровно `PT1H`, без пропусков.
 
 **`refresh.sh` сам делает `git pull --ff-only`** перед сбором. Это важно для работы с двух
@@ -460,13 +460,13 @@ ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'mv /opt/lekalo/site/data/purcha
 
 ## VPS (Timeweb) — деплой
 
-- IP `186.246.30.213`, ключ `C:/Users/nikit/.ssh/nexara_deploy`, `root`. nginx отдаёт
+- IP `104.171.137.131`, ключ `C:/Users/user/.ssh/nexara_deploy`, `root`. nginx отдаёт
   `/opt/lekalo/site` (это git-клон репо), сайт `lekalo` включён.
 - Заменили статику **Nexara** (это отдельный проект!). Бэкап: `/root/backups/nexara-*.tgz`.
   Откат — см. `server/deploy/DEPLOY.md`.
 - Деплой правок = `git push` + `ssh … 'cd /opt/lekalo && git pull --ff-only'`.
-- Живой сайт: **`https://186.246.30.213.nip.io/`** (HTTPS, Let's Encrypt через nip.io — см.
-  `server/deploy/enable-https.sh`). Голый IP `http://186.246.30.213/` тоже работает для
+- Живой сайт: **`https://104.171.137.131.nip.io/`** (HTTPS, Let's Encrypt через nip.io — см.
+  `server/deploy/enable-https.sh`). Голый IP `http://104.171.137.131/` тоже работает для
   ленты/админки (старые ссылки не ломаются), но вход/регистрация/кабинет с него редиректят
   на HTTPS-домен — secure-cookie сессии по голому HTTP браузер не сохранит.
 
@@ -480,7 +480,7 @@ ssh -i ~/.ssh/nexara_deploy root@186.246.30.213 'mv /opt/lekalo/site/data/purcha
 2. **Локальный `python` — сломанная Store-заглушка** (Windows). Печатает «Python», ничего не
    исполняет. Для инструментов — Node. FastAPI запускать только на хосте с доступом к источникам.
 3. **SSH host-key на VPS меняется после ребута** (Timeweb пересоздаёт окружение). При `REMOTE HOST IDENTIFICATION
-   CHANGED` → `ssh-keygen -R 186.246.30.213` и переподключиться (это НЕ fail2ban).
+   CHANGED` → `ssh-keygen -R 104.171.137.131` и переподключиться (это НЕ fail2ban).
 4. **fail2ban на VPS:** если SSH не подключился с первой попытки (таймаут «banner exchange») —
    НЕ долбить повторно, попросить пользователя перезагрузить сервер через панель Timeweb.
 5. **Cyrillic в curl-параметрах** → кракозябры. Кодировать через `curl --data-urlencode` / `--data`,

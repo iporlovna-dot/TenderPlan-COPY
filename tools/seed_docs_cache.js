@@ -12,7 +12,7 @@
 // же самый, просто уже добытый.
 //
 // Использование (снапшот можно скачать с прода):
-//   curl -k -o /tmp/prod.json https://186.246.30.213.nip.io/data/purchases.json
+//   curl -k -o /tmp/prod.json https://104.171.137.131.nip.io/data/purchases.json
 //   node tools/seed_docs_cache.js /tmp/prod.json
 //
 // Существующий кэш не трогаем: перезаписать накопленное хуже, чем ничего не делать.

@@ -9,11 +9,11 @@
 # Files/Git/TN" — известная особенность MSYS2; в Git Bash нужен
 # MSYS2_ARG_CONV_EXCL="*", иначе тот же эффект):
 #   schtasks /Create /TN LekaloDbBackupPull /SC DAILY /ST 04:00 /F ^
-#     /TR "\"C:\Program Files\Git\bin\bash.exe\" -lc \"bash /c/Users/nikit/OneDrive/Dokumente/TenderPlan-COPY/server/deploy/backup-pull.sh\""
+#     /TR "\"C:\Program Files\Git\bin\bash.exe\" -lc \"bash /c/Users/user/TenderPlan-COPY/server/deploy/backup-pull.sh\""
 set -euo pipefail
 
 KEY_SSH="${LK_SSH_KEY:-$HOME/.ssh/nexara_deploy}"
-HOST="${LK_VPS:-root@186.246.30.213}"
+HOST="${LK_VPS:-root@104.171.137.131}"
 DEST="${LK_BACKUP_DEST:-$HOME/lekalo-backups}"
 KEEP="${LK_BACKUP_KEEP_LOCAL:-30}"
 

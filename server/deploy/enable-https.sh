@@ -6,11 +6,11 @@
 #
 # Запуск:  bash enable-https.sh
 # Свой домен:  LK_DOMAIN=lekalo.ru LK_LE_EMAIL=me@mail.ru bash enable-https.sh
-#   (для своего домена сперва прописать A-запись → 186.246.30.213)
+#   (для своего домена сперва прописать A-запись → 104.171.137.131)
 set -euo pipefail
 
-IP="${LK_IP:-186.246.30.213}"
-DOMAIN="${LK_DOMAIN:-${IP}.nip.io}"          # nip.io: 186.246.30.213.nip.io → IP
+IP="${LK_IP:-104.171.137.131}"
+DOMAIN="${LK_DOMAIN:-${IP}.nip.io}"          # nip.io: 104.171.137.131.nip.io → IP
 EMAIL="${LK_LE_EMAIL:-olegshakhov157@gmail.com}"   # для писем LE об истечении
 SITE="/etc/nginx/sites-available/lekalo"
 
