@@ -1,24 +1,30 @@
-# Деплой на Timeweb-VPS (замена Nexara)
+# Деплой на Timeweb-VPS
 
-VPS: `104.171.137.131` (тот же, где сейчас статика Nexara). SSH-ключ
-`C:/Users/user/.ssh/nexara_deploy`. **Nexara заменяем, но сперва бэкапим** —
-удаление необратимо.
+VPS: `104.171.137.131` (Ubuntu 22.04). SSH-ключ `C:/Users/user/.ssh/nexara_deploy`.
+Сервер поднят с нуля 2026-08-18 на новом аккаунте Timeweb: старый аккаунт
+(`186.246.30.213`) утрачен — пароль панели изменён, сервер приостановлен за
+неуплату. Реальных клиентов там не было, поэтому переехали чистым стартом:
+`lekalo.db` создаётся заново, секреты генерируются здесь, ничего не переносится.
 
 > ⚠️ fail2ban: если SSH не подключился с первой попытки — не долбить повторно,
 > перезагрузить сервер через панель Timeweb (ключ переживает ребут, пароль — нет).
 
-## 0. Бэкап Nexara (обязательно, до всего)
+> ⚠️ Канал до этого VPS с машины сборщика идёт через VPN и рвётся с перебоями:
+> обрыв на середине шага — обычное дело, шаги идемпотентны, просто повторить.
+> Если баннер sshd не приходит вовсе — сменить страну выхода в VPN-клиенте
+> (проверено 2026-08-18: на одном выходном узле 0 успешных проб из 10, на другом
+> заработало сразу; сам VPS при этом был жив).
+
+## 0. Бэкап предыдущей статики (только если на сервере что-то уже есть)
+
+На чистом VPS шаг пропускается. Он остался от переезда, когда на машине жила
+статика **Nexara** (отдельный проект) и её нужно было снять обратимо:
 
 ```bash
 ssh -i ~/.ssh/nexara_deploy root@104.171.137.131
-# на сервере:
 mkdir -p /root/backups
 tar czf /root/backups/nexara-$(date +%F).tgz /var/www/nexara /etc/nginx/sites-available 2>/dev/null
-ls -lh /root/backups            # убедиться, что архив создан
-```
-Скачать бэкап к себе (по желанию):
-```bash
-scp -i ~/.ssh/nexara_deploy root@104.171.137.131:/root/backups/nexara-*.tgz ./
+ls -lh /root/backups
 ```
 
 ## 1. Зависимости на сервере
@@ -51,6 +57,11 @@ git clone https://github.com/iporlovna-dot/TenderPlan-COPY.git .
 cd /opt/lekalo/server
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+
+# Каталог БД — сразу под www-data: юнит работает от него, а свежий git-клон
+# принадлежит root, и init_db() падает на mkdir("server/data") с Permission denied.
+# На старом сервере каталог уже существовал, поэтому шаг тут и отсутствовал.
+install -d -o www-data -g www-data /opt/lekalo/server/data
 # проверка вручную:
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 &
 curl 'http://127.0.0.1:8000/api/health'; curl 'http://127.0.0.1:8000/api/purchases?take=3'
@@ -174,7 +185,9 @@ journalctl -u tender-api | grep 'AUDIT admin_'        # доступ к адми
 UptimeRobot → новый HTTP(s)-монитор на `https://104.171.137.131.nip.io/api/health`,
 тип «keyword», ключевое слово `ok`, интервал 5 мин, алерт на почту.
 
-## Откат к Nexara
+## Откат к Nexara (актуально только на старом сервере)
+
+На нынешнем VPS никакой Nexara нет — блок оставлен как история переезда.
 
 ```bash
 ln -sf /etc/nginx/sites-available/nexara /etc/nginx/sites-enabled/nexara

@@ -462,8 +462,10 @@ ssh -i ~/.ssh/nexara_deploy root@104.171.137.131 'mv /opt/lekalo/site/data/purch
 
 - IP `104.171.137.131`, ключ `C:/Users/user/.ssh/nexara_deploy`, `root`. nginx отдаёт
   `/opt/lekalo/site` (это git-клон репо), сайт `lekalo` включён.
-- Заменили статику **Nexara** (это отдельный проект!). Бэкап: `/root/backups/nexara-*.tgz`.
-  Откат — см. `server/deploy/DEPLOY.md`.
+- Сервер поднят с нуля 18.08.2026 на новом аккаунте Timeweb. Прежний (`186.246.30.213`,
+  там же лежала статика Nexara) утрачен: пароль панели изменён, машина приостановлена за
+  неуплату. Переехали чистым стартом — клиентов на ней не было, кроме своего тестового
+  аккаунта, поэтому `lekalo.db` создан заново, а секреты сгенерированы на месте.
 - Деплой правок = `git push` + `ssh … 'cd /opt/lekalo && git pull --ff-only'`.
 - Живой сайт: **`https://104.171.137.131.nip.io/`** (HTTPS, Let's Encrypt через nip.io — см.
   `server/deploy/enable-https.sh`). Голый IP `http://104.171.137.131/` тоже работает для

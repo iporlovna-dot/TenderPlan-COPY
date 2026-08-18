@@ -30,13 +30,31 @@ fi
 cp "$HERE/nginx-lekalo-limits.conf" "$DROPIN"
 echo "-- зоны установлены: $DROPIN --"
 
-# 2) директивы в каждый location /api/ (если ещё не вставлены)
-if ! grep -q "limit_req zone=lekalo_api" "$SITE"; then
-  sed -i '/location \/api\/ {/a\        limit_req zone=lekalo_api burst=20 nodelay;\n        limit_conn lekalo_conn 20;' "$SITE"
-  echo "-- limit_req/limit_conn добавлены в location /api/ --"
-else
-  echo "-- лимиты в $SITE уже есть --"
-fi
+# 2) директивы в КАЖДЫЙ location /api/, где их ещё нет.
+# ⚠️ Проверка «есть ли limit_req где-нибудь в файле» была неверной: блоков два —
+# голый IP (лимиты лежат прямо в nginx-lekalo.conf) и nip.io, который дописывает
+# enable-https.sh УЖЕ ПОСЛЕ. Файл-широкий grep находил лимит в первом блоке,
+# скрипт рапортовал «уже есть» и уходил, оставляя HTTPS-блок — тот самый, через
+# который ходят живые люди, — вовсе без лимита.
+# index() вместо регэкспа: в пути /api/ иначе пришлось бы экранировать слэши,
+# а этот awk живёт внутри sh-строки — лишний слой экранирования тут только
+# источник тихих поломок.
+awk '
+  index($0, "location /api/ {") {
+    print
+    if ((getline nxt) > 0) {
+      if (index(nxt, "limit_req zone=lekalo_api") == 0) {
+        print "        limit_req zone=lekalo_api burst=20 nodelay;"
+        print "        limit_conn lekalo_conn 20;"
+        added++
+      }
+      print nxt
+    }
+    next
+  }
+  { print }
+  END { print "-- блоков /api/ дополнено лимитами: " added+0 " --" > "/dev/stderr" }
+' "$SITE" > "$SITE.tmp" && mv "$SITE.tmp" "$SITE"
 
 nginx -t && systemctl reload nginx
 echo "✔ ГОТОВО: rate-лимиты активны (флуд по /api/ → 429)."
