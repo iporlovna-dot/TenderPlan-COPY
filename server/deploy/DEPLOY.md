@@ -30,7 +30,7 @@ ls -lh /root/backups
 ## 1. Зависимости на сервере
 
 ```bash
-apt update && apt install -y python3-venv python3-pip nginx git
+apt update && apt install -y python3-venv python3-pip nginx git sqlite3
 ```
 
 **Gzip для JSON/JS/CSS** — по умолчанию в Ubuntu `nginx.conf` `gzip on;` включён, но
@@ -169,6 +169,18 @@ bash server/deploy/backup-pull.sh             # разовая проверка
 # расписание — см. шапку backup-pull.sh (schtasks LekaloDbBackupPull)
 ```
 Восстановление: `openssl enc -d -aes-256-cbc -pbkdf2 -pass file:/root/.lekalo_backup_key -in <файл>.enc | gunzip > restored.sqlite`.
+
+⚠️ **Ключ шифрования обязан лежать и вне VPS.** Бэкапы и ключ на одном диске —
+это не бэкап: диск умрёт вместе с обоими. Копия ключа забирается на машину
+сборщика (`scp root@…:/root/.lekalo_backup_key ~/.lekalo_backup_key`).
+
+⚠️ **В Git Bash на Windows путь к ключу — в windows-виде.** `openssl` там
+нативный, а не MSYS: `-pass file:$HOME/.lekalo_backup_key` разворачивается в
+`/c/Users/...`, и openssl честно отвечает «No such file» — цепочка выглядит
+сломанной, хотя сломан только путь. Писать `-pass file:C:/Users/user/.lekalo_backup_key`.
+
+Проверено сквозняком 18.08.2026: дамп на VPS → шифрование → scp сюда →
+расшифровка → файл опознаётся как `SQLite format 3` со всеми семью таблицами.
 
 ### 8.4. Аудит-лог (детект взлома)
 
