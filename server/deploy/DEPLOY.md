@@ -62,6 +62,13 @@ python3 -m venv .venv
 # принадлежит root, и init_db() падает на mkdir("server/data") с Permission denied.
 # На старом сервере каталог уже существовал, поэтому шаг тут и отсутствовал.
 install -d -o www-data -g www-data /opt/lekalo/server/data
+
+# Каталог снапшота — тоже руками: site/data/*.json в .gitignore, поэтому сам
+# каталог git-клоном НЕ создаётся, и первая же доставка падает с
+# scp: dest open ".../site/data/purchases.json.tmp": No such file or directory.
+# Ошибка выглядит как обрыв канала и легко списывается на сеть — на новом
+# сервере она стоила отдельного круга диагностики.
+install -d -o www-data -g www-data /opt/lekalo/site/data
 # проверка вручную:
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 &
 curl 'http://127.0.0.1:8000/api/health'; curl 'http://127.0.0.1:8000/api/purchases?take=3'
