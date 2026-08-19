@@ -183,6 +183,17 @@ const LK = (() => {
     setProducts(list);
     return p;
   }
+  function updateProduct(id, patch) {
+    const list = getProducts();
+    const i = list.findIndex(p => p.id === id);
+    if (i < 0) return null;
+    list[i] = { ...list[i], ...patch, id };
+    setProducts(list);
+    return list[i];
+  }
+  function deleteProduct(id) {
+    setProducts(getProducts().filter(p => p.id !== id));
+  }
 
   // ---------- своё ТЗ (для «Умной сверки» по всей ленте) ----------
 
@@ -681,7 +692,7 @@ const LK = (() => {
 
   return {
     getCompany, setCompany, clearSession, isLoggedIn,
-    getProducts, setProducts, addProduct,
+    getProducts, setProducts, addProduct, updateProduct, deleteProduct,
     getMyTz, setMyTz,
     getSearches, setSearches, addSearch, updateSearch, deleteSearch,
     getCurrentSearchId, setCurrentSearchId,

@@ -131,6 +131,32 @@
       </section>
 
       <section class="cabinet-card">
+        <h3>Мои товары <span class="cabinet-num" id="product-count"></span></h3>
+        <p style="color:var(--ink-faint);font-size:0.85rem;margin-top:-4px;">Карточки товара для сверки с
+          позициями закупки (движок сверки характеристик, не «Умная сверка» по ТЗ выше). Хранятся в этом
+          браузере, не на сервере.</p>
+        <div id="product-list" class="employee-list"></div>
+
+        <form id="product-form" class="cabinet-grid" style="margin-top:14px;">
+          <div class="field">
+            <label for="pf-name">Название</label>
+            <input type="text" id="pf-name" placeholder="Перчатки смотровые нитриловые" required>
+          </div>
+          <div class="field">
+            <label for="pf-ktru">КТРУ/ОКПД2 (через запятую)</label>
+            <input type="text" id="pf-ktru" placeholder="32.50.50.190-00001458">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label for="pf-attrs">Характеристики — по одной в строке: «ключ: значение»</label>
+            <textarea id="pf-attrs" rows="4" placeholder="материал: нитрил&#10;толщина, мм: 0.11&#10;размеры: XS, S, M, L"></textarea>
+          </div>
+          <div class="field" style="align-self:end;">
+            <button class="btn btn-primary btn-block" type="submit">+ Добавить товар</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="cabinet-card">
         <h3>История сверок ТЗ</h3>
         <div id="tz-history-list" class="tz-history-list"></div>
       </section>
@@ -233,6 +259,52 @@
     }
   });
 
+  // ---------- товары (для сверки характеристик с позициями закупки) ----------
+  // Локальный кабинет (localStorage, LK.getProducts/addProduct/deleteProduct) —
+  // как и «своё ТЗ» выше, товары НЕ синхронизируются с сервером: их читает
+  // POST /api/match/spec прямо из тела запроса на клике «раскрыть карточку»
+  // в ленте (см. site/js/appview.js ensureProdMatch), сервер их не хранит.
+
+  function parseAttrs(text) {
+    return text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+      const i = line.indexOf(":");
+      return i < 0 ? { key: line, value: "" } : { key: line.slice(0, i).trim(), value: line.slice(i + 1).trim() };
+    });
+  }
+
+  function loadProducts() {
+    const list = LK.getProducts();
+    document.getElementById("product-count").textContent = list.length ? String(list.length) : "";
+    document.getElementById("product-list").innerHTML = list.length ? list.map(p => `
+      <div class="employee-row">
+        <div>
+          <b>${lkEscape(p.name)}</b>
+          <div style="color:var(--ink-faint);font-size:.85rem;">
+            ${p.ktru && p.ktru.length ? "КТРУ " + lkEscape(p.ktru.join(", ")) + " · " : ""}${(p.attributes || []).length} ${lkPlural((p.attributes || []).length, ["характеристика", "характеристики", "характеристик"])}
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" data-del="${p.id}">Удалить</button>
+      </div>`).join("") : `<div class="cabinet-empty">Пока нет товаров — заполните форму ниже, и в ленте закупок появится сверка характеристик.</div>`;
+    document.getElementById("product-list").querySelectorAll("[data-del]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!confirm("Удалить товар?")) return;
+        LK.deleteProduct(btn.dataset.del);
+        loadProducts();
+      });
+    });
+  }
+
+  document.getElementById("product-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("pf-name").value.trim();
+    if (!name) return;
+    const ktru = document.getElementById("pf-ktru").value.split(",").map(s => s.trim()).filter(Boolean);
+    const attributes = parseAttrs(document.getElementById("pf-attrs").value);
+    LK.addProduct({ name, ktru, attributes });
+    e.target.reset();
+    loadProducts();
+  });
+
   async function loadTzHistory() {
     const list = await LK.apiGet("/api/tz-checks");
     const verdictCls = (v) => v === "eligible" ? "ok" : v === "eligible_with_gaps" ? "gap" : "bad";
@@ -306,6 +378,7 @@
 
   loadCompany();
   loadEmployees();
+  loadProducts();
   loadTzHistory();
   loadTotpStatus();
 })();

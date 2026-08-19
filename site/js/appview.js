@@ -339,6 +339,26 @@
     return specReady;
   }
 
+  // Сверка карточек товара (кабинет) с позициями спецификации — движком matcher/
+  // на бэкенде (POST /api/match/spec). Отдельно от «Умной сверки» по ТЗ выше:
+  // там текст↔текст («это вообще про мой товар?»), здесь структура↔структура
+  // («а по параметрам проходим?») — см. server/app/spec_match.py. Эндпоинт не
+  // требует источников (читает spec.json с диска), поэтому работает и когда
+  // /api/purchases не работает. Результат кэшируем прямо на объекте закупки —
+  // тот же приём, что у lotItems/documents: пережить перерисовку и не спросить
+  // сервер дважды.
+  const prodMatchInflight = new Set();
+  function ensureProdMatch(p) {
+    if (!p || p._prodMatch !== undefined || prodMatchInflight.has(p.id)) return;
+    const products = LK.getProducts();
+    if (!products.length || !(p.lotItems && p.lotItems.length)) { p._prodMatch = null; return; }
+    prodMatchInflight.add(p.id);
+    LK.apiSend("POST", "/api/match/spec", { purchase_id: p.id, products })
+      .then(res => { p._prodMatch = res && res.status === "ok" ? res : null; })
+      .catch(() => { p._prodMatch = null; })
+      .finally(() => { prodMatchInflight.delete(p.id); renderFeed(false); });
+  }
+
   function loadMyTz() {
     const tz = LK.getMyTz();
     // Варианты с беглой гласной раскрываем ТОЛЬКО здесь: в снапшоте они съедали
@@ -891,6 +911,58 @@
           </div>`;
   }
 
+  // Результат /api/match/spec: карточки товара из кабинета против позиций выше.
+  // Три состояния данных (нет товаров / гружу / есть результат) — те же различия,
+  // что у specBlock («таблицы нет» ≠ «довесок не приехал»): врать в карточке нельзя.
+  function verdictLabel(v) {
+    return v === "eligible" ? "проходит" : v === "eligible_with_gaps" ? "есть пробелы" : "не проходит";
+  }
+  function specMatchBlock(p) {
+    if (!(p.lotItems && p.lotItems.length)) return "";        // сверять нечего — спецификации нет
+    if (!LK.getProducts().length) {
+      return `<div class="detail-block detail-match">
+        <div class="detail-block__title">Сверка с вашим товаром</div>
+        <div class="tz-hint">В кабинете нет ни одной карточки товара — <a href="account.html">добавьте товар</a>,
+          и здесь появится, проходите ли вы по характеристикам этого лота.</div>
+      </div>`;
+    }
+    const r = p._prodMatch;
+    if (r === undefined) {
+      return `<div class="detail-block detail-match">
+        <div class="detail-block__title">Сверка с вашим товаром</div>
+        <div class="tz-hint">Сверяю с товарами из кабинета…</div>
+      </div>`;
+    }
+    if (!r) {
+      return `<div class="detail-block detail-match">
+        <div class="detail-block__title">Сверка с вашим товаром</div>
+        <div class="tz-hint">Не удалось сверить — сервис сверки недоступен, попробуйте позже.</div>
+      </div>`;
+    }
+    const rows = r.positions.map((pos, i) => {
+      const checks = (pos.checks || []).map(c => `
+        <div class="check-row"><span>${lkEscape(c.key || "")}${c.expected ? ` <span class="check-note">— ${lkEscape(c.expected)}</span>` : ""}</span>
+        <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span></div>`).join("");
+      return `
+        <div class="spec-item">
+          <div class="spec-item__head">
+            <span class="spec-item__idx">${i + 1}.</span>
+            <span class="spec-item__name">${lkEscape(pos.name || "без названия")}</span>
+            <span class="badge badge-${verdictClass(pos.verdict)}">${pos.product_name ? lkEscape(pos.product_name) + " — " : ""}${verdictLabel(pos.verdict)}</span>
+          </div>
+          ${pos.note ? `<div class="tz-hint">${lkEscape(pos.note)}</div>` : ""}
+          ${checks}
+        </div>`;
+    }).join("");
+    return `<div class="detail-block detail-match">
+      <div class="detail-block__title">Сверка с вашим товаром — закрыто ${r.covered} из ${r.total}</div>
+      ${verdictBadge(r.verdict)}
+      <div class="spec-list" style="margin-top:8px;">${rows}</div>
+      <div class="match-why">Лот «всё или ничего»: чтобы пройти, нужно закрыть все позиции разом — движок сверяет
+        каждую характеристику лота с ближайшим по КТРУ/названию товаром из вашего кабинета.</div>
+    </div>`;
+  }
+
   function purchaseDetail(p, m) {
     const lotsHead = `
       <div class="lot-line lot-head">
@@ -951,6 +1023,7 @@
             ${lots}
           </div>
           ${specBlock(p)}
+          ${specMatchBlock(p)}
           <div class="detail-block">
             <div class="detail-block__title">Условия закупки</div>
             <div class="facts-grid">${facts}</div>
@@ -1261,7 +1334,7 @@
           // DOM), и запрос из purchaseDetail срабатывал бы на первой же ленте —
           // то есть довесок перестал бы быть ленивым.
           ensureDocs();
-          ensureSpec();
+          ensureSpec().then(() => ensureProdMatch(byId[card.dataset.id]));
         }
       });
     });
