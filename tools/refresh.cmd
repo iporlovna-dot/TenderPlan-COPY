@@ -5,5 +5,5 @@ REM LK_CHROME_PATH обязателен: прицельный поиск ЕИС 
 REM (источник глушит curl), а playwright-core своего браузера не тянет — нужен
 REM системный Chrome. Портативный Node — в PATH, иначе Планировщик его не видит.
 set "PATH=%USERPROFILE%\.local\node;%PATH%"
-set "LK_CHROME_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe"
-"C:\Program Files\Git\bin\bash.exe" -lc "cd /c/Users/user/TenderPlan-COPY && bash tools/refresh.sh >> /c/Users/user/lekalo-refresh.log 2>&1"
+set "LK_CHROME_PATH=C:\Users\nikit\AppData\Local\Google\Chrome\Application\chrome.exe"
+"C:\Program Files\Git\bin\bash.exe" -lc "cd /c/Users/nikit/OneDrive/Dokumente/TenderPlan-COPY && bash tools/refresh.sh >> /c/Users/nikit/lekalo-refresh.log 2>&1"
