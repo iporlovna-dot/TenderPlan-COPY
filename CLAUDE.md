@@ -411,8 +411,8 @@ gitignore): холодный прогон на второй машине выд�
 Обычный порядок:
 ```bash
 node tools/build_snapshot.js         # пишет site/data/purchases.json (~5-6 мин)
-scp -i ~/.ssh/nexara_deploy site/data/purchases.json root@104.171.137.131:/opt/lekalo/site/data/purchases.json.tmp
-ssh -i ~/.ssh/nexara_deploy root@104.171.137.131 'mv /opt/lekalo/site/data/purchases.json{.tmp,}'
+scp -i ~/.ssh/nexara_deploy site/data/purchases.json root@147.45.141.237:/opt/lekalo/site/data/purchases.json.tmp
+ssh -i ~/.ssh/nexara_deploy root@147.45.141.237 'mv /opt/lekalo/site/data/purchases.json{.tmp,}'
 ```
 Или разом: `bash tools/refresh.sh` (доставляет по scp только если изменился состав).
 
@@ -460,15 +460,20 @@ ssh -i ~/.ssh/nexara_deploy root@104.171.137.131 'mv /opt/lekalo/site/data/purch
 
 ## VPS (Timeweb) — деплой
 
-- IP `104.171.137.131`, ключ `C:/Users/user/.ssh/nexara_deploy`, `root`. nginx отдаёт
+- IP `147.45.141.237`, ключ `C:/Users/user/.ssh/nexara_deploy`, `root`. nginx отдаёт
   `/opt/lekalo/site` (это git-клон репо), сайт `lekalo` включён.
 - Сервер поднят с нуля 18.08.2026 на новом аккаунте Timeweb. Прежний (`186.246.30.213`,
   там же лежала статика Nexara) утрачен: пароль панели изменён, машина приостановлена за
   неуплату. Переехали чистым стартом — клиентов на ней не было, кроме своего тестового
   аккаунта, поэтому `lekalo.db` создан заново, а секреты сгенерированы на месте.
+- ⚠️ **`104.171.137.131` — записанный тогда же IP оказался неверным** (сервер по нему
+  не отвечал вовсе — не SSH-бан, а именно не тот адрес). Реальный IP этой же машины —
+  `147.45.141.237`; сам сервер (код, БД, systemd-юнит) не переустанавливался, поменялся
+  только адрес в доке. Если где-то в старых заметках/памяти встретится `104.171.137.131` —
+  это опечатка того переезда, актуальный IP — текущий, из строки выше.
 - Деплой правок = `git push` + `ssh … 'cd /opt/lekalo && git pull --ff-only'`.
-- Живой сайт: **`https://104.171.137.131.nip.io/`** (HTTPS, Let's Encrypt через nip.io — см.
-  `server/deploy/enable-https.sh`). Голый IP `http://104.171.137.131/` тоже работает для
+- Живой сайт: **`https://147.45.141.237.nip.io/`** (HTTPS, Let's Encrypt через nip.io — см.
+  `server/deploy/enable-https.sh`). Голый IP `http://147.45.141.237/` тоже работает для
   ленты/админки (старые ссылки не ломаются), но вход/регистрация/кабинет с него редиректят
   на HTTPS-домен — secure-cookie сессии по голому HTTP браузер не сохранит.
 
@@ -482,7 +487,7 @@ ssh -i ~/.ssh/nexara_deploy root@104.171.137.131 'mv /opt/lekalo/site/data/purch
 2. **Локальный `python` — сломанная Store-заглушка** (Windows). Печатает «Python», ничего не
    исполняет. Для инструментов — Node. FastAPI запускать только на хосте с доступом к источникам.
 3. **SSH host-key на VPS меняется после ребута** (Timeweb пересоздаёт окружение). При `REMOTE HOST IDENTIFICATION
-   CHANGED` → `ssh-keygen -R 104.171.137.131` и переподключиться (это НЕ fail2ban).
+   CHANGED` → `ssh-keygen -R 147.45.141.237` и переподключиться (это НЕ fail2ban).
 4. **fail2ban на VPS:** если SSH не подключился с первой попытки (таймаут «banner exchange») —
    НЕ долбить повторно, попросить пользователя перезагрузить сервер через панель Timeweb.
 5. **Cyrillic в curl-параметрах** → кракозябры. Кодировать через `curl --data-urlencode` / `--data`,

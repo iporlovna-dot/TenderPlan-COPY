@@ -13,7 +13,7 @@
 set -euo pipefail
 
 KEY_SSH="${LK_SSH_KEY:-$HOME/.ssh/nexara_deploy}"
-HOST="${LK_VPS:-root@104.171.137.131}"
+HOST="${LK_VPS:-root@147.45.141.237}"
 DEST="${LK_BACKUP_DEST:-$HOME/lekalo-backups}"
 KEEP="${LK_BACKUP_KEEP_LOCAL:-30}"
 

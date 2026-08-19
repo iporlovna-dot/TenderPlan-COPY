@@ -28,7 +28,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   fi
 fi
 
-VPS="root@104.171.137.131"
+VPS="root@147.45.141.237"
 KEY="$HOME/.ssh/nexara_deploy"
 REMOTE_DIR="/opt/lekalo/site/data"
 
