@@ -168,10 +168,18 @@ function parseHtmlItems(html) {
     // competitive=false, чтобы фронт не крутил у них ложный отсчёт «до конца подачи».
     const procedureType = lawType;
     const competitive = !/иной способ|единственн/i.test(procedureType);
+    // Реальный этап процедуры («Подача заявок» / «Работа комиссии» / «Определение
+    // поставщика завершено» / …) — тот же заголовок, что и в шапке карточки закупки,
+    // только здесь бесплатно: уже лежит в блоке списка, отдельный заход не нужен.
+    // Без него «до конца подачи» врёт для закупок, которые уже ушли в работу
+    // комиссии раньше формальной даты (нашли на примере 32616298437 — «Приобретение
+    // GPS оборудования», подача формально ещё N часов, а по факту уже «Работа
+    // комиссии», подаваться поздно).
+    const procStage = stripTags((/header-mid__title[^>]*>([\s\S]*?)<\/div>/i.exec(b) || [])[1]) || "";
     items.push({
       number, link, title, customer, price,
       law: /223/.test(lawType) ? "223-ФЗ" : "44-ФЗ",
-      procedureType, competitive,
+      procedureType, competitive, procStage,
       endIso: toIso(stripTags(endRaw)),
       pubIso: toIso(stripTags(pubRaw)),
     });
@@ -305,6 +313,7 @@ function toPurchase(it, documents, region, deliveryDays, regionGuessed) {
     guaranteeApp: 0, guaranteeContract: 0, prepayment: 0,
     href: it.link,
     procedureType: it.procedureType || "", competitive: it.competitive !== false,
+    procStage: it.procStage || "",
     deliveryDays: deliveryDays ?? null, deliveryPlace: "",
     lots: [{ name: it.title, qty: "—", unit: "", price: it.price }],
     documents: documents || [],

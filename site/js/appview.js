@@ -654,6 +654,16 @@
   // окончания подачи формальная, реальных торгов нет — не показываем ложный отсчёт.
   function isCompetitive(p) { return p.competitive !== false; }
 
+  // Формальная «Окончание подачи заявок» (endDate) — не то же самое, что «ещё можно
+  // податься»: комиссия иногда начинает работу раньше этой даты (замер на живом
+  // примере — 32616298437 «Приобретение GPS оборудования»: в снапшоте «9 часов до
+  // конца», на самой ЕИС уже «Работа комиссии»). procStage — реальный этап оттуда
+  // же, из блока списка (см. tools/sources/eis.js), бесплатно, без похода в карточку.
+  // Белый список нарочно узкий: неизвестный/будущий этап считаем «уже нельзя», а не
+  // наоборот — молчаливая закупка лучше, чем ложное приглашение подать заявку.
+  // У Портала (mos.ru) этого поля нет вовсе — отсутствие не повод прятать закупку.
+  function isSubmittable(p) { return !p.procStage || p.procStage === "Подача заявок"; }
+
   // Точный остаток до конца подачи (дни/часы/минуты) — от текущего момента по endDate.
   function remainingText(p) {
     if (!p.endDate) return "";
@@ -711,6 +721,9 @@
   function deadlineText(p) {
     // у неконкурентных «до конца подачи» вводит в заблуждение — торгов нет
     if (!isCompetitive(p)) return `<span class="deadline muted">неконкурентная закупка</span>`;
+    // формальная дата ещё не наступила, а этап на ЕИС уже не «Подача заявок» —
+    // отсчёт был бы враньём (см. isSubmittable)
+    if (!isSubmittable(p)) return `<span class="deadline muted">${lkEscape(p.procStage || "приём заявок закрыт")}</span>`;
     if (liveStage(p) === "active") {
       const urgent = daysLeft(p) <= URGENT_DAYS ? " is-urgent" : "";
       if (p.endDate) return `<span class="deadline${urgent}">до конца подачи: <b>${remainingText(p)}</b></span>`;
@@ -1019,7 +1032,9 @@
       ["Обеспечение заявки", p.guaranteeApp ? lkFormatMoney(p.guaranteeApp) : "не требуется"],
       ["Обеспечение контракта", p.guaranteeContract ? lkFormatMoney(p.guaranteeContract) : "не требуется"],
       ["Аванс", p.prepayment ? p.prepayment + "%" : "нет"],
-      ...(p.procedureType ? [["Способ закупки", p.procedureType + (isCompetitive(p) ? "" : " · неконкурентная")]] : []),
+      ...(p.procedureType ? [["Способ закупки", p.procedureType
+        + (isCompetitive(p) ? "" : " · неконкурентная")
+        + (isSubmittable(p) ? "" : ` · ${p.procStage || "приём заявок закрыт"}`)]] : []),
       ["Срок поставки", p.deliveryDays != null ? `${p.deliveryDays} ${lkPlural(p.deliveryDays, ["день","дня","дней"])}` : "—"],
       ["Опубликована", p.publishedDaysAgo === 0 ? "сегодня" : `${p.publishedDaysAgo} ${lkPlural(p.publishedDaysAgo, ["день","дня","дней"])} назад`],
       ["Место поставки", p.deliveryPlace || canonicalRegion(p.region) || "—"]
@@ -1204,9 +1219,11 @@
         <div class="tender-body">
           <div class="tender-body__top">
             <span class="badge badge-law ${p.law === "223-ФЗ" ? "is-223" : ""}">${p.law}</span>
-            ${isCompetitive(p)
-              ? `<span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>`
-              : `<span class="badge badge-stage stage-noncomp" title="${lkEscape(p.procedureType || "неконкурентная закупка")}">Неконкурентная</span>`}
+            ${!isCompetitive(p)
+              ? `<span class="badge badge-stage stage-noncomp" title="${lkEscape(p.procedureType || "неконкурентная закупка")}">Неконкурентная</span>`
+              : !isSubmittable(p)
+              ? `<span class="badge badge-stage stage-noncomp" title="приём заявок закрыт, формальная дата ещё не наступила">${lkEscape(p.procStage || "Приём закрыт")}</span>`
+              : `<span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>`}
             <span class="badge badge-source">${lkEscape(p.source)}</span>
             ${fresh}${lot}
             <span class="board-head-controls">${boardAssigneeChip(p)}${boardStatusSelect(p)}</span>
@@ -1287,7 +1304,7 @@
     // ленте как «возможность» — вводить в заблуждение: человек откроет
     // закупку и увидит, что участвовать уже не в чем. Сохранённые (доска)
     // не трогаем — если добавили руками, значит осознанно.
-    const notDone = p => !isExpired(p) && liveStage(p) !== "completed" && isCompetitive(p);
+    const notDone = p => !isExpired(p) && liveStage(p) !== "completed" && isCompetitive(p) && isSubmittable(p);
     let list = savedView
       ? LK.getSaved().filter(boardVisible)
           .filter(p => state.boardStatus === "all" || (p.boardStatus || BOARD_STATUSES[0]) === state.boardStatus)
