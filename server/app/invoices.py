@@ -144,7 +144,7 @@ def _invoice_html(inv, company) -> str:
 
 <table>
   <tr><th>№</th><th>Наименование</th><th>Кол-во</th><th>Цена, ₽</th><th>Сумма, ₽</th></tr>
-  <tr><td>1</td><td>Подписка «Лекало», тариф «{esc(_plan_label(inv['plan']))}», 1 месяц</td><td>1</td>
+  <tr><td>1</td><td>Подписка «Лекало», {esc(_plan_label(inv['plan']))}, 1 месяц</td><td>1</td>
       <td>{_money(inv['amount'])}</td><td>{_money(inv['amount'])}</td></tr>
 </table>
 
