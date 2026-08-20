@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS tz_checks (
     verdict TEXT,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    plan TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    vat INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'unpaid',
+    created_at TEXT NOT NULL,
+    paid_at TEXT
+);
 CREATE TABLE IF NOT EXISTS support_relay (
     admin_msg_id INTEGER PRIMARY KEY,
     client_chat_id TEXT NOT NULL,

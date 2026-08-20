@@ -723,9 +723,10 @@ def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(bas
           th, td {{ border: 1px solid #ddd; padding: 8px 10px; text-align: left; vertical-align: top; font-size: .92rem; }}
           th {{ background: #f4f1ea; }}
           h1 {{ font-size: 1.3rem; }}
+          a {{ color: #b3401f; }}
         </style></head>
         <body>
-          <h1>Зарегистрированные компании ({len(companies)})</h1>
+          <h1>Зарегистрированные компании ({len(companies)}) · <a href="/api/admin/invoices">счета →</a></h1>
           <table>
             <tr><th>№</th><th>Компания</th><th>Email владельца</th><th>Тариф</th><th>Сотрудников</th><th>Список</th><th>Регистрация</th></tr>
             {''.join(rows_html) or '<tr><td colspan="7">Пока никто не зарегистрировался</td></tr>'}

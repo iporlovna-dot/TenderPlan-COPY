@@ -30,6 +30,7 @@ from fastapi.responses import Response
 
 from app import matching, spec_match
 from app.accounts import router as accounts_router
+from app.invoices import router as invoices_router
 from app.support import router as support_router
 from app.db import init_db
 from app.schema import Purchase, PurchasePage
@@ -66,6 +67,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(accounts_router)
+app.include_router(invoices_router)
 app.include_router(support_router)
 
 
