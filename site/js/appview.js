@@ -1249,8 +1249,14 @@
       ? (state.boardStatus === "all" ? "★ Мои закупки" : "★ " + state.boardStatus)
       : current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
 
-    // лента — без просроченных/завершённых; доска — по boardVisible + выбранному статусу
-    const notDone = p => !isExpired(p) && liveStage(p) !== "completed";
+    // лента — без просроченных/завершённых/неконкурентных; доска — по boardVisible.
+    // Неконкурентные (223-ФЗ «иной способ», единственный поставщик) торгов не
+    // предполагают вовсе — договор часто уже заключён, хотя формальный срок
+    // подачи ещё не истёк (см. tools/sources/eis.js). Показывать их в общей
+    // ленте как «возможность» — вводить в заблуждение: человек откроет
+    // закупку и увидит, что участвовать уже не в чем. Сохранённые (доска)
+    // не трогаем — если добавили руками, значит осознанно.
+    const notDone = p => !isExpired(p) && liveStage(p) !== "completed" && isCompetitive(p);
     let list = savedView
       ? LK.getSaved().filter(boardVisible)
           .filter(p => state.boardStatus === "all" || (p.boardStatus || BOARD_STATUSES[0]) === state.boardStatus)
