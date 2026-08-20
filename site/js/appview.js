@@ -876,13 +876,27 @@
   function specBlock(p) {
     const items = p.lotItems || [];
     // «Таблицы в ТЗ нет» и «довесок ещё не приехал» — разные вещи, и путать их
-    // значит врать в карточке (та же причина, что у docsCount выше).
+    // значит врать в карточке (та же причина, что у docsCount выше). Раньше
+    // «нет позиций» отрисовывалось пустотой — снаружи неотличимо от «карточка
+    // сломана»: клиент открывает закупку и не видит вообще ничего про товар.
+    // Таблица КТРУ есть не в каждом ТЗ (замер ~5% закупок) — это нормально,
+    // но должно быть сказано словами, а не молчанием.
     if (!items.length) {
-      return p.specCount > 0 ? `
+      if (p.specCount > 0) {
+        return `
           <div class="detail-block">
             <div class="detail-block__title">Спецификация (${p.specCount})</div>
             <div class="spec-chars__none">загружаем требования к позициям…</div>
-          </div>` : "";
+          </div>`;
+      }
+      const reason = p.tzStatus && p.tzStatus !== "ok"
+        ? (TZ_STATUS_NOTE[p.tzStatus] || TZ_STATUS_NOTE["pending"])
+        : "в техническом задании нет таблицы с характеристиками по позициям (КТРУ) — не любое ТЗ оформлено таблицей. Требования смотрите в приложенных документах ниже.";
+      return `
+          <div class="detail-block">
+            <div class="detail-block__title">Спецификация</div>
+            <div class="spec-chars__none">${lkEscape(reason)}</div>
+          </div>`;
     }
     const shown = items.slice(0, SPEC_ITEMS_MAX);
     const hard = items.reduce((n, it) => n + (it.chars || []).filter(c => c.hardness === "hard").length, 0);
