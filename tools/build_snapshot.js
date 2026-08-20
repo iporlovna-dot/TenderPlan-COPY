@@ -11,7 +11,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { collectPortal } = require("./sources/portal");
-const { collectEis } = require("./sources/eis");
+const { collectEis, refreshStages } = require("./sources/eis");
 const { annotateTz } = require("./sources/tzterms");
 const {
   mergeWindow, evictStore, refreshVolatile, sortedPurchases, loadStore, saveStore,
@@ -162,6 +162,9 @@ const EIS_DOCS = Number(process.env.LK_EIS_DOCS || 900);
 const EIS_KEYWORDS = process.env.LK_EIS_KEYWORDS
   ? process.env.LK_EIS_KEYWORDS.split(",").map(s => s.trim()).filter(Boolean)
   : undefined;  // undefined -> collectEis возьмёт свой список категорий по умолчанию
+// Точечная перепроверка этапа закупки под самый дедлайн (см. eis.js refreshStages) —
+// отдельный бюджет от EIS_DOCS: не про документы, один лёгкий запрос на закупку.
+const EIS_STAGE_CHECK = Number(process.env.LK_EIS_STAGE_CHECK || 300);
 
 async function main() {
   let purchases = [];
@@ -192,6 +195,19 @@ async function main() {
   purchases = sortedPurchases(store);
   console.log(`  накопитель: ${purchases.length} закупок (в окне ${fresh.length}, из них новых ${added}; `
     + `выселено: истекло ${ev.expired}, без срока и старше TTL ${ev.stale}, сверх потолка ${ev.overflow})`);
+
+  // Этап закупки под самый дедлайн — по ВСЕМУ накопителю, не только по свежему
+  // окну: закупка могла не касаться списка/карточки неделями и всё равно скоро
+  // закрыться на комиссию раньше формальной даты (см. eis.js refreshStages).
+  try {
+    const st = await refreshStages(purchases, EIS_STAGE_CHECK);
+    if (st.candidates) {
+      console.log(`  этап закупки: перепроверено ${st.checked} из ${st.candidates} кандидатов `
+        + `(срок ≤ 3 дн.), обновлено ${st.updated}`);
+    }
+  } catch (e) {
+    console.error("этап закупки: ошибка —", e.message);
+  }
 
   // Кэши чистим по составу НАКОПИТЕЛЯ, а не снапшота. Раньше keep-множество
   // строилось по снапшоту, и добытые документы/термины закупки удалялись, стоило

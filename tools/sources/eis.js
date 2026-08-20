@@ -263,8 +263,14 @@ async function fetchCardMeta(link) {
     const html = await curlText(link);
     let u = (/href="([^"]*documents\.html[^"]*)"/i.exec(html) || [])[1];
     if (u && u.startsWith("/")) u = "https://zakupki.gov.ru" + u;
-    return { docsUrl: u || null, region: extractRegion(html), deliveryDays: extractDeliveryDays(html) };
-  } catch (e) { return { docsUrl: null, region: "", deliveryDays: null }; }
+    return {
+      docsUrl: u || null, region: extractRegion(html), deliveryDays: extractDeliveryDays(html),
+      procStage: extractProcStage(html),
+    };
+  } catch (e) { return { docsUrl: null, region: "", deliveryDays: null, procStage: "" }; }
+}
+function extractProcStage(html) {
+  return stripTags((/header-mid__title[^>]*>([\s\S]*?)<\/div>/i.exec(html) || [])[1]) || "";
 }
 async function fetchDocs(docsUrl) {
   try {
@@ -495,6 +501,7 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
       docs: meta.docsUrl ? await fetchDocs(meta.docsUrl) : [],
       region: meta.region || "",
       deliveryDays: meta.deliveryDays ?? null,
+      procStage: meta.procStage || "",
       fetchedAt: Date.now(),
     };
   }, (k, t) => process.stdout.write(`\r  ЕИС документы: ${k}/${t}`));
@@ -517,6 +524,9 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
       region = regionFromNumber(it.number, regionIndex);
       if (region) { regionGuessed = true; guessed++; }
     }
+    // Список свежее карточки (её могли не заходить неделю — см. DOCS_TTL_MS),
+    // поэтому этап из СПИСКА в приоритете, карточка — только фолбэк.
+    it.procStage = it.procStage || (m && m.procStage) || "";
     const p = toPurchase(it, (m && m.docs) || [], region, (m && m.deliveryDays) ?? null, regionGuessed);
     // Заходили ли мы вообще в карточку. Без этого пустой documents[] неотличим от
     // «приложений нет», и «Умная сверка» говорила бы «у закупки нет документов» тем
@@ -531,4 +541,39 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   return out;
 }
 
-module.exports = { collectEis, DEFAULT_KEYWORDS, docsUrlDirect, sweepSlice, CLAMP_PAGE };
+// Точечная перепроверка этапа закупки — независимо от бюджета документов и его
+// TTL. Список даёт этап только тем ~2-3 тыс. закупкам, что попали в свежее окно
+// ИЛИ карточка даёт его тем, что как раз сейчас идут за документами — а
+// накопитель держит до 40 тыс., и большинство туда не попадает неделями (весь
+// смысл накопителя — не выселять их, пока жив срок). Комиссия начинает работу
+// РАНЬШЕ формальной даты (живой пример — 32616298437 «Приобретение GPS
+// оборудования»: в снапшоте «9 часов до конца», на ЕИС уже «Работа комиссии»),
+// и без отдельного захода узнать об этом неоткуда, пока запись не истечёт сама.
+// Проверяем только тех, кому это вообще нужно и у кого срок близко — там риск
+// «просрочили молча» выше всего, а не размазываем бюджет по всему накопителю.
+const STAGE_WINDOW_DAYS = Number(process.env.LK_EIS_STAGE_WINDOW_DAYS || 3);
+async function refreshStages(purchases, budget = 300) {
+  const now = Date.now();
+  const windowMs = STAGE_WINDOW_DAYS * DAY;
+  const candidates = purchases.filter(p => (
+    p.id && String(p.id).startsWith("eis_") && p.href && p.competitive !== false
+    && p.endDate && (() => {
+      const end = new Date(p.endDate).getTime();
+      return end > now && end - now <= windowMs;
+    })()
+  )).sort((a, b) => new Date(a.endDate) - new Date(b.endDate)).slice(0, budget);
+
+  let checked = 0, updated = 0;
+  await mapLimit(candidates, CONC, async (p) => {
+    try {
+      const html = await curlText(p.href);
+      const stage = extractProcStage(html);
+      checked++;
+      if (stage && stage !== p.procStage) { p.procStage = stage; updated++; }
+    } catch (e) { /* сеть подвела — оставляем прежнее значение, не молчание */ }
+  }, candidates.length ? (k, t) => process.stdout.write(`\r  этап закупки: ${k}/${t}`) : undefined);
+  if (candidates.length) process.stdout.write("\n");
+  return { checked, updated, candidates: candidates.length };
+}
+
+module.exports = { collectEis, refreshStages, DEFAULT_KEYWORDS, docsUrlDirect, sweepSlice, CLAMP_PAGE };
