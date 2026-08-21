@@ -20,6 +20,7 @@ lifespan), НЕ вебхук. Обнаружено 2026-08-21: POST /telegram/we
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -29,6 +30,8 @@ from app import audit, db, invoices
 from app.accounts import DEMO_DAYS
 from app.telegram import answer_callback_query, delete_webhook, get_updates, tariffs_keyboard
 from app.telegram import send_message as _send
+
+_log = logging.getLogger("lekalo.telegram")
 
 router = APIRouter(prefix="/api")
 
@@ -195,8 +198,26 @@ async def process_update(update: dict) -> None:
     chat_id = str(msg["chat"]["id"])
     text = msg["text"].strip()
 
-    # Владелец пишет боту — либо ответ клиенту (reply на пересланное), либо
-    # что-то ещё (игнорируем, чтобы не зациклиться самому на себя).
+    # Команды — раньше проверки "это владелец?" ниже. Владелец — тоже
+    # обычный аккаунт (например, свой же тестовый), и /start от него не
+    # должен молча проглатываться веткой "ответ клиенту".
+    if text.startswith("/start"):
+        parts = text.split(maxsplit=1)
+        if len(parts) == 2:
+            await _handle_start(chat_id, parts[1].strip())
+        else:
+            await _send(chat_id, ABOUT_TEXT)
+        return
+    if text.lower() in ("/tariffs", "/тарифы"):
+        await _send_tariffs_menu(chat_id)
+        return
+    if text.lower() in ("/about", "/помощь", "/help"):
+        await _send(chat_id, ABOUT_TEXT)
+        return
+
+    # Владелец пишет боту не команду — либо ответ клиенту (reply на
+    # пересланное), либо что-то ещё (игнорируем, чтобы не зациклиться самому
+    # на себя пересылкой в поддержку).
     if chat_id == str(ADMIN_CHAT_ID):
         reply_to = msg.get("reply_to_message")
         if not reply_to:
@@ -211,22 +232,6 @@ async def process_update(update: dict) -> None:
             conn.close()
         if row:
             await _send(row["client_chat_id"], text)
-        return
-
-    # Команды — обрабатываются ДО пересылки в поддержку ниже, иначе
-    # "/start <токен>" ушёл бы владельцу как обычное сообщение.
-    if text.startswith("/start"):
-        parts = text.split(maxsplit=1)
-        if len(parts) == 2:
-            await _handle_start(chat_id, parts[1].strip())
-        else:
-            await _send(chat_id, ABOUT_TEXT)
-        return
-    if text.lower() in ("/tariffs", "/тарифы"):
-        await _send_tariffs_menu(chat_id)
-        return
-    if text.lower() in ("/about", "/помощь", "/help"):
-        await _send(chat_id, ABOUT_TEXT)
         return
 
     # Клиент пишет боту что-то ещё — пересылаем владельцу и запоминаем, кому отвечать.
@@ -274,6 +279,7 @@ async def poll_updates() -> None:
         try:
             updates = await get_updates(offset, timeout=25)
         except Exception:
+            _log.exception("getUpdates упал")
             await asyncio.sleep(5)
             continue
         for u in updates:
@@ -281,5 +287,5 @@ async def poll_updates() -> None:
             try:
                 await process_update(u)
             except Exception:
-                pass
+                _log.exception("process_update упал на апдейте %s", u.get("update_id"))
             _save_offset(offset)
