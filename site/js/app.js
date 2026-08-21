@@ -125,7 +125,10 @@ const LK = (() => {
 
   async function apiGet(path) {
     const r = await fetch(path, { credentials: "same-origin", cache: "no-store" });
-    if (!r.ok) throw new Error("http " + r.status);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw Object.assign(new Error(d.detail || ("http " + r.status)), { status: r.status });
+    }
     return r.json();
   }
   async function apiSend(method, path, body) {
@@ -136,7 +139,7 @@ const LK = (() => {
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
-      throw new Error(d.detail || ("http " + r.status));
+      throw Object.assign(new Error(d.detail || ("http " + r.status)), { status: r.status });
     }
     return r.json().catch(() => ({}));
   }
@@ -147,7 +150,9 @@ const LK = (() => {
       setCompany({
         name: me.company.name, inn: me.company.inn, plan: me.company.plan,
         planExpiresAt: me.company.planExpiresAt,
+        isExpired: me.company.isExpired, autoRenew: me.company.autoRenew,
         userId: me.user.id, userName: me.user.name, userEmail: me.user.email, role: me.user.role,
+        telegramLinked: me.user.telegramLinked,
       });
       hasServerSession = true;
       try {
@@ -169,6 +174,13 @@ const LK = (() => {
     }
   }
   function isServerSession() { return hasServerSession; }
+  // истёкшие demo/тариф — только для реальной серверной сессии; локальный
+  // demo-режим (?demo=1, seedDemo) ничего не платит и не истекает
+  function isPlanExpired() {
+    if (!hasServerSession) return false;
+    const c = getCompany();
+    return !!(c && c.isExpired);
+  }
 
   // ---------- товары (для надстройки «сверка по ТЗ») ----------
 
@@ -700,7 +712,7 @@ const LK = (() => {
     getEmployees, BOARD_STATUSES,
     getViewed, isViewed, markViewed,
     getPageSize, setPageSize,
-    initSession, apiLogout, isServerSession, apiGet, apiSend,
+    initSession, apiLogout, isServerSession, isPlanExpired, apiGet, apiSend,
     seedDemo, allPurchases, loadPurchases, loadTz, loadDocs, loadSpec, loadAnalytics, getAnalytics
   };
 })();

@@ -12,6 +12,7 @@ accounts.py), после чего у компании продлевается p
 from __future__ import annotations
 
 import html
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
@@ -21,6 +22,7 @@ from pydantic import BaseModel
 
 from app import audit, db, ratelimit
 from app.accounts import _check_admin, _plan_label, _require_user, basic
+from app.telegram import send_message
 
 
 def _guard_admin(request: Request, credentials: HTTPBasicCredentials) -> None:
@@ -76,21 +78,30 @@ def _money(n: int) -> str:
     return f"{n:,}".replace(",", " ")
 
 
+def create_invoice_for_company(conn, company_id: int, plan: str) -> dict:
+    """Общая логика выставления счёта — используется и кабинетом (POST
+    /invoices ниже), и Telegram-ботом (кнопки тарифов, см. app/support.py).
+    conn НЕ закрывает — вызывающий код владеет соединением."""
+    if plan not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Этот тариф выставляется по запросу — напишите в поддержку")
+    amount = PLAN_PRICES[plan]
+    now = datetime.now(timezone.utc).isoformat()
+    access_token = secrets.token_urlsafe(24)
+    cur = conn.execute(
+        "INSERT INTO invoices (company_id, plan, amount, vat, status, created_at, access_token) "
+        "VALUES (?, ?, ?, ?, 'unpaid', ?, ?)",
+        (company_id, plan, amount, _vat(amount), now, access_token),
+    )
+    conn.commit()
+    return {"id": cur.lastrowid, "number": _invoice_number(cur.lastrowid, now), "accessToken": access_token}
+
+
 @router.post("/invoices")
 def create_invoice(body: InvoiceCreate, lekalo_session: str | None = Cookie(default=None)):
-    if body.plan not in PLAN_PRICES:
-        raise HTTPException(status_code=400, detail="Этот тариф выставляется по запросу — напишите в поддержку")
     conn, user = _require_user(lekalo_session)
     try:
-        amount = PLAN_PRICES[body.plan]
-        now = datetime.now(timezone.utc).isoformat()
-        cur = conn.execute(
-            "INSERT INTO invoices (company_id, plan, amount, vat, status, created_at) "
-            "VALUES (?, ?, ?, ?, 'unpaid', ?)",
-            (user["company_id"], body.plan, amount, _vat(amount), now),
-        )
-        conn.commit()
-        return {"id": cur.lastrowid, "number": _invoice_number(cur.lastrowid, now)}
+        result = create_invoice_for_company(conn, user["company_id"], body.plan)
+        return {"id": result["id"], "number": result["number"]}
     finally:
         conn.close()
 
@@ -168,6 +179,22 @@ def view_invoice(invoice_id: int, lekalo_session: str | None = Cookie(default=No
         conn.close()
 
 
+@router.get("/invoices/{invoice_id}/bot", response_class=HTMLResponse)
+def view_invoice_from_bot(invoice_id: int, t: str = ""):
+    """Тот же счёт, но без cookie-сессии — ссылку присылает бот (см.
+    app/support.py), а у Telegram-браузера сайтовой сессии нет. Доступ —
+    по одноразовому access_token, выданному при создании счёта."""
+    conn = db.get_conn()
+    try:
+        inv = conn.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,)).fetchone()
+        if not inv or not t or not secrets.compare_digest(inv["access_token"] or "", t):
+            raise HTTPException(status_code=404, detail="Счёт не найден")
+        company = conn.execute("SELECT * FROM companies WHERE id = ?", (inv["company_id"],)).fetchone()
+        return HTMLResponse(_invoice_html(inv, company))
+    finally:
+        conn.close()
+
+
 # ---------- админ: список счетов + отметка оплаты (HTTP Basic, см. accounts.py) ----------
 # Отдельная страница, не встроенная в /api/admin — accounts.py не импортирует
 # этот модуль (импорт был бы обратным кругом: invoices.py и так берёт
@@ -222,7 +249,7 @@ def admin_invoices_page(request: Request, credentials: HTTPBasicCredentials = De
 
 
 @router.get("/admin/invoices/{invoice_id}/pay")
-def admin_mark_paid(invoice_id: int, request: Request, credentials: HTTPBasicCredentials = Depends(basic)):
+async def admin_mark_paid(invoice_id: int, request: Request, credentials: HTTPBasicCredentials = Depends(basic)):
     _guard_admin(request, credentials)
     conn = db.get_conn()
     try:
@@ -242,6 +269,17 @@ def admin_mark_paid(invoice_id: int, request: Request, credentials: HTTPBasicCre
                 (inv["plan"], new_expiry.isoformat(), inv["company_id"]),
             )
             conn.commit()
+            audit.log("invoice_paid", invoice=invoice_id, company=inv["company_id"], plan=inv["plan"], amount=inv["amount"])
+            owner = conn.execute(
+                "SELECT telegram_chat_id FROM users WHERE company_id = ? AND role = 'owner'",
+                (inv["company_id"],),
+            ).fetchone()
+            if owner and owner["telegram_chat_id"]:
+                await send_message(
+                    owner["telegram_chat_id"],
+                    f"Оплата получена ✅ Тариф «{_plan_label(inv['plan'])}» активен до "
+                    f"{new_expiry.date().isoformat()}. Спасибо!",
+                )
         return RedirectResponse(url="/api/admin/invoices", status_code=303)
     finally:
         conn.close()

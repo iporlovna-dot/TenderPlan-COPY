@@ -71,6 +71,12 @@
           <b id="cabinet-plan">—</b>
           <span class="cabinet-sub__hint" id="cabinet-plan-expires"></span>
         </div>
+        <div class="cabinet-sub" id="telegram-connect-row" hidden>
+          <span class="cabinet-sub__label">Telegram</span>
+          <a class="btn btn-primary btn-sm" id="telegram-connect-btn" target="_blank" rel="noopener noreferrer">
+            Подключить Telegram</a>
+          <span class="cabinet-sub__hint">— демо/тарифы и продление выдаются через бота</span>
+        </div>
       </section>
 
       <section class="cabinet-card">
@@ -184,7 +190,9 @@
     window.location.href = "index.html";
   });
 
-  const planLabel = (p) => p === "business" ? "Тариф «Бизнес»" : p === "corp" ? "Тариф «Корпоративный»" : "Тариф «Старт»";
+  const planLabel = (p) => p === "demo" ? "Демо-доступ (3 дня)"
+    : p === "business" ? "Тариф «Бизнес»" : p === "corp" ? "Тариф «Корпоративный»"
+    : p === "start" ? "Тариф «Старт»" : p;
   const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "—" : d.toLocaleDateString("ru-RU"); };
 
   async function loadCompany() {
@@ -196,6 +204,18 @@
     document.getElementById("cf-inn").value = c.inn || "";
     document.getElementById("cabinet-plan").textContent = planLabel(c.plan) + ` (${c.employeeCount} сотр.)`;
     document.getElementById("cabinet-plan-expires").textContent = "действует до " + fmtDate(c.planExpiresAt);
+  }
+
+  // Telegram могли не привязать при регистрации (закрыли модалку) — показываем
+  // кнопку повторно, пока не подключат (см. GET /api/telegram-link в accounts.py).
+  async function loadTelegramLink() {
+    try {
+      const r = await LK.apiGet("/api/telegram-link");
+      const row = document.getElementById("telegram-connect-row");
+      if (r.linked) { row.hidden = true; return; }
+      document.getElementById("telegram-connect-btn").href = r.telegramLinkUrl;
+      row.hidden = false;
+    } catch { /* не критично — просто не покажем кнопку */ }
   }
 
   document.getElementById("company-save").addEventListener("click", async () => {
@@ -378,6 +398,7 @@
   });
 
   loadCompany();
+  loadTelegramLink();
   loadEmployees();
   loadProducts();
   loadTzHistory();

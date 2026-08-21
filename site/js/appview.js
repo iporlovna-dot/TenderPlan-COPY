@@ -359,7 +359,10 @@
     prodMatchInflight.add(p.id);
     LK.apiSend("POST", "/api/match/spec", { purchase_id: p.id, products })
       .then(res => { p._prodMatch = res && res.status === "ok" ? res : null; })
-      .catch(() => { p._prodMatch = null; })
+      // 402 — демо/тариф истёк (_require_active_user на бэкенде); отдельная
+      // отметка, чтобы в карточке не соврать «сервис недоступен» вместо
+      // настоящей причины
+      .catch(err => { p._prodMatch = err && err.status === 402 ? "expired" : null; })
       .finally(() => { prodMatchInflight.delete(p.id); renderFeed(false); });
   }
 
@@ -1031,6 +1034,12 @@
         <div class="tz-hint">Сверяю с товарами из кабинета…</div>
       </div>`;
     }
+    if (r === "expired") {
+      return `<div class="detail-block detail-match">
+        <div class="detail-block__title">Сверка с вашим товаром</div>
+        <div class="tz-hint">Демо/тариф закончился — <a href="https://t.me/${window.LK_BOT_USERNAME || "Bot_Lekalo_bot"}" target="_blank" rel="noopener noreferrer">оформите продление в Telegram-боте</a>, чтобы вернуть сверку.</div>
+      </div>`;
+    }
     if (!r) {
       return `<div class="detail-block detail-match">
         <div class="detail-block__title">Сверка с вашим товаром</div>
@@ -1698,6 +1707,23 @@
   });
 
   // ---------- init ----------
+
+  // Демо/тариф истёк — доска, история сверок, сохранённые поиски и сверка по
+  // товару (POST /api/match/spec) уже блокируются бэкендом (_require_active_user,
+  // 402); лента и «Умная сверка по ТЗ» остаются доступны (см. CLAUDE.md —
+  // покупки статические, tzmatch.js целиком клиентский, честно заблокировать
+  // без переноса за авторизацию нельзя). Баннер — чтобы отказ фоновых запросов
+  // не был тихим: без него человек просто не понял бы, почему доска не
+  // синхронизируется на другом устройстве.
+  if (LK.isServerSession() && LK.isPlanExpired()) {
+    const banner = document.getElementById("plan-expired-banner");
+    if (banner) {
+      banner.hidden = false;
+      banner.innerHTML = `Демо-доступ или тариф закончился — доска закупок, сохранённые поиски и сверка ` +
+        `с вашим товаром временно недоступны. <a href="https://t.me/${window.LK_BOT_USERNAME || "Bot_Lekalo_bot"}" ` +
+        `target="_blank" rel="noopener noreferrer">Оформить продление в Telegram-боте →</a>`;
+    }
+  }
 
   renderMatchBar();
   renderSidebar();

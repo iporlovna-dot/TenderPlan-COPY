@@ -24,12 +24,12 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import Cookie, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from app import matching, spec_match
-from app.accounts import router as accounts_router
+from app.accounts import _require_active_user, router as accounts_router
 from app.invoices import router as invoices_router
 from app.support import router as support_router
 from app.db import init_db
@@ -172,7 +172,7 @@ async def document(file_id: str):
 
 
 @app.post("/api/match/spec")
-async def match_spec(payload: dict):
+async def match_spec(payload: dict, lekalo_session: str | None = Cookie(default=None)):
     """Сверка карточек товара с ПОЗИЦИЯМИ закупки — настоящим движком matcher/.
 
     Отличие от /api/match ниже принципиальное: там текст против текста («это
@@ -184,7 +184,13 @@ async def match_spec(payload: dict):
     поэтому работает на VPS, заблокированном zakupki.gov.ru и mos.ru.
 
     Тело: {"purchase_id": "eis_123", "products": [{id, name, ktru, attributes}]}
+
+    Требует активный тариф/демо (_require_active_user) — до этой правки
+    эндпоинт был вообще без авторизации, хотя вызывается только из кабинета
+    (site/js/appview.js ensureProdMatch, credentials: "same-origin").
     """
+    conn, _ = _require_active_user(lekalo_session)
+    conn.close()
     purchase_id = (payload or {}).get("purchase_id")
     if not purchase_id:
         raise HTTPException(status_code=400, detail="нужен purchase_id")

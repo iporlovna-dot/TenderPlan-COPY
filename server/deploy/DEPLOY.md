@@ -106,6 +106,16 @@ crontab -e
 */30 * * * * cd /opt/lekalo/server && .venv/bin/python scripts/refresh_snapshot.py >> /var/log/lekalo-snapshot.log 2>&1
 ```
 
+### 6.1. Уведомления об истечении демо/тарифа (обязательно, если нужны Telegram-напоминания)
+
+Демо — за 24 часа до конца, платный тариф — за 7 дней; плюс предложение
+тарифов сразу после истечения демо (см. docstring `notify_expiring.py`).
+Раз в час — окно 24ч/7д допускает опоздание максимум на час без вреда:
+```bash
+crontab -e
+0 * * * * cd /opt/lekalo/server && .venv/bin/python scripts/notify_expiring.py >> /var/log/lekalo-notify.log 2>&1
+```
+
 ## 7. HTTPS (Let's Encrypt через nip.io — без покупки домена)
 
 Голый IP сертификат от LE не получит. Обходим через `nip.io`: `147.45.141.237.nip.io`
@@ -137,6 +147,11 @@ LK_DOMAIN=lekalo.ru LK_LE_EMAIL=me@mail.ru bash enable-https.sh
 LK_ADMIN_USER=admin
 LK_ADMIN_PASS=<длинный-случайный-пароль>          # /api/admin (HTTP Basic)
 LK_TOTP_KEY=<ключ Fernet>                          # шифрование 2FA-секретов в БД
+LK_TELEGRAM_BOT_TOKEN=<токен бота>                 # поддержка + демо/тарифы (app/support.py)
+LK_SUPPORT_ADMIN_CHAT_ID=<chat_id владельца>       # куда падают обращения из поддержки
+LK_TELEGRAM_WEBHOOK_SECRET=<случайная строка>      # сверяется с X-Telegram-Bot-Api-Secret-Token
+LK_TELEGRAM_BOT_USERNAME=Bot_Lekalo_bot            # для deep-link "https://t.me/<username>?start=..."
+LK_PUBLIC_BASE_URL=https://147.45.141.237.nip.io   # для ссылок на счета, которые бот шлёт клиенту
 ```
 Ключ для 2FA сгенерировать так (один раз) и вписать в `.env`:
 ```bash

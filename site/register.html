@@ -67,6 +67,18 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="telegram-modal">
+  <div class="modal-box">
+    <h2>Компания зарегистрирована 🎉</h2>
+    <p class="lede">Осталось привязать Telegram — это займёт минуту и сразу включит
+      3 дня демо-доступа ко всей ленте и умной сверке по ТЗ.</p>
+    <a class="btn btn-primary btn-block" id="telegram-link-btn" target="_blank" rel="noopener noreferrer">
+      Подключить Telegram и получить 3 дня демо →</a>
+    <a class="btn btn-ghost btn-block" href="app.html?onboarding=1" style="margin-top:10px;">
+      Пропустить, продолжить в приложение</a>
+  </div>
+</div>
+
 <script src="js/app.js?v=dcd3fffb"></script>
 <script src="js/secrets.js" onerror="void 0"></script>
 <script>
@@ -127,7 +139,13 @@
         return;
       }
       lkNotifyTelegram({ name: companyName, inn, email, role: "owner" });
-      window.location.href = "app.html?onboarding=1";
+      const data = await r.json().catch(() => ({}));
+      if (data.telegramLinkUrl) {
+        document.getElementById("telegram-link-btn").href = data.telegramLinkUrl;
+        document.getElementById("telegram-modal").classList.add("is-open");
+      } else {
+        window.location.href = "app.html?onboarding=1";
+      }
     } catch (err) {
       errBox.textContent = "Сервер недоступен. Попробуйте ещё раз чуть позже.";
       errBox.classList.add("is-visible");

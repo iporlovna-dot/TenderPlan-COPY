@@ -97,6 +97,11 @@ MIGRATIONS = [
     ("users", [
         ("totp_secret", "TEXT"),
         ("totp_enabled", "INTEGER NOT NULL DEFAULT 0"),
+        # привязка Telegram — chat_id заполняется после /start<токен> в боте;
+        # link_token — одноразовый токен deep-link'а, выдаётся при регистрации,
+        # обнуляется после успешной привязки (см. app/support.py)
+        ("telegram_chat_id", "TEXT"),
+        ("telegram_link_token", "TEXT"),
     ]),
     # избранное стало общей доской компании: статус воронки + ответственный +
     # привязка карточки к компании (а не только к добавившему пользователю).
@@ -104,6 +109,20 @@ MIGRATIONS = [
         ("company_id", "INTEGER"),
         ("status", "TEXT NOT NULL DEFAULT 'Интересно'"),
         ("assignee_id", "INTEGER"),
+    ]),
+    ("companies", [
+        # ручная привилегия владельца площадки: тариф без счетов/оплаты,
+        # гейт доступа (_require_active_user) игнорирует plan_expires_at
+        ("auto_renew", "INTEGER NOT NULL DEFAULT 0"),
+        # дедуп уведомлений об истечении — хранят значение plan_expires_at,
+        # на которое уже отправлено; при продлении дата меняется, и
+        # уведомление на новый срок уходит снова без ручного сброса
+        ("notice_sent_for", "TEXT"),
+        ("expired_offer_sent_for", "TEXT"),
+    ]),
+    ("invoices", [
+        # доставка счёта из Telegram-бота без cookie-сессии (см. GET /invoices/{id}/bot)
+        ("access_token", "TEXT"),
     ]),
 ]
 

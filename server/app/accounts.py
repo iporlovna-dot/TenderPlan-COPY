@@ -14,16 +14,21 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, EmailStr
 
 from app import audit, auth, db, ratelimit, totp
+from app.telegram import BOT_USERNAME
 
 router = APIRouter(prefix="/api")
 basic = HTTPBasic()
 
-TRIAL_DAYS = 30
+DEMO_DAYS = 3
+# автопродление (см. _require_active_user / admin_grant_business) ставит
+# expires далеко в будущее — само значение неважно, доступ держит auto_renew=1,
+# но дата всё равно нужна (колонка NOT NULL) и полезна как читаемая метка в админке
+AUTO_RENEW_YEARS_AHEAD = 10
 
 
 # ---------- модели запросов ----------
@@ -109,13 +114,16 @@ def _row_to_user(row) -> dict:
     return {
         "id": row["id"], "name": row["name"], "email": row["email"], "role": row["role"],
         "totpEnabled": bool(row["totp_enabled"]),
+        "telegramLinked": bool(row["telegram_chat_id"]),
     }
 
 
 def _row_to_company(row) -> dict:
+    expired = (not row["auto_renew"]) and datetime.fromisoformat(row["plan_expires_at"]) <= datetime.now(timezone.utc)
     return {
         "id": row["id"], "name": row["name"], "inn": row["inn"],
         "plan": row["plan"], "planExpiresAt": row["plan_expires_at"],
+        "autoRenew": bool(row["auto_renew"]), "isExpired": expired,
     }
 
 
@@ -125,6 +133,26 @@ def _require_user(session_token: str | None):
     if not user:
         conn.close()
         raise HTTPException(status_code=401, detail="Не авторизован")
+    return conn, user
+
+
+def _require_active_user(session_token: str | None):
+    """Как _require_user, но дополнительно требует непросроченный тариф/демо.
+
+    НЕ использовать на /auth/*, /company, /employees, /invoices* — по этим
+    роутам человек должен попасть даже с истёкшим доступом (увидеть кабинет,
+    оплатить счёт). Гейт — только на роутах реального использования продукта
+    (доска закупок, история сверок, сохранённые поиски, /api/match/spec)."""
+    conn, user = _require_user(session_token)
+    company = conn.execute(
+        "SELECT plan_expires_at, auto_renew FROM companies WHERE id = ?", (user["company_id"],)
+    ).fetchone()
+    if not company["auto_renew"] and datetime.fromisoformat(company["plan_expires_at"]) <= datetime.now(timezone.utc):
+        conn.close()
+        raise HTTPException(
+            status_code=402,
+            detail=f"Доступ закончился. Оформите тариф в Telegram-боте: https://t.me/{BOT_USERNAME}",
+        )
     return conn, user
 
 
@@ -138,7 +166,10 @@ def _check_password(password: str) -> None:
 
 
 def _plan_label(plan: str) -> str:
-    return {"start": "Тариф «Старт»", "business": "Тариф «Бизнес»", "corp": "Тариф «Корпоративный»"}.get(plan, plan)
+    return {
+        "demo": "Демо-доступ (3 дня)",
+        "start": "Тариф «Старт»", "business": "Тариф «Бизнес»", "corp": "Тариф «Корпоративный»",
+    }.get(plan, plan)
 
 
 def _check_inn_free(conn, inn: str, exclude_company_id: int | None = None) -> None:
@@ -169,17 +200,21 @@ def register(body: RegisterBody, request: Request, response: Response):
         _check_inn_free(conn, inn)
 
         now = datetime.now(timezone.utc)
-        expires = now + timedelta(days=TRIAL_DAYS)
+        # Тарифа при регистрации ещё нет — 'demo' с plan_expires_at=now (уже
+        # "истёк") до тех пор, пока человек не привяжет Telegram и не получит
+        # 3 дня демо через бота (см. app/support.py _handle_start). Реальный
+        # доступ к продукту гейтит _require_active_user.
         cur = conn.execute(
-            "INSERT INTO companies (name, inn, plan, plan_expires_at, created_at) VALUES (?, ?, 'business', ?, ?)",
-            (body.companyName.strip(), inn, expires.isoformat(), now.isoformat()),
+            "INSERT INTO companies (name, inn, plan, plan_expires_at, created_at) VALUES (?, ?, 'demo', ?, ?)",
+            (body.companyName.strip(), inn, now.isoformat(), now.isoformat()),
         )
         company_id = cur.lastrowid
         pw_hash = auth.hash_password(body.password)
+        link_token = secrets.token_urlsafe(24)
         cur = conn.execute(
-            "INSERT INTO users (company_id, email, password_hash, name, role, created_at) "
-            "VALUES (?, ?, ?, ?, 'owner', ?)",
-            (company_id, email, pw_hash, body.name.strip(), now.isoformat()),
+            "INSERT INTO users (company_id, email, password_hash, name, role, created_at, telegram_link_token) "
+            "VALUES (?, ?, ?, ?, 'owner', ?, ?)",
+            (company_id, email, pw_hash, body.name.strip(), now.isoformat(), link_token),
         )
         user_id = cur.lastrowid
         conn.commit()
@@ -190,7 +225,29 @@ def register(body: RegisterBody, request: Request, response: Response):
 
         user_row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         company_row = conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,)).fetchone()
-        return {"user": _row_to_user(user_row), "company": _row_to_company(company_row)}
+        return {
+            "user": _row_to_user(user_row), "company": _row_to_company(company_row),
+            "telegramLinkUrl": f"https://t.me/{BOT_USERNAME}?start={link_token}",
+        }
+    finally:
+        conn.close()
+
+
+@router.get("/telegram-link")
+def get_telegram_link(lekalo_session: str | None = Cookie(default=None)):
+    """Показать кнопку привязки Telegram повторно — человек мог закрыть окно
+    при регистрации, а исходный токен из ответа register() больше нигде не
+    хранится. Переиспользует незакрытый токен, если он ещё не был потрачен."""
+    conn, user = _require_user(lekalo_session)
+    try:
+        if user["telegram_chat_id"]:
+            return {"linked": True}
+        token = user["telegram_link_token"]
+        if not token:
+            token = secrets.token_urlsafe(24)
+            conn.execute("UPDATE users SET telegram_link_token = ? WHERE id = ?", (token, user["id"]))
+            conn.commit()
+        return {"linked": False, "telegramLinkUrl": f"https://t.me/{BOT_USERNAME}?start={token}"}
     finally:
         conn.close()
 
@@ -443,7 +500,7 @@ def delete_employee(employee_id: int, lekalo_session: str | None = Cookie(defaul
 
 @router.get("/saved")
 def list_saved(lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         rows = conn.execute(
             "SELECT sp.data, sp.status, sp.assignee_id, u.name AS assignee_name "
@@ -467,7 +524,7 @@ def list_saved(lekalo_session: str | None = Cookie(default=None)):
 def add_saved(body: SavedBody, lekalo_session: str | None = Cookie(default=None)):
     """Добавить закупку на общую доску компании (или обновить статус, если уже там).
     Снятие с доски — DELETE /saved/{purchase_id}."""
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         pid = str(body.purchase.get("id") or "")
         if not pid:
@@ -498,7 +555,7 @@ def add_saved(body: SavedBody, lekalo_session: str | None = Cookie(default=None)
 @router.patch("/saved/{purchase_id}")
 def patch_saved(purchase_id: str, body: BoardPatch, lekalo_session: str | None = Cookie(default=None)):
     """Сменить статус и/или ответственного у карточки на доске компании."""
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         row = conn.execute(
             "SELECT id FROM saved_purchases WHERE company_id = ? AND purchase_id = ?",
@@ -531,7 +588,7 @@ def patch_saved(purchase_id: str, body: BoardPatch, lekalo_session: str | None =
 
 @router.delete("/saved/{purchase_id}")
 def delete_saved(purchase_id: str, lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         conn.execute(
             "DELETE FROM saved_purchases WHERE company_id = ? AND purchase_id = ?",
@@ -547,7 +604,7 @@ def delete_saved(purchase_id: str, lekalo_session: str | None = Cookie(default=N
 
 @router.get("/tz-checks")
 def list_tz_checks(lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         rows = conn.execute(
             "SELECT * FROM tz_checks WHERE user_id = ? ORDER BY created_at DESC LIMIT 100", (user["id"],)
@@ -563,7 +620,7 @@ def list_tz_checks(lekalo_session: str | None = Cookie(default=None)):
 
 @router.post("/tz-checks")
 def add_tz_check(body: TzCheckBody, lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         conn.execute(
             "INSERT INTO tz_checks (user_id, purchase_id, purchase_number, purchase_title, score, verdict, created_at) "
@@ -592,7 +649,7 @@ def _row_to_search(row) -> dict:
 
 @router.get("/searches")
 def list_searches(lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         rows = conn.execute(
             "SELECT * FROM searches WHERE user_id = ? ORDER BY created_at", (user["id"],)
@@ -604,7 +661,7 @@ def list_searches(lekalo_session: str | None = Cookie(default=None)):
 
 @router.post("/searches")
 def create_search(body: SearchCreate, lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         # id генерит клиент → строка с таким id может уже принадлежать другому
         # юзеру. Без этой проверки INSERT OR REPLACE затёр бы чужую запись,
@@ -627,7 +684,7 @@ def create_search(body: SearchCreate, lekalo_session: str | None = Cookie(defaul
 
 @router.patch("/searches/{search_id}")
 def update_search(search_id: str, body: SearchUpdate, lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         existing = conn.execute(
             "SELECT * FROM searches WHERE id = ? AND user_id = ?", (search_id, user["id"])
@@ -657,7 +714,7 @@ def update_search(search_id: str, body: SearchUpdate, lekalo_session: str | None
 
 @router.delete("/searches/{search_id}")
 def delete_search(search_id: str, lekalo_session: str | None = Cookie(default=None)):
-    conn, user = _require_user(lekalo_session)
+    conn, user = _require_active_user(lekalo_session)
     try:
         conn.execute("DELETE FROM searches WHERE id = ? AND user_id = ?", (search_id, user["id"]))
         conn.commit()
@@ -705,15 +762,21 @@ def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(bas
                 f"<span style='color:#888'>(#{u['id']})</span></li>"
                 for u in users
             )
+            plan_extra = " · ♻️ автопродление" if c["auto_renew"] else ""
+            action = (
+                f'<a href="/api/admin/companies/{c["id"]}/revoke-auto-renew">Снять автопродление</a>' if c["auto_renew"]
+                else f'<a href="/api/admin/companies/{c["id"]}/grant-business">Выдать Бизнес без оплаты</a>'
+            )
             rows_html.append(f"""
               <tr>
                 <td>#{c['id']}</td>
                 <td>{html.escape(c['name'])}<br><span style="color:#888;font-size:.85em">ИНН {html.escape(c['inn'] or '—')}</span></td>
                 <td>{html.escape(owner['email']) if owner else '—'}</td>
-                <td>{_plan_label(c['plan'])}<br><span style="color:#888;font-size:.85em">до {c['plan_expires_at'][:10]}</span></td>
+                <td>{_plan_label(c['plan'])}{plan_extra}<br><span style="color:#888;font-size:.85em">до {c['plan_expires_at'][:10]}</span></td>
                 <td>{len(users)}</td>
                 <td><ul style="margin:0;padding-left:18px;">{users_html}</ul></td>
                 <td style="color:#888;font-size:.85em">{c['created_at'][:16].replace('T',' ')}</td>
+                <td style="font-size:.85em">{action}</td>
               </tr>""")
         page_html = f"""
         <html><head><meta charset="utf-8"><title>Лекало — зарегистрированные компании</title>
@@ -728,10 +791,69 @@ def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(bas
         <body>
           <h1>Зарегистрированные компании ({len(companies)}) · <a href="/api/admin/invoices">счета →</a></h1>
           <table>
-            <tr><th>№</th><th>Компания</th><th>Email владельца</th><th>Тариф</th><th>Сотрудников</th><th>Список</th><th>Регистрация</th></tr>
-            {''.join(rows_html) or '<tr><td colspan="7">Пока никто не зарегистрировался</td></tr>'}
+            <tr><th>№</th><th>Компания</th><th>Email владельца</th><th>Тариф</th><th>Сотрудников</th><th>Список</th><th>Регистрация</th><th>Действие</th></tr>
+            {''.join(rows_html) or '<tr><td colspan="8">Пока никто не зарегистрировался</td></tr>'}
           </table>
         </body></html>"""
         return HTMLResponse(page_html)
+    finally:
+        conn.close()
+
+
+def _guard_admin(request: Request, credentials: HTTPBasicCredentials) -> None:
+    """Тот же бруфорс-щит/аудит, что у admin_page — переиспользуется
+    grant-business/revoke-auto-renew (invoices.py дублирует то же самое под
+    тем же именем для своих роутов, каждый модуль независим)."""
+    ip = ratelimit.client_ip(request)
+    ratelimit.guard_admin(ip)
+    try:
+        _check_admin(credentials)
+    except HTTPException:
+        ratelimit.record_admin_failure(ip)
+        audit.log("admin_fail", ip=ip, user=credentials.username)
+        raise
+    ratelimit.reset_admin(ip)
+    audit.log("admin_access", ip=ip)
+
+
+@router.get("/admin/companies/{company_id}/grant-business")
+def admin_grant_business(company_id: int, request: Request, credentials: HTTPBasicCredentials = Depends(basic)):
+    """Ручная привилегия владельца площадки: тариф «Бизнес» без счёта и без
+    оплаты, с автопродлением (см. _require_active_user — auto_renew=1
+    полностью выключает гейт по plan_expires_at). Для коллег/тестовых
+    аккаунтов, не для обычных клиентов."""
+    _guard_admin(request, credentials)
+    conn = db.get_conn()
+    try:
+        row = conn.execute("SELECT id FROM companies WHERE id = ?", (company_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+        expires = datetime.now(timezone.utc) + timedelta(days=365 * AUTO_RENEW_YEARS_AHEAD)
+        conn.execute(
+            "UPDATE companies SET plan='business', plan_expires_at=?, auto_renew=1 WHERE id=?",
+            (expires.isoformat(), company_id),
+        )
+        conn.commit()
+        audit.log("admin_grant_business", company=company_id)
+        return RedirectResponse(url="/api/admin", status_code=303)
+    finally:
+        conn.close()
+
+
+@router.get("/admin/companies/{company_id}/revoke-auto-renew")
+def admin_revoke_auto_renew(company_id: int, request: Request, credentials: HTTPBasicCredentials = Depends(basic)):
+    """Снять автопродление — компания возвращается к обычной схеме (тариф
+    живёт до plan_expires_at, дальше — счёт/оплата как у всех). Саму дату
+    не трогаем: если до неё ещё далеко, доступ не обрывается сразу."""
+    _guard_admin(request, credentials)
+    conn = db.get_conn()
+    try:
+        row = conn.execute("SELECT id FROM companies WHERE id = ?", (company_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+        conn.execute("UPDATE companies SET auto_renew=0 WHERE id=?", (company_id,))
+        conn.commit()
+        audit.log("admin_revoke_auto_renew", company=company_id)
+        return RedirectResponse(url="/api/admin", status_code=303)
     finally:
         conn.close()
