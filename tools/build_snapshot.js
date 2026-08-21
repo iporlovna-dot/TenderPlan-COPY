@@ -146,7 +146,7 @@ function saveDocsCache(cache, keepNumbers) { return saveCache(DOCS_CACHE, cache,
 // целиком, и на 20 тыс. закупок с терминами это ~89 МБ (замер по прод-снапшоту:
 // 4689 Б на закупку с ТЗ). Пока доставка не разделена на ленту и термины,
 // накопитель растёт, а в снапшот уходят ближайшие по дедлайну.
-const SNAPSHOT_MAX = Number(process.env.LK_SNAPSHOT_MAX || 6000);
+const SNAPSHOT_MAX = Number(process.env.LK_SNAPSHOT_MAX || 50000);
 
 const PORTAL_TAKE = Number(process.env.LK_SNAPSHOT_TAKE || 500);
 // общий список (без поиска по словам) — сейчас единственный канал ЕИС, который

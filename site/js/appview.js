@@ -253,13 +253,17 @@
 
   // ---------- фильтры ----------
 
+  // renderFeed на полной ленте стоит заметное время (см. комментарий у
+  // poolKey выше) — на «живой» текст (поиск, заказчик) гоняем его не на
+  // каждое нажатие, а после паузы в наборе
+  const debouncedRenderFeed = debounce(() => renderFeed(), 200);
   document.getElementById("search-input").addEventListener("input", (e) => {
     state.query = e.target.value.trim();
     state.searchId = null;          // свободный ввод «отвязывает» от шаблона (вид сохраняем)
     renderSidebar();
-    renderFeed();
+    debouncedRenderFeed();
   });
-  document.getElementById("f-customer").addEventListener("input", (e) => { state.filters.customer = e.target.value.trim(); renderFeed(); });
+  document.getElementById("f-customer").addEventListener("input", (e) => { state.filters.customer = e.target.value.trim(); debouncedRenderFeed(); });
   document.getElementById("f-delivery").addEventListener("change", (e) => { state.filters.delivery = e.target.value; renderFeed(); });
   document.getElementById("f-law").addEventListener("change", (e) => { state.filters.law = e.target.value; renderFeed(); });
   document.getElementById("f-stage").addEventListener("change", (e) => { state.filters.stage = e.target.value; renderFeed(); });
@@ -626,6 +630,56 @@
     if (p.price < (f.priceMin || 0)) return false;
     if (f.priceMax != null && p.price > f.priceMax) return false;
     return true;
+  }
+
+  // лента — без просроченных/завершённых/неконкурентных (см. комментарий в renderFeed)
+  function notDone(p) { return !isExpired(p) && liveStage(p) !== "completed" && isCompetitive(p) && isSubmittable(p); }
+
+  // ---------- пул перед текстовым поиском (кэш для search-input) ----------
+  //
+  // На 6000 закупках renderFeed на КАЖДОЕ нажатие клавиши в поиске уже стоил
+  // ~180 мс (замер headless-Chromium, 2026-08-21) — на 50 000 вышло бы ~930 мс,
+  // то есть почти секундный фриз на каждый символ. notDone/passesFilters/
+  // passesMatch не зависят от текста запроса, поэтому их результат кэшируется
+  // (basePoolCache) и не пересчитывается на каждую букву. Сам текстовый поиск
+  // (passesSearch) — конъюнкция префиксов (plus.every(matches), tzmatch.js),
+  // поэтому при ДОПИСЫВАНИИ запроса результат может только сужаться: если
+  // новый запрос продолжает предыдущий, ищем не по всему пулу, а по уже
+  // найденному (searchNarrowCache) — на 50 000 это превращает поиск из
+  // «секунда на каждую букву» в дешёвую операцию после первого символа.
+  // poolCacheGen — ручной сброс на события, которые НЕ входят ни в state.filters,
+  // ни в mySubject: живое устаревание (isExpired/liveStage меняются временем,
+  // а не действием человека) — см. setInterval ниже.
+  let poolCacheGen = 0;
+  let basePoolCache = { key: null, pool: null };
+  let searchNarrowCache = { key: null, query: "", list: null };
+  function poolKey() {
+    return JSON.stringify([poolCacheGen, state.filters, state.matchEnabled,
+      mySubject ? mySubject.map(s => s.term).join(",") : "", LK.allPurchases().length]);
+  }
+  function getBasePool(key) {
+    if (basePoolCache.key !== key) {
+      basePoolCache = { key, pool: LK.allPurchases().filter(notDone).filter(passesFilters).filter(passesMatch) };
+    }
+    return basePoolCache.pool;
+  }
+  function getSearchList(key) {
+    if (!state.query) return getBasePool(key).slice();
+    if (searchNarrowCache.key === key && state.query.startsWith(searchNarrowCache.query)) {
+      const list = searchNarrowCache.list.filter(passesSearch);
+      searchNarrowCache = { key, query: state.query, list };
+      return list;
+    }
+    const list = getBasePool(key).filter(passesSearch);
+    searchNarrowCache = { key, query: state.query, list };
+    return list;
+  }
+
+  // debounce общего вида: search-input/f-customer гоняют renderFeed на КАЖДОЕ
+  // нажатие без него, а не только когда человек закончил печатать
+  function debounce(fn, ms) {
+    let t = null;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
   }
 
   // ---------- рендер карточек ----------
@@ -1304,12 +1358,11 @@
     // ленте как «возможность» — вводить в заблуждение: человек откроет
     // закупку и увидит, что участвовать уже не в чем. Сохранённые (доска)
     // не трогаем — если добавили руками, значит осознанно.
-    const notDone = p => !isExpired(p) && liveStage(p) !== "completed" && isCompetitive(p) && isSubmittable(p);
     let list = savedView
       ? LK.getSaved().filter(boardVisible)
           .filter(p => state.boardStatus === "all" || (p.boardStatus || BOARD_STATUSES[0]) === state.boardStatus)
           .filter(passesSearch)
-      : LK.allPurchases().filter(notDone).filter(passesSearch).filter(passesFilters).filter(passesMatch);
+      : getSearchList(poolKey());
 
     const sortFn = {
       fresh: (a, b) => a.publishedDaysAgo - b.publishedDaysAgo,
@@ -1666,7 +1719,10 @@
     selectAllPurchases();
     // живое устаревание: раз в минуту перерисовываем (без сброса пагинации) и
     // обновляем счётчики доски — чтобы истёкшие лиды уходили и из чисел
-    setInterval(() => { renderFeed(false); refreshBoard(); }, 60000);
+    // isExpired/liveStage читают Date.now() напрямую, а не входят в poolKey —
+    // без ручного сброса basePoolCache продолжал бы отдавать закупки, истёкшие
+    // за последнюю минуту, до следующего изменения фильтров/запроса
+    setInterval(() => { poolCacheGen++; renderFeed(false); refreshBoard(); }, 60000);
   });
   // аналитика — необязательный слой, грузится параллельно и не блокирует ленту;
   // если файла нет/не собрался, analyticsFor() просто вернёт null везде
