@@ -74,20 +74,6 @@
       </section>
 
       <section class="cabinet-card">
-        <h3>Оплата подписки</h3>
-        <div class="form-error" id="invoice-error"></div>
-        <p style="color:var(--ink-faint);font-size:0.9rem;">Оплата — по счёту, безналичным переводом на реквизиты
-          ООО «ШИРОТА-66». Счёт формируется сразу, подписка продлевается после поступления оплаты
-          (отмечает вручную наша сторона).</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0;">
-          <button class="btn btn-primary btn-sm" data-plan="start">Счёт: Старт — 15 000 ₽/мес</button>
-          <button class="btn btn-primary btn-sm" data-plan="business">Счёт: Бизнес — 35 000 ₽/мес</button>
-          <a class="btn btn-ghost btn-sm" href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Корпоративный — обсудить в поддержке</a>
-        </div>
-        <div id="invoice-list" class="tz-history-list"></div>
-      </section>
-
-      <section class="cabinet-card">
         <h3>Сотрудники <span class="cabinet-num" id="employee-count"></span></h3>
         <div class="form-error" id="employee-error"></div>
         <div id="employee-list" class="employee-list"></div>
@@ -274,39 +260,6 @@
     }
   });
 
-  // ---------- оплата подписки (счёт по реквизитам, без эквайринга) ----------
-
-  async function loadInvoices() {
-    const list = await LK.apiGet("/api/invoices");
-    const statusText = (s) => s === "paid" ? "оплачен" : "ожидает оплаты";
-    document.getElementById("invoice-list").innerHTML = list.length ? list.map(inv => `
-      <div class="tz-history-row">
-        <span class="tz-history-score ${inv.status === 'paid' ? 'ok' : 'gap'}">${inv.status === 'paid' ? '✓' : '…'}</span>
-        <div style="flex:1;min-width:0;">
-          <div>№ ${lkEscape(inv.number)} — ${lkEscape(inv.planLabel)}, ${inv.amount.toLocaleString('ru-RU')} ₽</div>
-          <div style="color:var(--ink-faint);font-size:.82rem;">
-            ${statusText(inv.status)} · ${fmtDate(inv.createdAt)} ·
-            <a href="/api/invoices/${inv.id}" target="_blank" rel="noopener noreferrer">открыть счёт</a>
-          </div>
-        </div>
-      </div>`).join("") : `<div class="cabinet-empty">Счетов пока нет — выберите тариф выше.</div>`;
-  }
-
-  document.querySelectorAll("[data-plan]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const errBox = document.getElementById("invoice-error");
-      errBox.classList.remove("is-visible");
-      try {
-        const inv = await LK.apiSend("POST", "/api/invoices", { plan: btn.dataset.plan });
-        await loadInvoices();
-        window.open("/api/invoices/" + inv.id, "_blank", "noopener,noreferrer");
-      } catch (e) {
-        errBox.textContent = e.message || "Не удалось выставить счёт.";
-        errBox.classList.add("is-visible");
-      }
-    });
-  });
-
   // ---------- товары (для сверки характеристик с позициями закупки) ----------
   // Локальный кабинет (localStorage, LK.getProducts/addProduct/deleteProduct) —
   // как и «своё ТЗ» выше, товары НЕ синхронизируются с сервером: их читает
@@ -425,7 +378,6 @@
   });
 
   loadCompany();
-  loadInvoices();
   loadEmployees();
   loadProducts();
   loadTzHistory();
