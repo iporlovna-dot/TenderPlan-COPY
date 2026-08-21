@@ -45,6 +45,38 @@ async def answer_callback_query(callback_query_id: str, text: str | None = None)
         await client.post(_API.format(token=BOT_TOKEN, method="answerCallbackQuery"), json=payload)
 
 
+async def get_updates(offset: int | None, timeout: int = 25) -> list[dict]:
+    """Long-polling — резервный (сейчас фактически основной, см.
+    app/support.py poll_updates) канал доставки апдейтов: 2026-08-21
+    обнаружено, что вебхук (POST /telegram/webhook) не получает трафик от
+    Telegram вообще — ни одного запроса в логах nginx, при этом исходящие
+    запросы С СЕРВЕРА в Telegram (этот же Bot API) отвечают штатно за доли
+    секунды. Похоже на одностороннюю сетевую проблему у хостинга. getUpdates
+    идёт по заведомо рабочему исходящему каналу."""
+    if not BOT_TOKEN:
+        return []
+    params: dict = {"timeout": timeout, "allowed_updates": ["message", "callback_query"]}
+    if offset is not None:
+        params["offset"] = offset
+    async with httpx.AsyncClient(timeout=timeout + 10) as client:
+        r = await client.get(_API.format(token=BOT_TOKEN, method="getUpdates"), params=params)
+    try:
+        data = r.json()
+    except ValueError:
+        return []
+    return (data.get("result") or []) if data.get("ok") else []
+
+
+async def delete_webhook() -> None:
+    """getUpdates и вебхук несовместимы (Telegram отвечает 409 Conflict на
+    getUpdates, пока вебхук зарегистрирован) — снимаем его перед стартом
+    поллинга. Идемпотентно: если вебхука уже нет, Bot API просто отвечает ok."""
+    if not BOT_TOKEN:
+        return
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        await client.post(_API.format(token=BOT_TOKEN, method="deleteWebhook"))
+
+
 def tariffs_keyboard() -> dict:
     return {
         "inline_keyboard": [

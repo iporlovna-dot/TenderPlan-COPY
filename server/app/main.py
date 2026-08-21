@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import time
@@ -31,7 +32,7 @@ from fastapi.responses import Response
 from app import matching, spec_match
 from app.accounts import _require_active_user, router as accounts_router
 from app.invoices import router as invoices_router
-from app.support import router as support_router
+from app.support import poll_updates, router as support_router
 from app.db import init_db
 from app.schema import Purchase, PurchasePage
 from app.sources.portal import PortalPostavshikov
@@ -54,7 +55,15 @@ async def lifespan(app: FastAPI):
     client = httpx.AsyncClient(timeout=40.0, follow_redirects=True)
     _state["client"] = client
     _state["source"] = PortalPostavshikov(client)
+    # Telegram-апдейты приходят long-polling'ом, не вебхуком — см. докстринг
+    # app/support.py (2026-08-21: вебхук не получал трафика от Telegram).
+    poll_task = asyncio.create_task(poll_updates())
     yield
+    poll_task.cancel()
+    try:
+        await poll_task
+    except asyncio.CancelledError:
+        pass
     await client.aclose()
 
 

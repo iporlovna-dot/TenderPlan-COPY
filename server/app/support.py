@@ -6,14 +6,20 @@
 клиенту это адресовано (таблица support_relay — только сама пересылка, не
 всю переписку хранить незачем), и пересылает ответ туда же.
 
-Вебхук защищён secret_token: Telegram сам присылает его заголовком
-X-Telegram-Bot-Api-Secret-Token, если он задан при setWebhook (см.
-server/deploy/setup-telegram-bot.py) — без этого кто угодно мог бы слать
-поддельные апдейты на открытый POST-эндпоинт.
+⚠️ Доставка апдейтов — long-polling (poll_updates, запущен из main.py
+lifespan), НЕ вебхук. Обнаружено 2026-08-21: POST /telegram/webhook не
+получал от Telegram ни одного запроса (пусто в логах nginx), хотя исходящие
+запросы с сервера в Telegram отвечали штатно — похоже на одностороннюю
+сетевую проблему у хостинга, не связанную с кодом или конфигом nginx (ufw
+неактивен, iptables пустой, порт 443 слушается, сертификат валиден).
+Роут /telegram/webhook оставлен нетронутым на случай, если сетевая проблема
+разрешится — секрет всё ещё проверяется, вреда от простаивающего роута нет.
+Обработка апдейта — process_update(), общая для обоих каналов.
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -21,7 +27,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 
 from app import audit, db, invoices
 from app.accounts import DEMO_DAYS
-from app.telegram import answer_callback_query, tariffs_keyboard
+from app.telegram import answer_callback_query, delete_webhook, get_updates, tariffs_keyboard
 from app.telegram import send_message as _send
 
 router = APIRouter(prefix="/api")
@@ -32,6 +38,9 @@ WEBHOOK_SECRET = os.getenv("LK_TELEGRAM_WEBHOOK_SECRET", "")
 # для ссылок на счета, которые бот шлёт клиенту (см. _handle_callback) —
 # тот же домен, что в LK_CORS_ORIGINS по умолчанию (main.py)
 PUBLIC_BASE_URL = os.getenv("LK_PUBLIC_BASE_URL", "https://147.45.141.237.nip.io")
+# смещение getUpdates переживает рестарт процесса (иначе после каждого
+# деплоя Telegram присылал бы заново весь недавний бэклог апдейтов)
+_OFFSET_FILE = os.path.join(os.path.dirname(db.DB_PATH), "telegram_offset.txt")
 
 ABOUT_TEXT = """🎯 Лекало — все торги России в одной ленте, с умной сверкой по ТЗ
 
@@ -168,27 +177,20 @@ async def _handle_callback(cq: dict) -> None:
     )
 
 
-@router.post("/telegram/webhook")
-async def telegram_webhook(
-    request: Request,
-    x_telegram_bot_api_secret_token: str | None = Header(default=None),
-):
-    if WEBHOOK_SECRET and x_telegram_bot_api_secret_token != WEBHOOK_SECRET:
-        raise HTTPException(status_code=401, detail="bad secret")
+async def process_update(update: dict) -> None:
+    """Разбор одного апдейта Telegram — общий код для вебхука (сейчас не
+    получает трафика, см. докстринг модуля) и long-polling (poll_updates,
+    фактический канал доставки)."""
     if not BOT_TOKEN or not ADMIN_CHAT_ID:
-        # Бот не настроен на этом окружении — тихо принимаем и ничего не делаем,
-        # чтобы Telegram не долбил повторными доставками несуществующего апдейта.
-        return {"ok": True}
-
-    update = await request.json()
+        return  # бот не настроен на этом окружении
 
     if "callback_query" in update:
         await _handle_callback(update["callback_query"])
-        return {"ok": True}
+        return
 
     msg = update.get("message") or update.get("edited_message")
     if not msg or "text" not in msg:
-        return {"ok": True}
+        return
 
     chat_id = str(msg["chat"]["id"])
     text = msg["text"].strip()
@@ -198,7 +200,7 @@ async def telegram_webhook(
     if chat_id == str(ADMIN_CHAT_ID):
         reply_to = msg.get("reply_to_message")
         if not reply_to:
-            return {"ok": True}
+            return
         conn = db.get_conn()
         try:
             row = conn.execute(
@@ -209,7 +211,7 @@ async def telegram_webhook(
             conn.close()
         if row:
             await _send(row["client_chat_id"], text)
-        return {"ok": True}
+        return
 
     # Команды — обрабатываются ДО пересылки в поддержку ниже, иначе
     # "/start <токен>" ушёл бы владельцу как обычное сообщение.
@@ -219,16 +221,65 @@ async def telegram_webhook(
             await _handle_start(chat_id, parts[1].strip())
         else:
             await _send(chat_id, ABOUT_TEXT)
-        return {"ok": True}
+        return
     if text.lower() in ("/tariffs", "/тарифы"):
         await _send_tariffs_menu(chat_id)
-        return {"ok": True}
+        return
     if text.lower() in ("/about", "/помощь", "/help"):
         await _send(chat_id, ABOUT_TEXT)
-        return {"ok": True}
+        return
 
     # Клиент пишет боту что-то ещё — пересылаем владельцу и запоминаем, кому отвечать.
     who = _who(msg.get("from") or {})
     await _relay_to_admin(chat_id, who, f"Сообщение от {who} (chat {chat_id}):\n{text}")
     await _send(chat_id, "Спасибо! Сообщение передано в поддержку, ответим здесь же.")
+
+
+@router.post("/telegram/webhook")
+async def telegram_webhook(
+    request: Request,
+    x_telegram_bot_api_secret_token: str | None = Header(default=None),
+):
+    if WEBHOOK_SECRET and x_telegram_bot_api_secret_token != WEBHOOK_SECRET:
+        raise HTTPException(status_code=401, detail="bad secret")
+    update = await request.json()
+    await process_update(update)
     return {"ok": True}
+
+
+def _load_offset() -> int | None:
+    try:
+        with open(_OFFSET_FILE, encoding="utf-8") as f:
+            return int(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        return None
+
+
+def _save_offset(offset: int) -> None:
+    with open(_OFFSET_FILE, "w", encoding="utf-8") as f:
+        f.write(str(offset))
+
+
+async def poll_updates() -> None:
+    """Фоновая задача (запускается из main.py lifespan) — держит соединение
+    getUpdates открытым, снимает вебхук перед стартом (несовместимы, см.
+    telegram.delete_webhook). Сетевые сбои (обрыв соединения и т.п.) не
+    останавливают цикл — короткая пауза и следующая попытка; ошибка внутри
+    обработки ОДНОГО апдейта не должна ронять весь цикл и терять offset."""
+    if not BOT_TOKEN or not ADMIN_CHAT_ID:
+        return
+    await delete_webhook()
+    offset = _load_offset()
+    while True:
+        try:
+            updates = await get_updates(offset, timeout=25)
+        except Exception:
+            await asyncio.sleep(5)
+            continue
+        for u in updates:
+            offset = u["update_id"] + 1
+            try:
+                await process_update(u)
+            except Exception:
+                pass
+            _save_offset(offset)
