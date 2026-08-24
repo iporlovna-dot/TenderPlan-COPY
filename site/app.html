@@ -21,6 +21,9 @@
   .feed-upsell { background:var(--paper-alt,#f4f1ea); border:1px dashed var(--rust);
     border-radius:12px; padding:12px 16px; margin:14px 0; font-size:.92rem; color:var(--ink);
     display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap; text-align:center; }
+  /* display:flex у .access-banner/.feed-upsell перебивает встроенное [hidden]{display:none},
+     иначе на полном тарифе (баннер скрыт) висела бы пустая рамка — возвращаем скрытие. */
+  .access-banner[hidden], .feed-upsell[hidden] { display:none; }
 </style>
 </head>
 <body>
