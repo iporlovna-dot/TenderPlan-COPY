@@ -189,6 +189,20 @@ cd /opt/lekalo/server/deploy && bash enable-ratelimit.sh
 Ставит зоны в `/etc/nginx/conf.d/lekalo-limits.conf` и вписывает `limit_req`
 (10 r/s, burst 20) + `limit_conn` (20/IP) в оба `location /api/`. Превышение → 429.
 
+### 8.2a. Заголовки безопасности nginx (кликджекинг, MIME-sniffing, CSP)
+
+```bash
+cd /opt/lekalo/server/deploy && bash enable-security-headers.sh
+```
+Кладёт `snippets/lekalo-security.conf` (X-Frame-Options DENY, X-Content-Type-Options
+nosniff, Referrer-Policy, Permissions-Policy, CSP, `server_tokens off`) и подключает
+его `include`'ом в каждый server-блок. Идемпотентно. HSTS ставит отдельно
+`enable-https.sh` — здесь его нет, чтобы не задваивать. Проверка:
+`curl -sI https://147.45.141.237.nip.io/ | grep -iE 'x-frame|content-security|x-content-type'`.
+⚠️ CSP разрешает `'unsafe-inline'` (на сайте инлайновые script/style) и
+`connect-src https://api.telegram.org` (уведомление из register.html) — при новых
+внешних ресурсах CSP надо расширить, иначе браузер их срежет.
+
 ### 8.3. Бэкап БД off-site (единственный необратимый риск)
 
 `lekalo.db` (аккаунты, хэши, ИНН, 2FA) существует в одном экземпляре на VPS —
