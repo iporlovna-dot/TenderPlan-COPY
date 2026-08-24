@@ -21,6 +21,11 @@
 
   const company = LK.getCompany();
 
+  // уровень доступа демо-воронки (см. app.js accessLevel): guest | demo | full | none.
+  // Лимиты (страницы ленты, товары, поиски, сверка, доска) — из accessLimits.
+  const access = LK.accessLevel();
+  const accessLimits = LK.accessLimits();
+
   // доска закупок (общая по компании): статусы воронки и «до-победные» статусы,
   // для которых истёкший тендер = дохлый лид и убирается с доски (см. boardVisible)
   const BOARD_STATUSES = LK.BOARD_STATUSES;
@@ -52,6 +57,8 @@
   document.getElementById("user-avatar").textContent =
     company.name.replace(/[^А-ЯA-Z]/g, "").slice(0, 2) || "ЛК";
   document.getElementById("plan-name").textContent =
+    access === "guest" || access === "none" ? "Демо без регистрации" :
+    access === "demo" ? "Демо-доступ (3 дня)" :
     company.plan === "business" ? "Тариф «Бизнес»" :
     company.plan === "corp" ? "Тариф «Корпоративный»" : "Тариф «Старт»";
   if (company.planExpiresAt) {
@@ -64,6 +71,52 @@
     LK.clearSession();
     window.location.href = "index.html";
   });
+
+  // ---------- демо-гейты (пункт 3) ----------
+  // Гостю (демо без регистрации) закрыты все функции, кроме просмотра 1 страницы
+  // ленты; демо после регистрации — с лимитами (товары/поиски/страницы).
+  function denyGuest(what) {
+    lkToast(`${what} — доступно после регистрации (3 дня демо бесплатно)`);
+  }
+
+  // Панель «что вам доступно» — для гостя и для 3-дневного демо (пункт 3).
+  function renderAccessBanner() {
+    const el = document.getElementById("access-banner");
+    if (!el) return;
+    if (access === "guest" || access === "none") {
+      el.innerHTML = `
+        <div class="access-banner__body">
+          <b>👀 Демо без регистрации</b>
+          <p>Доступна <b>1 страница</b> ленты — оглядитесь. После регистрации открывается всё:</p>
+          <ul>
+            <li>вся лента закупок без ограничений по страницам;</li>
+            <li>сохранённые поиски и уведомления о новых закупках в Telegram;</li>
+            <li>Умная сверка по вашему ТЗ (% совпадения и разбор требований);</li>
+            <li>доска закупок для работы командой.</li>
+          </ul>
+        </div>
+        <a class="btn btn-primary" href="register.html">Зарегистрироваться — 3 дня демо бесплатно →</a>`;
+      el.hidden = false;
+    } else if (access === "demo") {
+      const l = accessLimits;
+      el.innerHTML = `
+        <div class="access-banner__body">
+          <b>✨ Демо-доступ — 3 дня, все функции с лимитами</b>
+          <ul>
+            <li>лента закупок — до <b>${l.feedPages}</b> страниц;</li>
+            <li>до <b>${l.products}</b> товаров для сверки по ТЗ;</li>
+            <li>до <b>${l.searches}</b> сохранённых поисков;</li>
+            <li>Умная сверка по ТЗ и доска закупок — доступны.</li>
+          </ul>
+          <p class="access-banner__hint">Снять лимиты и продлить доступ — оформите тариф в Telegram-боте.</p>
+        </div>
+        <a class="btn btn-primary" href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Оформить тариф →</a>`;
+      el.hidden = false;
+    } else {
+      el.hidden = true;
+    }
+  }
+  renderAccessBanner();
 
   // ---------- сайдбар: сохранённые поиски ----------
 
@@ -959,26 +1012,14 @@
             <div class="spec-chars__none">загружаем требования к позициям…</div>
           </div>`;
       }
-      // Таблицы нет, но термины ТЗ уже добыты для «Умной сверки» (tzTerms) —
-      // тот же материал, только не разложен движком по операторам "≥/≤" и
-      // hard/soft. Показать его как есть честнее, чем молчать: клиент хотя бы
-      // видит слова и величины из текста, пусть и без структуры.
-      if (p.tzTerms && p.tzTerms.length) {
-        const terms = p.tzTerms.slice().sort((a, b) => (LKTZ.isMeasured(b) ? 1 : 0) - (LKTZ.isMeasured(a) ? 1 : 0));
-        return `
-          <div class="detail-block">
-            <div class="detail-block__title">Спецификация — из текста ТЗ</div>
-            <div class="spec-chars__none">Таблицы КТРУ нет — ниже слова и величины, которые нашлись в тексте задания.</div>
-            <div style="margin-top:6px;">${chips(terms, "", 40)}</div>
-            <div class="match-why">Это не разбор движком сверки — набор слов и чисел из текста, без операторов
-              «не менее/не более» и без деления на обязательные и второстепенные требования. Пробегитесь глазами,
-              что относится к вашему товару; для точной автоматической проверки нужна таблица характеристик,
-              которой в этом ТЗ нет.</div>
-          </div>`;
-      }
+      // Таблицы с позициями в ТЗ нет (ни КТРУ, ни простой товарной — сборщик
+      // пробует обе, см. tools/sources/ktrutable.js). Раньше здесь показывались
+      // «термины из текста» — обрезанные основы слов; это вводило в заблуждение
+      // («перчатк», «нитрилов»), поэтому убрано. Товары и требования — в самом
+      // документе ТЗ, ссылка на него ниже в блоке «Документы».
       const reason = p.tzStatus && p.tzStatus !== "ok"
         ? (TZ_STATUS_NOTE[p.tzStatus] || TZ_STATUS_NOTE["pending"])
-        : "в техническом задании нет таблицы с характеристиками по позициям (КТРУ) — не любое ТЗ оформлено таблицей. Требования смотрите в приложенных документах ниже.";
+        : "В этом ТЗ нет таблицы с позициями — заказчик описал товары текстом в документе. Откройте техническое задание в блоке «Документы» ниже: там наименования и требования.";
       return `
           <div class="detail-block">
             <div class="detail-block__title">Спецификация</div>
@@ -987,6 +1028,10 @@
     }
     const shown = items.slice(0, SPEC_ITEMS_MAX);
     const hard = items.reduce((n, it) => n + (it.chars || []).filter(c => c.hardness === "hard").length, 0);
+    // Товарный список (из простой таблицы «Наименование | Кол-во», без КТРУ): у
+    // позиций нет ни характеристик, ни кодов. Примечание тогда другое — честно
+    // говорим, что это названия без разбора требований.
+    const goodsOnly = items.every(it => !(it.chars && it.chars.length) && !it.ktru && !it.okpd);
     const rows = shown.map((it, i) => {
       const code = it.ktru || it.okpd || "";
       const qty = it.qty != null && it.qty !== "" ? `${it.qty} ${lkEscape(unitLabel(it.unit))}`.trim() : "";
@@ -1007,8 +1052,9 @@
             <div class="detail-block__title">Спецификация — ${items.length} ${lkPlural(items.length, ["позиция", "позиции", "позиций"])}${hard ? ` · ${hard} ${lkPlural(hard, ["неизменяемое требование", "неизменяемых требования", "неизменяемых требований"])}` : ""}</div>
             <div class="spec-list">${rows}</div>
             ${rest > 0 ? `<div class="spec-chars__more">и ещё ${rest} ${lkPlural(rest, ["позиция", "позиции", "позиций"])} — смотрите в документе ТЗ</div>` : ""}
-            <div class="match-why">Разобрано из таблицы технического задания.${hard ? " Ржавым — значения, которые участник менять не вправе." : ""}
-              Лот «всё или ничего»: заявка подаётся на весь набор позиций сразу.</div>
+            <div class="match-why">${goodsOnly
+              ? "Наименования товаров из таблицы ТЗ. Характеристик по позициям в этой таблице нет — требования смотрите в самом документе ТЗ ниже."
+              : `Разобрано из таблицы технического задания.${hard ? " Ржавым — значения, которые участник менять не вправе." : ""} Лот «всё или ничего»: заявка подаётся на весь набор позиций сразу.`}</div>
           </div>`;
   }
 
@@ -1068,6 +1114,28 @@
       <div class="match-why">Лот «всё или ничего»: чтобы пройти, нужно закрыть все позиции разом — движок сверяет
         каждую характеристику лота с ближайшим по КТРУ/названию товаром из вашего кабинета.</div>
     </div>`;
+  }
+
+  // Контакты заказчика из карточки закупки (сборщик тянет их с ЕИС — см.
+  // tools/sources/eis.js extractContacts). Есть не у всех: у Портала карточка
+  // контактов не отдаёт, у ЕИС — только где заходили в common-info. Нет данных —
+  // блок не показываем (не выдумываем), это честнее прочерка.
+  function contactsBlock(p) {
+    const c = p.contacts || null;
+    const has = c && (c.person || c.email || c.phone);
+    if (!has) return "";
+    const rows = [];
+    if (p.customer && p.customer !== "—") rows.push(["Заказчик", lkEscape(p.customer)]);
+    if (p.customerInn) rows.push(["ИНН заказчика", lkEscape(p.customerInn)]);
+    if (c.person) rows.push(["Контактное лицо", lkEscape(c.person)]);
+    if (c.phone) rows.push(["Телефон", `<a href="tel:${lkEscape(c.phone.replace(/[^+\d]/g, ""))}">${lkEscape(c.phone)}</a>`]);
+    if (c.email) rows.push(["Эл. почта", `<a href="mailto:${lkEscape(c.email)}">${lkEscape(c.email)}</a>`]);
+    return `
+      <div class="detail-block">
+        <div class="detail-block__title">Контакты заказчика</div>
+        <div class="facts-grid">${rows.map(([k, v]) =>
+          `<div class="fact"><span class="fact__k">${k}</span><span class="fact__v">${v}</span></div>`).join("")}</div>
+      </div>`;
   }
 
   function purchaseDetail(p, m) {
@@ -1137,6 +1205,7 @@
             <div class="detail-block__title">Условия закупки</div>
             <div class="facts-grid">${facts}</div>
           </div>
+          ${contactsBlock(p)}
           ${docsHtml}
           ${matchDetail(p, m)}
           <div class="tender-actions">
@@ -1348,6 +1417,21 @@
     });
   }
 
+  // апселл под лентой, когда демо-кап прячет часть страниц (пункт 3)
+  function renderFeedUpsell(totalPages, navPages) {
+    const el = document.getElementById("feed-upsell");
+    if (!el) return;
+    if (totalPages > navPages) {
+      const isGuest = access === "guest" || access === "none";
+      el.innerHTML = isGuest
+        ? `Показана 1 страница из ${totalPages}. <b>Зарегистрируйтесь</b>, чтобы открыть всю ленту — 3 дня демо бесплатно. <a class="btn btn-primary btn-sm" href="register.html">Регистрация →</a>`
+        : `В демо доступно ${navPages} ${lkPlural(navPages, ["страница","страницы","страниц"])} из ${totalPages}. Оформите тариф, чтобы открыть всю ленту. <a class="btn btn-primary btn-sm" href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Оформить тариф →</a>`;
+      el.hidden = false;
+    } else {
+      el.hidden = true;
+    }
+  }
+
   function renderFeed(resetPage = true) {
     if (resetPage) state.page = 1;
     const feed = document.getElementById("feed-content");
@@ -1408,17 +1492,21 @@
             : "Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап."}</p>
       </div>`;
       document.getElementById("feed-pagination").innerHTML = "";
+      document.getElementById("feed-upsell").hidden = true;
       return;
     }
 
     const totalPages = Math.max(1, Math.ceil(list.length / state.pageSize));
-    if (state.page > totalPages) state.page = totalPages;
+    // демо-воронка (пункт 3): гостю — 1 страница, демо — 3, полный доступ — без кап.
+    const navPages = Math.min(totalPages, accessLimits.feedPages);
+    if (state.page > navPages) state.page = navPages;
     if (state.page < 1) state.page = 1;
+    renderFeedUpsell(totalPages, navPages);
 
     count.textContent =
       `${list.length} ${lkPlural(list.length, ["закупка","закупки","закупок"])}` +
       (!savedView && state.matchEnabled && mySubject && mySubject.length ? " по вашему ТЗ" : "") +
-      (totalPages > 1 ? ` · страница ${state.page} из ${totalPages}` : "");
+      (navPages > 1 ? ` · страница ${state.page} из ${navPages}` : "");
 
     const start = (state.page - 1) * state.pageSize;
     const shownList = list.slice(start, start + state.pageSize);
@@ -1432,7 +1520,7 @@
       const card = feed.querySelector('.tender-card[data-id="' + id + '"]');
       if (card) card.classList.add("is-open");
     });
-    renderPagination(state.page, totalPages);
+    renderPagination(state.page, navPages);
 
     const byId = {};
     shownList.forEach(p => { byId[p.id] = p; });
@@ -1469,6 +1557,11 @@
       sel.addEventListener("click", (e) => e.stopPropagation());
       sel.addEventListener("change", (e) => {
         e.stopPropagation();
+        if (!accessLimits.board) {
+          denyGuest("Доска закупок");
+          sel.value = LK.savedStatus(sel.dataset.boardStatus) || "";
+          return;
+        }
         const id = sel.dataset.boardStatus, p = byId[id], val = sel.value;
         if (!val) LK.removeSaved(id);
         else if (LK.isSaved(id)) LK.setBoardStatus(id, val);
@@ -1533,9 +1626,22 @@
   }
   function closeSearchModal() { modal.classList.remove("is-open"); }
 
-  document.getElementById("new-search-btn").addEventListener("click", () => openSearchModal(null));
+  // создание нового поиска: гостю закрыто, в демо — лимит числа поисков
+  function guardNewSearch() {
+    if (access === "guest" || access === "none") { denyGuest("Сохранение поисков"); return; }
+    const cap = accessLimits.searches;
+    if (LK.getSearches().length >= cap) {
+      const word = lkPlural(cap, ["поиск", "поиска", "поисков"]);
+      lkToast(access === "demo"
+        ? `В демо можно сохранить до ${cap} ${word}. Оформите тариф, чтобы снять лимит`
+        : `На вашем тарифе — до ${cap} ${word}. Повысьте тариф, чтобы добавить больше`);
+      return;
+    }
+    openSearchModal(null);
+  }
+  document.getElementById("new-search-btn").addEventListener("click", guardNewSearch);
   document.getElementById("search-cancel").addEventListener("click", closeSearchModal);
-  document.getElementById("search-save-btn").addEventListener("click", () => openSearchModal(null));
+  document.getElementById("search-save-btn").addEventListener("click", guardNewSearch);
   modal.addEventListener("click", (e) => { if (e.target === modal) closeSearchModal(); });
 
   document.getElementById("search-delete").addEventListener("click", () => {
@@ -1592,7 +1698,10 @@
     myTzModal.classList.add("is-open");
   }
   function closeMyTzModal() { myTzModal.classList.remove("is-open"); }
-  document.getElementById("match-tz-btn").addEventListener("click", openMyTzModal);
+  document.getElementById("match-tz-btn").addEventListener("click", () => {
+    if (!accessLimits.tzMatch) { denyGuest("Умная сверка по ТЗ"); return; }
+    openMyTzModal();
+  });
   document.getElementById("mytz-cancel").addEventListener("click", closeMyTzModal);
   myTzModal.addEventListener("click", (e) => { if (e.target === myTzModal) closeMyTzModal(); });
 

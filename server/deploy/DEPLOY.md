@@ -116,6 +116,22 @@ crontab -e
 0 * * * * cd /opt/lekalo/server && .venv/bin/python scripts/notify_expiring.py >> /var/log/lekalo-notify.log 2>&1
 ```
 
+### 6.2. Ежедневный дайджест новых закупок по сохранённым поискам
+
+`notify_new_purchases.py` читает снапшот (`LK_SNAPSHOT_PATH`, деф.
+`/opt/lekalo/site/data/purchases.json`), матчит «живые» закупки под сохранённые
+поиски клиента (алгоритм зеркалит ленту, `app/search_match.py`) и шлёт владельцу
+с привязанным Telegram дайджест новых совпадений. Раз в сутки, удобное время
+(пример — 07:00 UTC ≈ 10:00 МСК):
+```bash
+crontab -e
+0 7 * * * cd /opt/lekalo/server && .venv/bin/python scripts/notify_new_purchases.py >> /var/log/lekalo-digest.log 2>&1
+```
+⚠️ **Первый прогон ничего не шлёт** — он только «засевает» текущие совпадения как
+показанные (таблица `notified_purchases`), иначе первый дайджест был бы простынёй
+из тысяч уже открытых закупок. Со второго прогона уходят только новые.
+Отписка — колонка `users.notify_enabled` (по умолчанию 1).
+
 ## 7. HTTPS (Let's Encrypt через nip.io — без покупки домена)
 
 Голый IP сертификат от LE не получит. Обходим через `nip.io`: `147.45.141.237.nip.io`

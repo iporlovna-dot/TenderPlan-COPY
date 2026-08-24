@@ -174,6 +174,38 @@ const LK = (() => {
     }
   }
   function isServerSession() { return hasServerSession; }
+
+  // ---------- уровень доступа и лимиты (демо-воронка, см. пункт 3) ----------
+  // guest  — «смотреть демо без регистрации» (seedDemo, localStorage, без сервера):
+  //          1 страница ленты, остальные функции закрыты.
+  // demo   — 3-дневное демо после регистрации (серверная сессия, plan==='demo'):
+  //          до 3 страниц ленты, 3 товара, 3 поиска, только владелец.
+  // full   — оплаченный тариф (start/business/corp): без демо-ограничений.
+  const ACCESS_LIMITS = {
+    none:  { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false },
+    guest: { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false },
+    demo:  { feedPages: 3,        products: 3,        searches: 3,        tzMatch: true,  board: true  },
+    full:  { feedPages: Infinity, products: Infinity, searches: Infinity, tzMatch: true,  board: true  },
+  };
+  function accessLevel() {
+    if (hasServerSession) {
+      const c = getCompany();
+      return (c && c.plan === "demo") ? "demo" : "full";
+    }
+    return isLoggedIn() ? "guest" : "none";
+  }
+  // лимит сохранённых поисков по тарифу для оплаченного доступа (совпадает с
+  // server/app/accounts.py PLAN_SEARCH_LIMITS). Infinity = без лимита.
+  const PLAN_SEARCH_LIMITS = { start: 5, business: Infinity, corp: Infinity };
+  function accessLimits() {
+    const level = accessLevel();
+    const base = ACCESS_LIMITS[level] || ACCESS_LIMITS.guest;
+    if (level === "full") {
+      const plan = (getCompany() || {}).plan;
+      return { ...base, searches: PLAN_SEARCH_LIMITS[plan] != null ? PLAN_SEARCH_LIMITS[plan] : Infinity };
+    }
+    return base;
+  }
   // истёкшие demo/тариф — только для реальной серверной сессии; локальный
   // demo-режим (?demo=1, seedDemo) ничего не платит и не истекает
   function isPlanExpired() {
@@ -713,6 +745,7 @@ const LK = (() => {
     getViewed, isViewed, markViewed,
     getPageSize, setPageSize,
     initSession, apiLogout, isServerSession, isPlanExpired, apiGet, apiSend,
+    accessLevel, accessLimits,
     seedDemo, allPurchases, loadPurchases, loadTz, loadDocs, loadSpec, loadAnalytics, getAnalytics
   };
 })();

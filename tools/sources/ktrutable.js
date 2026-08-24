@@ -85,6 +85,15 @@ function mapColumns(header) {
   header.forEach((cell, i) => {
     const h = norm(cell);
     if (!h) return;
+    // Сильный сигнал «это колонка товара» бьёт порядок COLUMNS: комбинированные
+    // шапки «Наименование товара / номер позиции в КТРУ / количество» иначе
+    // уходят в qty (слово «количество» проверяется раньше «наименования») и
+    // таблица теряет колонку товара — isSpecHeader не срабатывает вовсе.
+    // «наименование характеристики» под это не подпадает (есть «характеристик»).
+    if (map.name === undefined && /наименование\s+товар|объект\s+закупки|наименование\s+объекта/.test(h)
+        && !/характеристик/.test(h)) {
+      map.name = i; return;
+    }
     for (const [key, re] of COLUMNS) {
       if (map[key] === undefined && re.test(h)) { map[key] = i; break; }
     }
@@ -178,6 +187,16 @@ function parseHardness(raw) {
 // строке — наименование и код, дальше идут характеристики с пустой колонкой
 // наименования (объединённые ячейки). Поэтому текущую позицию тащим вперёд, а
 // новую начинаем только там, где наименование непустое.
+// Строка-нумерация столбцов («1 2 3 4 …») сразу под шапкой: часть заказчиков
+// дублирует номера колонок отдельной строкой. Разбор принимал её за позицию
+// (name-ячейка = «2»), плодил мусорный товар и сбивал перенос характеристик.
+// Признак: три и больше непустых ячеек, все — разные короткие целые.
+function isEnumerationRow(row) {
+  const cells = row.map((c) => (c || "").trim()).filter(Boolean);
+  if (cells.length < 3) return false;
+  return cells.every((c) => /^\d{1,2}$/.test(c)) && new Set(cells).size === cells.length;
+}
+
 function parseSpecTable(spec, { maxItems = 200, maxChars = 60 } = {}) {
   const { map, body } = spec;
   const at = (row, key) => (map[key] !== undefined ? (row[map[key]] || "").trim() : "");
@@ -186,6 +205,7 @@ function parseSpecTable(spec, { maxItems = 200, maxChars = 60 } = {}) {
 
   for (const row of body) {
     if (!row.length) continue;
+    if (isEnumerationRow(row)) continue;
     const name = at(row, "name");
     const codeCell = at(row, "code") || name;
     const charName = at(row, "charName");
@@ -242,17 +262,92 @@ function parseSpecTable(spec, { maxItems = 200, maxChars = 60 } = {}) {
   return items.filter((it) => it.name && (it.ktru || it.okpd || it.chars.length));
 }
 
+// ───────────────────────────────────────────── товарная таблица (фолбэк без КТРУ)
+//
+// У ~20% ТЗ без КТРУ-таблицы (замер на живых документах) есть простая товарная
+// таблица: «Наименование | Кол-во | Ед.изм», без кодов и без колонки
+// характеристик. Раньше такие теряли — карточка показывала мешок основ слов.
+// Берём из них РЕАЛЬНЫЕ названия товаров (текст ячеек, не стеммы) как позиции без
+// характеристик. Спецтаблицу (КТРУ) это не трогает: она даёт больше и берётся
+// первой; товарная — фолбэк, только когда спецификации нет.
+
+function pickGoodsTable(tables) {
+  let best = null;
+  for (const t of tables) {
+    if (t.rows.length < 2) continue;
+    for (const hi of [0, 1, 2]) {
+      if (hi >= t.rows.length) break;
+      const map = mapColumns(t.rows[hi]);
+      if (isSpecHeader(map)) break;                 // это спецтаблица — не наш случай
+      // Нужна колонка товара И хоть один товарный признак (кол-во/единица), иначе
+      // под фильтр попал бы список инвентаря «Наименование оборудования | инв №».
+      if (map.name === undefined || (map.qty === undefined && map.unit === undefined)) break;
+      const body = t.rows.slice(hi + 1);
+      if (!best || body.length > best.body.length) best = { table: t, map, headerRow: hi, body };
+      break;
+    }
+  }
+  return best;
+}
+
+// Строка товарной таблицы, которую НЕ считаем товаром: итоги, финансовые строки,
+// чистые числа. «285/70 R19,5 Шина» товар — в нём есть буквы, и он проходит.
+function isGoodsName(name) {
+  if (!name || name.length < 3) return false;
+  const n = norm(name);
+  if (/^(итого|всего|ндс|цена|стоимость|сумма|№|x{1,3}$)/.test(n)) return false;
+  if (!/[а-яёa-z]/i.test(n)) return false;          // ни одной буквы — не название
+  return true;
+}
+
+function parseGoodsTable(spec, { maxItems = 200 } = {}) {
+  const { map, body } = spec;
+  const at = (row, key) => (map[key] !== undefined ? (row[map[key]] || "").trim() : "");
+  const items = [];
+  for (const row of body) {
+    if (!row.length || isEnumerationRow(row)) continue;
+    const hay = row.join(" ");
+    const ktru = (KTRU_RE.exec(hay) || [])[1] || "";
+    const okpd = (OKPD_RE.exec(hay) || [])[1] || "";
+    // Код КТРУ/ОКПД часто вписан прямо в ячейку названия («Машина для пасты28.93.17.290»).
+    // Он у нас уже есть отдельным полем — из имени убираем, чтобы не мозолил глаза.
+    const name = at(row, "name").replace(KTRU_RE, "").replace(OKPD_RE, "").replace(/\s{2,}/g, " ").trim();
+    if (!isGoodsName(name)) continue;
+    if (items.length >= maxItems) break;
+    items.push({
+      name: name.slice(0, 300),
+      ktru,
+      okpd,
+      qty: num(at(row, "qty")),
+      unit: at(row, "unit"),
+      chars: [],            // характеристик в товарной таблице нет — это и отличает её от КТРУ
+    });
+  }
+  return items;
+}
+
 // ─────────────────────────────────────────────────────────────── точка входа
 
 function extractLotItems(xml, opts) {
-  const spec = pickSpecTable(docxTables(xml));
-  if (!spec) return { items: [], status: "no-table" };
-  const items = parseSpecTable(spec, opts);
-  return { items, status: items.length ? "ok" : "empty-table" };
+  const tables = docxTables(xml);
+  const spec = pickSpecTable(tables);
+  if (spec) {
+    const items = parseSpecTable(spec, opts);
+    if (items.length) return { items, status: "ok" };
+    // Спецтаблица нашлась, но разбор пуст (объединённые ячейки/битая разметка) —
+    // не сдаёмся молча, пробуем товарную таблицу ниже.
+  }
+  const goods = pickGoodsTable(tables);
+  if (goods) {
+    const items = parseGoodsTable(goods, opts);
+    if (items.length) return { items, status: "goods" };
+  }
+  return { items: [], status: spec ? "empty-table" : "no-table" };
 }
 
 module.exports = {
   docxTables, cellText, mapColumns, isSpecHeader, pickSpecTable,
   parseValue, parseHardness, parseSpecTable, extractLotItems,
+  pickGoodsTable, parseGoodsTable, isGoodsName, isEnumerationRow,
   KTRU_RE, OKPD_RE,
 };

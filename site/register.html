@@ -6,6 +6,13 @@
 <title>Регистрация компании — Лекало</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css?v=728f970c">
+<style>
+  .consent { margin: 4px 0 20px; display: grid; gap: 12px; }
+  .consent__row { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+    font-size: .88rem; line-height: 1.45; color: var(--ink); cursor: pointer; }
+  .consent__row input { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--rust); cursor: pointer; }
+  .consent__row a { color: var(--rust); }
+</style>
 </head>
 <body>
 
@@ -59,6 +66,20 @@
           <label for="company-password">Пароль</label>
           <input type="password" id="company-password" placeholder="Минимум 8 символов" required minlength="8">
         </div>
+
+        <div class="consent">
+          <label class="consent__row">
+            <input type="checkbox" id="consent-pdn">
+            <span>Я даю согласие на обработку персональных данных и принимаю
+              <a href="privacy.html" target="_blank" rel="noopener">Политику конфиденциальности</a>
+              и <a href="terms.html" target="_blank" rel="noopener">Пользовательское соглашение</a>.</span>
+          </label>
+          <label class="consent__row">
+            <input type="checkbox" id="consent-marketing">
+            <span>Согласен получать новости и акции в Telegram (необязательно).</span>
+          </label>
+        </div>
+
         <button class="btn btn-primary btn-block" type="submit">Создать компанию →</button>
       </form>
 
@@ -79,7 +100,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=dcd3fffb"></script>
+<script src="js/app.js?v=f5b82c13"></script>
 <script src="js/secrets.js" onerror="void 0"></script>
 <script>
   // Отправка заявки в Telegram (если настроен js/secrets.js). Пароль НЕ шлём.
@@ -110,6 +131,8 @@
     const inn = document.getElementById("company-inn").value.trim();
     const email = document.getElementById("company-email").value.trim();
     const password = document.getElementById("company-password").value;
+    const consentPdn = document.getElementById("consent-pdn").checked;
+    const consentMarketing = document.getElementById("consent-marketing").checked;
 
     if (inn && !/^\d{10,12}$/.test(inn)) {
       errBox.textContent = "ИНН должен быть числом из 10–12 цифр.";
@@ -121,6 +144,11 @@
       errBox.classList.add("is-visible");
       return;
     }
+    if (!consentPdn) {
+      errBox.textContent = "Чтобы продолжить, отметьте согласие на обработку персональных данных.";
+      errBox.classList.add("is-visible");
+      return;
+    }
     errBox.classList.remove("is-visible");
 
     const submitBtn = e.target.querySelector("button[type=submit]");
@@ -129,7 +157,7 @@
       const r = await fetch("/api/auth/register", {
         method: "POST", credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName, inn, name: ownerName, email, password }),
+        body: JSON.stringify({ companyName, inn, name: ownerName, email, password, consentPdn, consentMarketing }),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));

@@ -6,6 +6,22 @@
 <title>Поиск торгов — Лекало</title>
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css?v=728f970c">
+<style>
+  /* демо-воронка (пункт 3): панель возможностей и апселл под лентой */
+  .access-banner { display:flex; gap:18px; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; background:var(--paper-alt,#f4f1ea); border:1px solid var(--rust);
+    border-radius:14px; padding:16px 20px; margin-bottom:16px; }
+  .access-banner__body { flex:1; min-width:260px; }
+  .access-banner__body b { font-size:1.02rem; color:var(--ink); }
+  .access-banner__body p { margin:5px 0; color:var(--ink); font-size:.9rem; }
+  .access-banner__body ul { margin:6px 0 0; padding-left:20px; font-size:.88rem; color:var(--ink); }
+  .access-banner__body li { margin:3px 0; }
+  .access-banner__hint { color:var(--ink-faint); font-size:.85rem; }
+  .access-banner .btn { white-space:nowrap; }
+  .feed-upsell { background:var(--paper-alt,#f4f1ea); border:1px dashed var(--rust);
+    border-radius:12px; padding:12px 16px; margin:14px 0; font-size:.92rem; color:var(--ink);
+    display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap; text-align:center; }
+</style>
 </head>
 <body>
 
@@ -138,6 +154,7 @@
     <div id="plan-expired-banner" class="plan-expired-banner" hidden></div>
 
     <div class="feed-wrap">
+      <div class="access-banner" id="access-banner" hidden></div>
       <div class="feed-header" id="feed-header">
         <div>
           <h2 id="feed-title">Все закупки</h2>
@@ -153,6 +170,7 @@
       </div>
 
       <div id="feed-content"></div>
+      <div class="feed-upsell" id="feed-upsell" hidden></div>
       <div class="feed-pagebar">
         <div class="page-size">
           <label for="page-size-select">Показывать по</label>
@@ -268,7 +286,7 @@
 
 <script src="js/config.js?v=9c2cdfe5"></script>
 <script src="js/tzmatch.js?v=e7f3c9ad"></script>
-<script src="js/app.js?v=dcd3fffb"></script>
-<script src="js/appview.js?v=f96f8026"></script>
+<script src="js/app.js?v=f5b82c13"></script>
+<script src="js/appview.js?v=e28a6c94"></script>
 </body>
 </html>

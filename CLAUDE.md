@@ -62,7 +62,7 @@ Node-сборщики (tools/) → site/data/purchases.json → статичес
 | `tools/refresh.cmd` | обёртка для Планировщика Windows |
 | `server/` | FastAPI-бэкенд (аккаунты живые; всё, что ходит в источник, — отложено) + `deploy/` |
 | `server/app/spec_match.py` | мост «позиции закупки ↔ карточки товара» → движок `matcher/`, эндпоинт `POST /api/match/spec` |
-| `tools/sources/ktrutable.js` | извлечение позиций и требований из таблицы КТРУ в документе ТЗ |
+| `tools/sources/ktrutable.js` | извлечение позиций из ТЗ: таблица КТРУ (с характеристиками) ИЛИ фолбэком простая товарная таблица «Наименование\|Кол-во» (реальные названия без характеристик, `pickGoodsTable`, `status:"goods"`). Раньше без КТРУ карточка показывала обрезанные основы слов — убрано (2026-08-24, п.4) |
 | `matcher/` | движок сверки SpecMatch — импортирован сюда с историей (см. ниже) |
 
 ### Накопитель — почему снапшот больше не пересобирается с нуля
@@ -378,7 +378,14 @@ Env: `LK_TZ_DOCS` (бюджет СКАЧИВАНИЙ за прогон, 900; ~14
 `{ id, number, title, customer, customerInn, law, source, region, okpd, price,
 regionGuessed?, stage, endDate(ISO), beginDate, deadlineDays, publishedDaysAgo, guaranteeApp,
 guaranteeContract, prepayment, href, deliveryDays, deliveryPlace,
-lots[{name,qty,price,okpd}], documents[{id,name,url}], matches{productId→MatchResult} }`
+contacts?{person,phone,email}, lots[{name,qty,price,okpd}], documents[{id,name,url}], matches{productId→MatchResult} }`
+
+⚠️ **`contacts` — контакты заказчика из карточки ЕИС** (`eis.js extractContacts`,
+блок «Контактная информация»; 44 — `section__title/info`, 223 — `common-text__title/value`).
+Заполняется только там, где заходим в карточку (223 всегда, 44 — когда регион
+неизвестен): best-effort, как регион/срок. **Портал контактов не отдаёт** (в
+`Auction/Get` только имя/ИНН заказчика — проверено). Переносится между прогонами
+(`store.js` CARRY), остаётся в ленте (не тяжёлый, `split.js` не выносит в довесок).
 
 ---
 

@@ -77,12 +77,18 @@
             Подключить Telegram</a>
           <span class="cabinet-sub__hint">— демо/тарифы и продление выдаются через бота</span>
         </div>
+        <div class="cabinet-sub" id="group-row" hidden>
+          <span class="cabinet-sub__label">Группа компаний</span>
+          <b><span class="badge badge-ok">👥 часть большой компании</span></b>
+          <span class="cabinet-sub__hint" id="group-hint"></span>
+        </div>
       </section>
 
       <section class="cabinet-card">
         <h3>Сотрудники <span class="cabinet-num" id="employee-count"></span></h3>
         <div class="form-error" id="employee-error"></div>
         <div id="employee-list" class="employee-list"></div>
+        <div id="employee-limit-hint" class="cabinet-empty" style="display:none;margin-top:10px;"></div>
 
         <form id="employee-form" class="cabinet-grid" style="margin-top:14px;">
           <div class="field">
@@ -143,6 +149,7 @@
           позициями закупки (движок сверки характеристик, не «Умная сверка» по ТЗ выше). Хранятся в этом
           браузере, не на сервере.</p>
         <div id="product-list" class="employee-list"></div>
+        <div id="product-limit-hint" class="cabinet-empty" style="display:none;margin-top:10px;"></div>
 
         <form id="product-form" class="cabinet-grid" style="margin-top:14px;">
           <div class="field">
@@ -172,7 +179,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=dcd3fffb"></script>
+<script src="js/app.js?v=f5b82c13"></script>
 <script>
 (async function () {
   await LK.initSession();
@@ -195,8 +202,11 @@
     : p === "start" ? "Тариф «Старт»" : p;
   const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "—" : d.toLocaleDateString("ru-RU"); };
 
+  let employeeLimit = null;  // из /api/company — используется при отрисовке сотрудников
+
   async function loadCompany() {
     const c = await LK.apiGet("/api/company");
+    employeeLimit = c.employeeLimit;
     document.getElementById("plan-name").textContent = planLabel(c.plan);
     document.getElementById("plan-expires").textContent = "Активна до " + fmtDate(c.planExpiresAt);
     document.getElementById("company-number").textContent = "№ " + c.id;
@@ -204,6 +214,16 @@
     document.getElementById("cf-inn").value = c.inn || "";
     document.getElementById("cabinet-plan").textContent = planLabel(c.plan) + ` (${c.employeeCount} сотр.)`;
     document.getElementById("cabinet-plan-expires").textContent = "действует до " + fmtDate(c.planExpiresAt);
+
+    const group = c.groupCompanies || [];
+    const groupRow = document.getElementById("group-row");
+    if (group.length) {
+      const names = group.map(g => `${lkEscape(g.name)} (№${g.id})`).join(", ");
+      document.getElementById("group-hint").textContent = "— вместе с: " + names;
+      groupRow.hidden = false;
+    } else {
+      groupRow.hidden = true;
+    }
   }
 
   // Telegram могли не привязать при регистрации (закрыли модалку) — показываем
@@ -236,8 +256,10 @@
 
   async function loadEmployees() {
     const list = await LK.apiGet("/api/employees");
-    document.getElementById("employee-count").textContent = list.length;
+    document.getElementById("employee-count").textContent =
+      employeeLimit ? `${list.length} / ${employeeLimit}` : list.length;
     const isOwner = company.role === "owner";
+    const atLimit = employeeLimit != null && list.length >= employeeLimit;
     document.getElementById("employee-list").innerHTML = list.map(u => `
       <div class="employee-row">
         <div>
@@ -259,7 +281,15 @@
         }
       });
     });
-    document.getElementById("employee-form").style.display = isOwner ? "" : "none";
+    const hint = document.getElementById("employee-limit-hint");
+    document.getElementById("employee-form").style.display = (isOwner && !atLimit) ? "" : "none";
+    if (isOwner && atLimit) {
+      hint.textContent = `Достигнут лимит тарифа — ${employeeLimit} ${lkPlural(employeeLimit, ["сотрудник", "сотрудника", "сотрудников"])}. ` +
+        "Чтобы добавить больше, повысьте тариф или заведите вторую компанию (её можно связать с этой в одну группу — напишите в поддержку).";
+      hint.style.display = "";
+    } else {
+      hint.style.display = "none";
+    }
   }
 
   document.getElementById("employee-form").addEventListener("submit", async (e) => {
@@ -295,7 +325,19 @@
 
   function loadProducts() {
     const list = LK.getProducts();
-    document.getElementById("product-count").textContent = list.length ? String(list.length) : "";
+    const cap = LK.accessLimits().products;
+    const atLimit = cap !== Infinity && list.length >= cap;
+    document.getElementById("product-count").textContent =
+      cap !== Infinity ? `${list.length} / ${cap}` : (list.length ? String(list.length) : "");
+    const pHint = document.getElementById("product-limit-hint");
+    document.getElementById("product-form").style.display = atLimit ? "none" : "";
+    if (atLimit) {
+      pHint.textContent = `В демо доступно до ${cap} ${lkPlural(cap, ["товара", "товаров", "товаров"])} для сверки. ` +
+        "Оформите тариф в Telegram-боте, чтобы добавить больше.";
+      pHint.style.display = "";
+    } else {
+      pHint.style.display = "none";
+    }
     document.getElementById("product-list").innerHTML = list.length ? list.map(p => `
       <div class="employee-row">
         <div>
@@ -317,6 +359,8 @@
 
   document.getElementById("product-form").addEventListener("submit", (e) => {
     e.preventDefault();
+    const cap = LK.accessLimits().products;
+    if (cap !== Infinity && LK.getProducts().length >= cap) { loadProducts(); return; }
     const name = document.getElementById("pf-name").value.trim();
     if (!name) return;
     const ktru = document.getElementById("pf-ktru").value.split(",").map(s => s.trim()).filter(Boolean);
@@ -397,7 +441,7 @@
     }
   });
 
-  loadCompany();
+  await loadCompany();   // ставит employeeLimit до отрисовки сотрудников (иначе гонка)
   loadTelegramLink();
   loadEmployees();
   loadProducts();

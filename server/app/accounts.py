@@ -13,7 +13,7 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, EmailStr
@@ -30,6 +30,28 @@ DEMO_DAYS = 3
 # но дата всё равно нужна (колонка NOT NULL) и полезна как читаемая метка в админке
 AUTO_RENEW_YEARS_AHEAD = 10
 
+# Лимит сотрудников на компанию по тарифу (одно место — тарифные возможности
+# ещё будут меняться). demo = только владелец; >10 = отдельная компания (см.
+# «группа компаний», admin link). Неизвестный план откатывается к самому строгому.
+PLAN_EMPLOYEE_LIMITS = {"demo": 1, "start": 2, "business": 5, "corp": 10}
+DEFAULT_EMPLOYEE_LIMIT = 2
+
+
+def _employee_limit(plan: str) -> int:
+    return PLAN_EMPLOYEE_LIMITS.get(plan, DEFAULT_EMPLOYEE_LIMIT)
+
+
+# Лимит сохранённых поисков НА ПОЛЬЗОВАТЕЛЯ по тарифу (None = без лимита).
+# Совпадает с тарифами на лендинге и в terms.html. Демо — 3 (см. фронт accessLimits).
+# Фронт (app.js accessLimits) держит те же числа — сервер тут последний рубеж
+# (лимит на фронте обходится прямым вызовом API, см. todo-demo-limits-backend).
+PLAN_SEARCH_LIMITS = {"demo": 3, "start": 5, "business": None, "corp": None}
+DEFAULT_SEARCH_LIMIT = 3
+
+
+def _search_limit(plan: str):
+    return PLAN_SEARCH_LIMITS.get(plan, DEFAULT_SEARCH_LIMIT)
+
 
 # ---------- модели запросов ----------
 
@@ -39,6 +61,8 @@ class RegisterBody(BaseModel):
     name: str
     email: EmailStr
     password: str
+    consentPdn: bool = False       # согласие на обработку ПДн — обязательное
+    consentMarketing: bool = False  # согласие на рассылку в Telegram — по желанию
 
 
 class LoginBody(BaseModel):
@@ -124,6 +148,7 @@ def _row_to_company(row) -> dict:
         "id": row["id"], "name": row["name"], "inn": row["inn"],
         "plan": row["plan"], "planExpiresAt": row["plan_expires_at"],
         "autoRenew": bool(row["auto_renew"]), "isExpired": expired,
+        "groupId": row["group_id"],
     }
 
 
@@ -165,6 +190,19 @@ def _check_password(password: str) -> None:
         raise HTTPException(status_code=400, detail="Пароль должен быть не короче 8 символов")
 
 
+def _plural_ru(n: int, one: str, few: str, many: str) -> str:
+    """Русское склонение по числу: 1 сотрудник, 2 сотрудника, 5 сотрудников."""
+    n = abs(n) % 100
+    if 11 <= n <= 14:
+        return many
+    d = n % 10
+    if d == 1:
+        return one
+    if 2 <= d <= 4:
+        return few
+    return many
+
+
 def _plan_label(plan: str) -> str:
     return {
         "demo": "Демо-доступ (3 дня)",
@@ -195,6 +233,8 @@ def register(body: RegisterBody, request: Request, response: Response):
         exists = conn.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone()
         if exists:
             raise HTTPException(status_code=409, detail="Компания с такой почтой уже зарегистрирована")
+        if not body.consentPdn:
+            raise HTTPException(status_code=400, detail="Требуется согласие на обработку персональных данных")
         _check_password(body.password)
         inn = body.inn.strip()
         _check_inn_free(conn, inn)
@@ -211,10 +251,13 @@ def register(body: RegisterBody, request: Request, response: Response):
         company_id = cur.lastrowid
         pw_hash = auth.hash_password(body.password)
         link_token = secrets.token_urlsafe(24)
+        marketing_at = now.isoformat() if body.consentMarketing else None
         cur = conn.execute(
-            "INSERT INTO users (company_id, email, password_hash, name, role, created_at, telegram_link_token) "
-            "VALUES (?, ?, ?, ?, 'owner', ?, ?)",
-            (company_id, email, pw_hash, body.name.strip(), now.isoformat(), link_token),
+            "INSERT INTO users (company_id, email, password_hash, name, role, created_at, telegram_link_token, "
+            "consent_pdn_at, consent_marketing, consent_marketing_at) "
+            "VALUES (?, ?, ?, ?, 'owner', ?, ?, ?, ?, ?)",
+            (company_id, email, pw_hash, body.name.strip(), now.isoformat(), link_token,
+             now.isoformat(), 1 if body.consentMarketing else 0, marketing_at),
         )
         user_id = cur.lastrowid
         conn.commit()
@@ -409,6 +452,15 @@ def get_company(lekalo_session: str | None = Cookie(default=None)):
         out = _row_to_company(company_row)
         out["planLabel"] = _plan_label(out["plan"])
         out["employeeCount"] = count
+        out["employeeLimit"] = _employee_limit(out["plan"])
+        # компании той же группы (кроме себя) — для индикатора «часть большой компании»
+        out["groupCompanies"] = []
+        if company_row["group_id"] is not None:
+            siblings = conn.execute(
+                "SELECT id, name FROM companies WHERE group_id = ? AND id != ? ORDER BY id",
+                (company_row["group_id"], company_row["id"]),
+            ).fetchall()
+            out["groupCompanies"] = [{"id": s["id"], "name": s["name"]} for s in siblings]
         return out
     finally:
         conn.close()
@@ -457,6 +509,20 @@ def add_employee(body: EmployeeCreate, lekalo_session: str | None = Cookie(defau
     try:
         if user["role"] != "owner":
             raise HTTPException(status_code=403, detail="Добавлять сотрудников может только владелец")
+        company_row = conn.execute(
+            "SELECT plan FROM companies WHERE id = ?", (user["company_id"],)
+        ).fetchone()
+        limit = _employee_limit(company_row["plan"])
+        count = conn.execute(
+            "SELECT COUNT(*) AS n FROM users WHERE company_id = ?", (user["company_id"],)
+        ).fetchone()["n"]
+        if count >= limit:
+            raise HTTPException(
+                status_code=403,
+                detail=(f"На тарифе «{_plan_label(company_row['plan'])}» — до {limit} "
+                        f"{_plural_ru(limit, 'сотрудника', 'сотрудников', 'сотрудников')}. "
+                        "Для большего числа повысьте тариф или заведите вторую компанию."),
+            )
         email = _norm_email(body.email)
         exists = conn.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone()
         if exists:
@@ -669,6 +735,24 @@ def create_search(body: SearchCreate, lekalo_session: str | None = Cookie(defaul
         owner = conn.execute("SELECT user_id FROM searches WHERE id = ?", (body.id,)).fetchone()
         if owner and owner["user_id"] != user["id"]:
             raise HTTPException(status_code=409, detail="Идентификатор поиска занят")
+        # Лимит поисков по тарифу — считаем только для НОВОГО поиска (id ещё не
+        # мой): повторная отправка того же id — это апдейт, он лимит не тратит.
+        if not owner:
+            company_row = conn.execute(
+                "SELECT plan FROM companies WHERE id = ?", (user["company_id"],)
+            ).fetchone()
+            limit = _search_limit(company_row["plan"])
+            if limit is not None:
+                count = conn.execute(
+                    "SELECT COUNT(*) AS n FROM searches WHERE user_id = ?", (user["id"],)
+                ).fetchone()["n"]
+                if count >= limit:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(f"На тарифе «{_plan_label(company_row['plan'])}» — до {limit} "
+                                f"{_plural_ru(limit, 'сохранённого поиска', 'сохранённых поисков', 'сохранённых поисков')}. "
+                                "Повысьте тариф, чтобы добавить больше."),
+                    )
         conn.execute(
             "INSERT OR REPLACE INTO searches (id, user_id, name, query, minus, filters, new_count, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
@@ -767,14 +851,27 @@ def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(bas
                 f'<a href="/api/admin/companies/{c["id"]}/revoke-auto-renew">Снять автопродление</a>' if c["auto_renew"]
                 else f'<a href="/api/admin/companies/{c["id"]}/grant-business">Выдать Бизнес без оплаты</a>'
             )
+            limit = _employee_limit(c["plan"])
+            over = " style='color:#b3401f;font-weight:600'" if len(users) > limit else ""
+            group_badge = (f'<br><span style="color:#b3401f;font-size:.8em">👥 группа #{c["group_id"]}</span>'
+                           if c["group_id"] is not None else "")
+            group_cell = (
+                (f'<span style="color:#b3401f">#{c["group_id"]}</span> '
+                 f'<a href="/api/admin/companies/{c["id"]}/unlink" style="font-size:.85em">убрать</a><br>'
+                 if c["group_id"] is not None else '<span style="color:#aaa">—</span><br>')
+                + f'<form method="get" action="/api/admin/companies/{c["id"]}/link" style="margin:4px 0 0;display:inline">'
+                  f'<input name="with" placeholder="№" required style="width:52px;padding:2px 4px">'
+                  f'<button type="submit" style="font-size:.85em">связать</button></form>'
+            )
             rows_html.append(f"""
               <tr>
                 <td>#{c['id']}</td>
-                <td>{html.escape(c['name'])}<br><span style="color:#888;font-size:.85em">ИНН {html.escape(c['inn'] or '—')}</span></td>
+                <td>{html.escape(c['name'])}{group_badge}<br><span style="color:#888;font-size:.85em">ИНН {html.escape(c['inn'] or '—')}</span></td>
                 <td>{html.escape(owner['email']) if owner else '—'}</td>
                 <td>{_plan_label(c['plan'])}{plan_extra}<br><span style="color:#888;font-size:.85em">до {c['plan_expires_at'][:10]}</span></td>
-                <td>{len(users)}</td>
+                <td{over}>{len(users)} / {limit}</td>
                 <td><ul style="margin:0;padding-left:18px;">{users_html}</ul></td>
+                <td style="font-size:.85em">{group_cell}</td>
                 <td style="color:#888;font-size:.85em">{c['created_at'][:16].replace('T',' ')}</td>
                 <td style="font-size:.85em">{action}</td>
               </tr>""")
@@ -791,8 +888,8 @@ def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(bas
         <body>
           <h1>Зарегистрированные компании ({len(companies)}) · <a href="/api/admin/invoices">счета →</a></h1>
           <table>
-            <tr><th>№</th><th>Компания</th><th>Email владельца</th><th>Тариф</th><th>Сотрудников</th><th>Список</th><th>Регистрация</th><th>Действие</th></tr>
-            {''.join(rows_html) or '<tr><td colspan="8">Пока никто не зарегистрировался</td></tr>'}
+            <tr><th>№</th><th>Компания</th><th>Email владельца</th><th>Тариф</th><th>Сотр. / лимит</th><th>Список</th><th>Группа</th><th>Регистрация</th><th>Действие</th></tr>
+            {''.join(rows_html) or '<tr><td colspan="9">Пока никто не зарегистрировался</td></tr>'}
           </table>
         </body></html>"""
         return HTMLResponse(page_html)
@@ -854,6 +951,65 @@ def admin_revoke_auto_renew(company_id: int, request: Request, credentials: HTTP
         conn.execute("UPDATE companies SET auto_renew=0 WHERE id=?", (company_id,))
         conn.commit()
         audit.log("admin_revoke_auto_renew", company=company_id)
+        return RedirectResponse(url="/api/admin", status_code=303)
+    finally:
+        conn.close()
+
+
+@router.get("/admin/companies/{company_id}/link")
+def admin_link_companies(company_id: int, request: Request,
+                         with_: int = Query(..., alias="with"),
+                         credentials: HTTPBasicCredentials = Depends(basic)):
+    """Связать две компании в одну «группу» (клиент с >10 сотрудников заводит
+    вторую компанию — см. накопитель тарифов). group_id общий у всех компаний
+    группы; сид группы — id первой из связываемых. Слияние двух уже существующих
+    групп переводит вторую в первую."""
+    _guard_admin(request, credentials)
+    if company_id == with_:
+        raise HTTPException(status_code=400, detail="Нельзя связать компанию саму с собой")
+    conn = db.get_conn()
+    try:
+        a = conn.execute("SELECT id, group_id FROM companies WHERE id = ?", (company_id,)).fetchone()
+        b = conn.execute("SELECT id, group_id FROM companies WHERE id = ?", (with_,)).fetchone()
+        if not a or not b:
+            raise HTTPException(status_code=404, detail="Одна из компаний не найдена")
+        ga, gb = a["group_id"], b["group_id"]
+        if ga is not None and gb is not None:
+            if ga != gb:
+                conn.execute("UPDATE companies SET group_id = ? WHERE group_id = ?", (ga, gb))
+        elif ga is not None:
+            conn.execute("UPDATE companies SET group_id = ? WHERE id = ?", (ga, with_))
+        elif gb is not None:
+            conn.execute("UPDATE companies SET group_id = ? WHERE id = ?", (gb, company_id))
+        else:
+            conn.execute("UPDATE companies SET group_id = ? WHERE id IN (?, ?)",
+                         (company_id, company_id, with_))
+        conn.commit()
+        audit.log("admin_link_companies", company=company_id, group_with=with_)
+        return RedirectResponse(url="/api/admin", status_code=303)
+    finally:
+        conn.close()
+
+
+@router.get("/admin/companies/{company_id}/unlink")
+def admin_unlink_company(company_id: int, request: Request,
+                         credentials: HTTPBasicCredentials = Depends(basic)):
+    """Убрать компанию из группы. Если после этого в группе остаётся одна
+    компания — снимаем группу и с неё (группа из одного участника бессмысленна)."""
+    _guard_admin(request, credentials)
+    conn = db.get_conn()
+    try:
+        row = conn.execute("SELECT group_id FROM companies WHERE id = ?", (company_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+        g = row["group_id"]
+        if g is not None:
+            conn.execute("UPDATE companies SET group_id = NULL WHERE id = ?", (company_id,))
+            rest = conn.execute("SELECT id FROM companies WHERE group_id = ?", (g,)).fetchall()
+            if len(rest) == 1:
+                conn.execute("UPDATE companies SET group_id = NULL WHERE id = ?", (rest[0]["id"],))
+            conn.commit()
+            audit.log("admin_unlink_company", company=company_id, group=g)
         return RedirectResponse(url="/api/admin", status_code=303)
     finally:
         conn.close()

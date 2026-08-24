@@ -224,6 +224,34 @@ function cardField(html, titleRe) {
   return "";
 }
 
+// Контакты заказчика из карточки (блок «Контактная информация»). Вёрстка и метки
+// у 44/223 разные: 44 — section__title/section__info (как cardField), 223 —
+// common-text__title/common-text__value. Пробуем обе структуры и берём значение
+// по метке. Заполняется лишь для закупок, в карточку которых и так заходим (223
+// всегда, 44 — когда регион неизвестен): best-effort, как регион/срок поставки.
+function contactValue(html, labelRe) {
+  const re1 = /common-text__title[^>]*>([\s\S]*?)<\/div>\s*<div[^>]*common-text__value[^>]*>([\s\S]*?)<\/div>/gi;
+  const re2 = /section__title[^>]*>([\s\S]*?)<\/span>[\s\S]*?section__info[^>]*>([\s\S]*?)<\/span>/gi;
+  for (const re of [re1, re2]) {
+    let m;
+    while ((m = re.exec(html))) {
+      if (labelRe.test(stripTags(m[1]))) return stripTags(m[2]);
+    }
+  }
+  return "";
+}
+function extractContacts(html) {
+  // Кириллицу — явными классами [а-яё], не \S/\w: в JS \w кириллицу не видит (грабля §9).
+  const person = contactValue(html, /контактное лицо|ответственн[а-яё]* должностн[а-яё]* лицо|ответственн[а-яё]* лицо/i);
+  const email = contactValue(html, /электронн[а-яё]* почт/i);
+  const phone = contactValue(html, /телефон/i);
+  const c = {};
+  if (person) c.person = person;
+  if (email) c.email = email;
+  if (phone) c.phone = phone;
+  return Object.keys(c).length ? c : null;
+}
+
 // Срок поставки из карточки → в днях. Берём ТОЛЬКО когда поле «Срок исполнения
 // контракта» задано явной длительностью — «N (рабочих|календарных) дней»: это и есть
 // реальный срок исполнения/поставки. Форму-ДАТУ «дд.мм.гггг» сознательно НЕ берём —
@@ -265,9 +293,9 @@ async function fetchCardMeta(link) {
     if (u && u.startsWith("/")) u = "https://zakupki.gov.ru" + u;
     return {
       docsUrl: u || null, region: extractRegion(html), deliveryDays: extractDeliveryDays(html),
-      procStage: extractProcStage(html),
+      procStage: extractProcStage(html), contacts: extractContacts(html),
     };
-  } catch (e) { return { docsUrl: null, region: "", deliveryDays: null, procStage: "" }; }
+  } catch (e) { return { docsUrl: null, region: "", deliveryDays: null, procStage: "", contacts: null }; }
 }
 function extractProcStage(html) {
   return stripTags((/header-mid__title[^>]*>([\s\S]*?)<\/div>/i.exec(html) || [])[1]) || "";
@@ -297,7 +325,7 @@ async function fetchDocs(docsUrl) {
   } catch (e) { return []; }
 }
 
-function toPurchase(it, documents, region, deliveryDays, regionGuessed) {
+function toPurchase(it, documents, region, deliveryDays, regionGuessed, contacts) {
   const now = Date.now();
   const end = it.endIso ? new Date(it.endIso).getTime() : null;
   return {
@@ -321,6 +349,7 @@ function toPurchase(it, documents, region, deliveryDays, regionGuessed) {
     procedureType: it.procedureType || "", competitive: it.competitive !== false,
     procStage: it.procStage || "",
     deliveryDays: deliveryDays ?? null, deliveryPlace: "",
+    ...(contacts ? { contacts } : {}),
     lots: [{ name: it.title, qty: "—", unit: "", price: it.price }],
     documents: documents || [],
     matches: {},
@@ -502,6 +531,7 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
       region: meta.region || "",
       deliveryDays: meta.deliveryDays ?? null,
       procStage: meta.procStage || "",
+      contacts: meta.contacts || null,
       fetchedAt: Date.now(),
     };
   }, (k, t) => process.stdout.write(`\r  ЕИС документы: ${k}/${t}`));
@@ -527,7 +557,7 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     // Список свежее карточки (её могли не заходить неделю — см. DOCS_TTL_MS),
     // поэтому этап из СПИСКА в приоритете, карточка — только фолбэк.
     it.procStage = it.procStage || (m && m.procStage) || "";
-    const p = toPurchase(it, (m && m.docs) || [], region, (m && m.deliveryDays) ?? null, regionGuessed);
+    const p = toPurchase(it, (m && m.docs) || [], region, (m && m.deliveryDays) ?? null, regionGuessed, (m && m.contacts) || null);
     // Заходили ли мы вообще в карточку. Без этого пустой documents[] неотличим от
     // «приложений нет», и «Умная сверка» говорила бы «у закупки нет документов» тем
     // тысячам закупок, до которых просто не дошёл бюджет docsLimit. Это разные вещи:
@@ -576,4 +606,4 @@ async function refreshStages(purchases, budget = 300) {
   return { checked, updated, candidates: candidates.length };
 }
 
-module.exports = { collectEis, refreshStages, DEFAULT_KEYWORDS, docsUrlDirect, sweepSlice, CLAMP_PAGE };
+module.exports = { collectEis, refreshStages, DEFAULT_KEYWORDS, docsUrlDirect, sweepSlice, CLAMP_PAGE, extractContacts };

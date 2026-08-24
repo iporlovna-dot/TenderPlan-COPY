@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Безопасность данных — Лекало</title>
+<meta name="description" content="Как Лекало защищает данные клиентов: хэширование паролей, двухфакторная аутентификация, HTTPS, изоляция данных компаний и защита от перебора.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css?v=728f970c">
+<style>
+  .legal { max-width: 820px; margin: 0 auto; padding: 48px 0 72px; }
+  .legal h1 { font-size: 1.9rem; line-height: 1.15; margin: 0 0 6px; }
+  .legal .legal-meta { color: var(--ink-faint); font-size: .9rem; margin-bottom: 32px; }
+  .legal h2 { font-size: 1.2rem; margin: 38px 0 12px; }
+  .legal p, .legal li { line-height: 1.65; color: var(--ink); }
+  .legal ul { padding-left: 22px; margin: 10px 0; }
+  .legal li { margin: 6px 0; }
+  .legal a { color: var(--rust); }
+  .legal .ph { background: #fff4d6; color: #7a4a00; padding: 0 4px; border-radius: 3px;
+    font-style: normal; border-bottom: 1px dashed #c99; }
+  .sec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 24px 0; }
+  .sec-card { background: var(--paper-2, #f4f1ea); border-radius: 12px; padding: 20px 22px; }
+  .sec-card h3 { margin: 0 0 6px; font-size: 1.02rem; }
+  .sec-card p { margin: 0; font-size: .94rem; color: var(--ink); }
+  .legal-nav { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line, #e5e0d5); font-size: .95rem; }
+  .legal-nav a { color: var(--rust); margin-right: 18px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html">
+      <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="color:var(--rust)">
+        <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+        <circle cx="66" cy="27" r="7" fill="var(--paper)"/>
+      </svg>
+      <span class="brand__word">Лекало</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html#how">Как это работает</a>
+      <a href="index.html#pricing">Тарифы</a>
+      <a href="privacy.html">Конфиденциальность</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-quiet" href="login.html">Войти</a>
+      <a class="btn btn-primary" href="register.html">Начать бесплатно</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <article class="legal">
+      <h1>Безопасность и защита данных</h1>
+      <div class="legal-meta">Как устроена защита учётных записей и данных клиентов в «Лекало».</div>
+
+      <p>Мы относимся к данным клиентов бережно и применяем технические меры защиты на каждом
+      уровне — от хранения паролей до передачи данных по сети. Ниже — что именно сделано.</p>
+
+      <div class="sec-grid">
+        <div class="sec-card">
+          <h3>Пароли не хранятся в открытом виде</h3>
+          <p>Пароль сохраняется только в виде необратимого криптографического хэша (bcrypt).
+          Восстановить исходный пароль из базы невозможно — даже нам.</p>
+        </div>
+        <div class="sec-card">
+          <h3>Двухфакторная аутентификация</h3>
+          <p>По желанию можно включить 2FA по одноразовым кодам (TOTP) — вход потребует код
+          из приложения-аутентификатора в дополнение к паролю.</p>
+        </div>
+        <div class="sec-card">
+          <h3>Шифрование канала (HTTPS)</h3>
+          <p>Весь трафик между вами и сервисом идёт по защищённому соединению HTTPS с
+          действующим TLS-сертификатом. Сессия хранится в httponly-cookie.</p>
+        </div>
+        <div class="sec-card">
+          <h3>Изоляция данных компаний</h3>
+          <p>Доска закупок, сохранённые поиски и история сверок доступны только внутри вашей
+          компании. Данные одной компании недоступны другой.</p>
+        </div>
+        <div class="sec-card">
+          <h3>Защита от перебора</h3>
+          <p>Попытки входа, восстановления и админ-доступа ограничены по частоте — это режет
+          автоматический подбор паролей и снижает нагрузку при атаках.</p>
+        </div>
+        <div class="sec-card">
+          <h3>Журналирование событий</h3>
+          <p>Ключевые события безопасности (входы, ошибки входа, изменения 2FA) фиксируются в
+          журнале для расследования инцидентов.</p>
+        </div>
+      </div>
+
+      <h2>Где хранятся данные</h2>
+      <p>Данные размещаются на серверах на территории Российской Федерации в соответствии с
+      требованиями законодательства о персональных данных. Порядок обработки описан в
+      <a href="privacy.html">Политике конфиденциальности</a>.</p>
+
+      <h2>Что можете сделать вы</h2>
+      <ul>
+        <li>включить двухфакторную аутентификацию в личном кабинете;</li>
+        <li>использовать уникальный пароль длиной не менее 8 символов;</li>
+        <li>выходить из аккаунта на чужих устройствах (кнопка «выйти на всех устройствах»);</li>
+        <li>своевременно удалять сотрудников, которым доступ больше не нужен.</li>
+      </ul>
+
+      <h2>Сообщить о проблеме</h2>
+      <p>Если вы заметили уязвимость или подозрительную активность, напишите нам:
+      <span class="ph">[e-mail для сообщений о безопасности]</span> или в
+      <a href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Telegram-бот поддержки</a>.
+      Мы разберёмся и ответим.</p>
+
+      <div class="legal-nav">
+        <a href="privacy.html">Политика конфиденциальности</a>
+        <a href="terms.html">Пользовательское соглашение</a>
+        <a href="index.html">На главную</a>
+      </div>
+    </article>
+  </div>
+</main>
+
+<script src="js/app.js?v=f5b82c13"></script>
+</body>
+</html>

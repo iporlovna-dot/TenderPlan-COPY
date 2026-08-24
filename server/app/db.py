@@ -79,6 +79,15 @@ CREATE TABLE IF NOT EXISTS searches (
     new_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+-- дедуп ежедневного дайджеста о новых подходящих закупках (см.
+-- scripts/notify_new_purchases.py): одна строка = «этому пользователю про эту
+-- закупку уже сообщали (или отметили при сиде первого прогона)».
+CREATE TABLE IF NOT EXISTS notified_purchases (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purchase_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, purchase_id)
+);
 """
 
 
@@ -102,6 +111,17 @@ MIGRATIONS = [
         # обнуляется после успешной привязки (см. app/support.py)
         ("telegram_chat_id", "TEXT"),
         ("telegram_link_token", "TEXT"),
+        # согласия (152-ФЗ): дата согласия на обработку ПДн (обязательное при
+        # регистрации) и отдельное необязательное согласие на маркетинг-рассылку
+        # в Telegram. Храним факт+момент; отзыв маркетинга сбрасывает флаг в 0.
+        ("consent_pdn_at", "TEXT"),
+        ("consent_marketing", "INTEGER NOT NULL DEFAULT 0"),
+        ("consent_marketing_at", "TEXT"),
+        # ежедневный дайджест новых закупок (scripts/notify_new_purchases.py):
+        # seeded_at — момент первого прохода (тогда бэклог помечается «показанным»
+        # без отправки, чтобы не спамить); enabled — тумблер отписки (по умолчанию вкл).
+        ("notify_seeded_at", "TEXT"),
+        ("notify_enabled", "INTEGER NOT NULL DEFAULT 1"),
     ]),
     # избранное стало общей доской компании: статус воронки + ответственный +
     # привязка карточки к компании (а не только к добавившему пользователю).
@@ -119,6 +139,11 @@ MIGRATIONS = [
         # уведомление на новый срок уходит снова без ручного сброса
         ("notice_sent_for", "TEXT"),
         ("expired_offer_sent_for", "TEXT"),
+        # «группа компаний»: когда клиенту нужно >10 сотрудников, он заводит
+        # вторую компанию, и владелец площадки ВРУЧНУЮ из админки связывает их —
+        # у обеих проставляется общий group_id (см. accounts.py admin link/unlink).
+        # NULL = компания сама по себе, не в группе.
+        ("group_id", "INTEGER"),
     ]),
     ("invoices", [
         # доставка счёта из Telegram-бота без cookie-сессии (см. GET /invoices/{id}/bot)
