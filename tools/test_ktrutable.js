@@ -10,8 +10,8 @@ const assert = require("node:assert");
 
 const {
   docxTables, mapColumns, isSpecHeader, pickSpecTable,
-  parseValue, parseHardness, parseSpecTable, extractLotItems,
-  pickGoodsTable, parseGoodsTable, isGoodsName, isEnumerationRow,
+  parseValue, parseHardness, parseSpecTable, extractLotItems, extractLotItemsFromTables,
+  xlsxSheetsToTables, pickGoodsTable, parseGoodsTable, isGoodsName, isEnumerationRow,
 } = require("./sources/ktrutable");
 
 // ─────────────────────────────────────────────────────── сборка тестового XML
@@ -328,4 +328,58 @@ test("потолки не дают одному документу съесть 
   for (let i = 0; i < 300; i++) rows.push(["Товар " + i, "21.20.23.110-0000000" + (i % 10), "Длина", "не менее 5"]);
   const items = parseSpecTable(pickSpecTable(docxTables(tbl(rows))), { maxItems: 50 });
   assert.equal(items.length, 50);
+});
+
+// ───────────────────────────────────────────── таблицы Excel (223-ФЗ) и reqText
+
+test("шапка ниже пустых строк находится (Excel-ТЗ: титул + пустые + шапка)", () => {
+  // у 223-ФЗ Excel-ТЗ сверху титул и пустые строки, шапка не в первых трёх
+  const tables = [{ rows: [
+    ["", "", "Приложение № 2"],
+    [], [],
+    ["№ п/п", "Наименование товаров", "Нормативно-технические требования", "Единица измерения", "Объем"],
+    ["1", "Свинцово-сурьмянистый сплав ССу2", "ГОСТ 1292-81, сурьма не менее 2,8 %", "т", "20"],
+  ] }];
+  const res = extractLotItemsFromTables(tables);
+  assert.equal(res.status, "goods");
+  assert.equal(res.items.length, 1);
+  assert.equal(res.items[0].name, "Свинцово-сурьмянистый сплав ССу2");
+  assert.equal(res.items[0].qty, 20, "«Объем» распознан как количество");
+  assert.equal(res.items[0].unit, "т");
+});
+
+test("свободная колонка требований → характеристика позиции", () => {
+  const tables = [{ rows: [
+    ["Наименование товара", "Нормативно-технические требования", "Ед. изм", "Кол-во"],
+    ["Свинец ССу2", "ГОСТ 1292-81 с содержанием сурьмы не менее 2,8 %", "т", "20"],
+  ] }];
+  const it = extractLotItemsFromTables(tables).items[0];
+  assert.equal(it.chars.length, 1);
+  assert.equal(it.chars[0].key, "Технические требования");
+  assert.match(it.chars[0].value, /ГОСТ 1292-81/);
+  assert.match(it.chars[0].value, /2,8 %/);
+});
+
+test("«объём» опознаётся как количество", () => {
+  const map = mapColumns(["Наименование", "Объём поставки", "Ед. изм"]);
+  assert.equal(map.qty, 1);
+});
+
+test("xlsxSheetsToTables оборачивает листы в таблицы", () => {
+  const tables = xlsxSheetsToTables([[["a", "b"], ["c", "d"]], [["x"]]]);
+  assert.equal(tables.length, 2);
+  assert.deepEqual(tables[0].rows, [["a", "b"], ["c", "d"]]);
+});
+
+test("reqText не ломает разбор обычной КТРУ-таблицы (.docx)", () => {
+  // у КТРУ-таблицы колонки характеристик — это спец-таблица, reqText не должен
+  // перехватывать её в товарную
+  const spec = tbl([
+    ["Наименование товара", "Код КТРУ", "Наименование характеристики", "Значение характеристики"],
+    ["Перчатки", "32.50.13.190-00007686", "Размер", "≥ 8"],
+  ]);
+  const res = extractLotItems(spec);
+  assert.equal(res.status, "ok");
+  assert.equal(res.items[0].chars.length, 1);
+  assert.equal(res.items[0].chars[0].key, "Размер");
 });

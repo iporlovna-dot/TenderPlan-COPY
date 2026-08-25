@@ -14,6 +14,7 @@ const {
   annotateTz, hasTerms, unparsedFirst, rankTzDocs, isHopeless, termsForPurchase, applyTz,
 } = require("./sources/tzterms");
 const LKTZ = require("../site/js/tzmatch.js");
+const { extractLotItemsFromTables, xlsxSheetsToTables } = require("./sources/ktrutable");
 
 // Минимальный ZIP из STORED-записей (метод 0, без сжатия) — читается тем же
 // разбором центрального каталога, что и настоящий .xlsx. Позволяет проверить
@@ -193,6 +194,43 @@ test("xlsxTextFromBytes: текст из sharedStrings + число с един�
 test("xlsxTextFromBytes: не-xlsx ZIP → ошибка (падаем на unsupported)", async () => {
   const zip = zipStored([{ name: "word/document.xml", data: Buffer.from("<x/>", "utf8") }]);
   await assert.rejects(() => LKTZ.xlsxTextFromBytes(new Uint8Array(zip)), /не \.xlsx/i);
+});
+
+test("xlsx→спецификация: шапка под пустыми строками, пропуск колонки, requirements", async () => {
+  // Сквозной офлайн-путь: строки листа с ПРОПУЩЕННОЙ колонкой C (проверка позиций
+  // по r="B3") и пустыми строками сверху → те же парсеры таблиц.
+  const sst = `<?xml version="1.0"?><sst>`
+    + `<si><t>Наименование товара</t></si>`         // 0
+    + `<si><t>Нормативно-технические требования</t></si>` // 1
+    + `<si><t>Единица измерения</t></si>`            // 2
+    + `<si><t>Объем</t></si>`                        // 3
+    + `<si><t>Свинец ССу2</t></si>`                  // 4
+    + `<si><t>ГОСТ 1292-81, сурьма не менее 2,8 %</t></si>` // 5
+    + `<si><t>т</t></si>`                            // 6
+    + `<si><t>Приложение № 2</t></si></sst>`;        // 7
+  // A,B заняты, C пропущена, D,E заняты — если колонки поедут, unit/qty встанут не туда
+  const sheet = `<?xml version="1.0"?><worksheet><sheetData>`
+    + `<row r="1"><c r="M1" t="s"><v>7</v></c></row>`
+    + `<row r="2"></row><row r="3"></row><row r="4"></row>`
+    + `<row r="5"><c r="A5" t="s"><v>0</v></c><c r="B5" t="s"><v>1</v></c>`
+    + `<c r="D5" t="s"><v>2</v></c><c r="E5" t="s"><v>3</v></c></row>`
+    + `<row r="6"><c r="A6" t="s"><v>4</v></c><c r="B6" t="s"><v>5</v></c>`
+    + `<c r="D6" t="s"><v>6</v></c><c r="E6"><v>20</v></c></row>`
+    + `</sheetData></worksheet>`;
+  const zip = zipStored([
+    { name: "xl/sharedStrings.xml", data: Buffer.from(sst, "utf8") },
+    { name: "xl/worksheets/sheet1.xml", data: Buffer.from(sheet, "utf8") },
+  ]);
+  const sheets = await LKTZ.xlsxSheetsFromBytes(new Uint8Array(zip));
+  const res = extractLotItemsFromTables(xlsxSheetsToTables(sheets));
+  assert.equal(res.status, "goods");
+  assert.equal(res.items.length, 1);
+  const it = res.items[0];
+  assert.equal(it.name, "Свинец ССу2");
+  assert.equal(it.unit, "т", "колонка D не съехала из-за пропущенной C");
+  assert.equal(it.qty, 20, "«Объем» (E) — количество");
+  assert.equal(it.chars.length, 1);
+  assert.match(it.chars[0].value, /2,8 %/);
 });
 
 test("кандидаты: безнадёжные отброшены, похожие на ТЗ впереди", () => {

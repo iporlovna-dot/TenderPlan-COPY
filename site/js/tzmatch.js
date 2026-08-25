@@ -373,12 +373,25 @@ const LKTZ = (() => {
 
   // Текст из .xlsx. Тоже ZIP (Open XML), но текст лежит иначе: строковые ячейки
   // ссылаются на общий словарь `xl/sharedStrings.xml` по индексу (t="s"), числа —
-  // прямо в <v>, редкие inline-строки — в <is><t>. Собираем ПО СТРОКАМ (ячейки
-  // через пробел, строки через \n): так termFreq видит «0,1 мм» из соседних ячеек
-  // как одну фразу, а не слипшимися, и число с единицей извлекается как требование.
-  // У 223-ФЗ ТЗ часто именно .xlsx (лист с наименованиями и характеристиками) —
-  // раньше такой документ получал «формат не разобран».
-  async function xlsxTextFromBytes(buf) {
+  // прямо в <v>, редкие inline-строки — в <is><t>. У 223-ФЗ ТЗ часто именно .xlsx
+  // (лист с наименованиями и характеристиками) — раньше такой документ получал
+  // «формат не разобран».
+
+  // Индекс колонки из ссылки ячейки: "B3" → 1, "AA1" → 26. Нужен, чтобы сохранить
+  // ПОЗИЦИИ колонок: пропущенная ячейка (<c r="A1"/><c r="C1">) не должна сдвигать
+  // соседей, иначе разбор спецификации (mapColumns по индексу) промахнётся.
+  function colFromRef(ref) {
+    const m = /^([A-Za-z]+)/.exec(ref || "");
+    if (!m) return -1;
+    let n = 0;
+    for (const ch of m[1].toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64);
+    return n - 1;
+  }
+
+  // Структурный разбор .xlsx: массив листов, лист — массив строк, строка — массив
+  // ячеек-строк С СОХРАНЕНИЕМ ПОЗИЦИЙ (пустые ячейки = ""). Из него растут оба
+  // результата: текст (termFreq) и таблицы (спецификация через ktrutable).
+  async function xlsxSheetsFromBytes(buf) {
     if (!(buf instanceof Uint8Array)) buf = new Uint8Array(buf);
     const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
     const entries = zipEntries(buf, dv);
@@ -401,32 +414,54 @@ const LKTZ = (() => {
 
     const sheetNames = entries.map(e => e.name)
       .filter(n => /^xl\/worksheets\/sheet\d+\.xml$/i.test(n)).sort();
-    const lines = [];
+    const sheets = [];
     for (const sn of sheetNames) {
       const sheet = await zipReadText(buf, dv, entries, sn);
       if (!sheet) continue;
+      const rows = [];
       const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
       let r;
       while ((r = rowRe.exec(sheet))) {
         const cells = [];
-        const cRe = /<c\b([^>]*)>([\s\S]*?)<\/c>/g;
+        let auto = 0;
+        // и <c ...>…</c>, и самозакрытые <c .../> (пустая ячейка держит позицию)
+        const cRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
         let c;
         while ((c = cRe.exec(r[1]))) {
-          const attrs = c[1], inner = c[2];
+          const attrs = c[1], inner = c[2] || "";
+          const ref = (/\br="([A-Za-z]+\d+)"/.exec(attrs) || [])[1];
+          const col = ref ? colFromRef(ref) : auto;
+          auto = col + 1;
           const t = (/\bt="([^"]+)"/.exec(attrs) || [])[1];
+          let val = "";
           if (t === "s") {
             const idx = Number((/<v>([\s\S]*?)<\/v>/.exec(inner) || [])[1]);
-            if (Number.isInteger(idx) && shared[idx] != null) cells.push(shared[idx]);
+            if (Number.isInteger(idx) && shared[idx] != null) val = shared[idx];
           } else if (t === "inlineStr") {
-            const txt = (inner.match(/<t\b[^>]*>([\s\S]*?)<\/t>/g) || [])
-              .map(x => x.replace(/<[^>]+>/g, "")).join("");
-            cells.push(unescapeXml(txt));
+            val = unescapeXml((inner.match(/<t\b[^>]*>([\s\S]*?)<\/t>/g) || [])
+              .map(x => x.replace(/<[^>]+>/g, "")).join(""));
           } else {
-            const v = (/<v>([\s\S]*?)<\/v>/.exec(inner) || [])[1];
-            if (v) cells.push(unescapeXml(v));
+            val = unescapeXml((/<v>([\s\S]*?)<\/v>/.exec(inner) || [])[1] || "");
           }
+          if (col >= 0) cells[col] = val;
         }
-        if (cells.length) lines.push(cells.join(" "));
+        for (let i = 0; i < cells.length; i++) if (cells[i] === undefined) cells[i] = "";
+        rows.push(cells);
+      }
+      sheets.push(rows);
+    }
+    return sheets;
+  }
+
+  // Плоский текст .xlsx для termFreq: ячейки строки через пробел (так «0,1» и «мм»
+  // из соседних ячеек читаются как одно требование), строки через \n.
+  async function xlsxTextFromBytes(buf) {
+    const sheets = await xlsxSheetsFromBytes(buf);
+    const lines = [];
+    for (const rows of sheets) {
+      for (const row of rows) {
+        const nonEmpty = row.filter(Boolean);
+        if (nonEmpty.length) lines.push(nonEmpty.join(" "));
       }
     }
     return lines.join("\n");
@@ -449,7 +484,7 @@ const LKTZ = (() => {
   }
 
   return { compare, compareTerms, extractText, terms, termFreq, stem,
-    docxTextFromBytes, docxXmlFromBytes, xmlToText, xlsxTextFromBytes,
+    docxTextFromBytes, docxXmlFromBytes, xmlToText, xlsxTextFromBytes, xlsxSheetsFromBytes,
     makeIdf, subjectTerms, subjectMatch, stemSet, isMeasured, expandVariants, surfaceForms };
 })();
 

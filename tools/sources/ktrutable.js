@@ -73,8 +73,14 @@ const norm = (s) => (s || "").toLowerCase().replace(/ё/g, "е");
 const COLUMNS = [
   ["charName", /наименование\s+характеристик|требуемый\s+параметр|^характеристик/],
   ["charValue", /значение\s+характеристик|требуемое\s+значение|^значение/],
+  // Колонка со СВОБОДНЫМ текстом требований (одна на позицию, а не пара ключ/
+  // значение) — так устроены товарные таблицы 223-ФЗ: «Нормативно-технические
+  // требования» = «ГОСТ 1292-81, сурьма ≥2,8%…». Ловим РАНЬШЕ name/товар: заголовок
+  // «Требования к товару» содержит «товар», но это требования, а не колонка товара.
+  ["reqText", /нормативно-техническ|технически[ех]\s+требовани|требовани[яйе]\s+к\s+(товар|качеств|продукц|услуг|работ)/],
   ["unit", /ед\.?\s*изм|единиц[аы]\s+измерения/],
-  ["qty", /кол-?во|количество/],
+  // «объём» — у 223-ФЗ Excel-ТЗ так называют количество («Объем: 20 т»)
+  ["qty", /кол-?во|количество|объ[её]м/],
   ["hardness", /инструкц/],
   ["name", /наименование|товар|объект\s+закупки/],
   ["code", /ктру|код\s+позиции|окпд/],
@@ -109,13 +115,23 @@ function isSpecHeader(map) {
   return map.name !== undefined && (map.code !== undefined || map.charName !== undefined);
 }
 
+// Индексы строк-кандидатов в шапку: шапка бывает не первой (объединённый титул,
+// а у Excel-ТЗ 223-ФЗ — ещё и пустые строки сверху: титул на R0, шапка на R4).
+// Берём первые непустые строки (≥2 непустых ячейки — одна ячейка это заголовок
+// раздела, не шапка таблицы), не более четырёх, просматривая первые восемь.
+function candidateHeaderRows(rows, scan = 8, take = 4) {
+  const out = [];
+  for (let i = 0; i < rows.length && i < scan && out.length < take; i++) {
+    if (rows[i].filter((c) => (c || "").trim()).length >= 2) out.push(i);
+  }
+  return out.length ? out : [0];
+}
+
 function pickSpecTable(tables) {
   let best = null;
   for (const t of tables) {
     if (t.rows.length < 2) continue;
-    // Шапка бывает не в первой строке (объединённый титул сверху) — пробуем первые три.
-    for (const hi of [0, 1, 2]) {
-      if (hi >= t.rows.length) break;
+    for (const hi of candidateHeaderRows(t.rows)) {
       const map = mapColumns(t.rows[hi]);
       if (!isSpecHeader(map)) continue;
       const cand = { table: t, map, headerRow: hi, body: t.rows.slice(hi + 1) };
@@ -275,8 +291,7 @@ function pickGoodsTable(tables) {
   let best = null;
   for (const t of tables) {
     if (t.rows.length < 2) continue;
-    for (const hi of [0, 1, 2]) {
-      if (hi >= t.rows.length) break;
+    for (const hi of candidateHeaderRows(t.rows)) {
       const map = mapColumns(t.rows[hi]);
       if (isSpecHeader(map)) break;                 // это спецтаблица — не наш случай
       // Нужна колонка товара И хоть один товарный признак (кол-во/единица), иначе
@@ -314,13 +329,29 @@ function parseGoodsTable(spec, { maxItems = 200 } = {}) {
     const name = at(row, "name").replace(KTRU_RE, "").replace(OKPD_RE, "").replace(/\s{2,}/g, " ").trim();
     if (!isGoodsName(name)) continue;
     if (items.length >= maxItems) break;
+    // Требования из свободной текстовой колонки (если она есть): не разбираем на
+    // операторы (в «ГОСТ 1292-81 … не менее 2,8%» число 1292 — это номер ГОСТа, а
+    // не требование, парсер бы промахнулся), храним текст как есть одной строкой.
+    // Показывается в карточке и отличает такую таблицу от «голого» перечня товаров.
+    const chars = [];
+    const req = at(row, "reqText").replace(/\s+/g, " ").trim();
+    if (req) {
+      chars.push({
+        key: "Технические требования",
+        operator: "eq",
+        value: req.slice(0, 400),
+        unit: "",
+        hardness: parseHardness(req),
+        raw: req.slice(0, 400),
+      });
+    }
     items.push({
       name: name.slice(0, 300),
       ktru,
       okpd,
       qty: num(at(row, "qty")),
       unit: at(row, "unit"),
-      chars: [],            // характеристик в товарной таблице нет — это и отличает её от КТРУ
+      chars,
     });
   }
   return items;
@@ -328,8 +359,10 @@ function parseGoodsTable(spec, { maxItems = 200 } = {}) {
 
 // ─────────────────────────────────────────────────────────────── точка входа
 
-function extractLotItems(xml, opts) {
-  const tables = docxTables(xml);
+// Разбор позиций из уже готовых таблиц (`[{rows}]`). Вынесено из extractLotItems,
+// чтобы тем же кодом разбирать и таблицы .docx (docxTables), и листы .xlsx (там
+// каждый лист — одна таблица). Логика отбора спец/товарной таблицы форматонезависима.
+function extractLotItemsFromTables(tables, opts) {
   const spec = pickSpecTable(tables);
   if (spec) {
     const items = parseSpecTable(spec, opts);
@@ -345,9 +378,19 @@ function extractLotItems(xml, opts) {
   return { items: [], status: spec ? "empty-table" : "no-table" };
 }
 
+function extractLotItems(xml, opts) {
+  return extractLotItemsFromTables(docxTables(xml), opts);
+}
+
+// Листы .xlsx (массив листов, лист — массив строк) → таблицы формата docxTables.
+// Каждый лист целиком считаем одной таблицей: у Excel-ТЗ спецификация и есть сам лист.
+function xlsxSheetsToTables(sheets) {
+  return (sheets || []).map((rows) => ({ rows: rows || [] }));
+}
+
 module.exports = {
   docxTables, cellText, mapColumns, isSpecHeader, pickSpecTable,
-  parseValue, parseHardness, parseSpecTable, extractLotItems,
-  pickGoodsTable, parseGoodsTable, isGoodsName, isEnumerationRow,
+  parseValue, parseHardness, parseSpecTable, extractLotItems, extractLotItemsFromTables,
+  xlsxSheetsToTables, pickGoodsTable, parseGoodsTable, isGoodsName, isEnumerationRow,
   KTRU_RE, OKPD_RE,
 };

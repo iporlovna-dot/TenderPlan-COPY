@@ -27,7 +27,7 @@
 
 const { curlBinary, mapLimit } = require("./util");
 const LKTZ = require("../../site/js/tzmatch.js");
-const { extractLotItems } = require("./ktrutable");
+const { extractLotItems, extractLotItemsFromTables, xlsxSheetsToTables } = require("./ktrutable");
 
 const CONC = Number(process.env.LK_TZ_CONC || 8);
 // сколько терминов оставляем на закупку: длинные ТЗ дают тысячи, но снапшот и так
@@ -155,16 +155,22 @@ async function termsForDoc(doc) {
     xml = await LKTZ.docxXmlFromBytes(new Uint8Array(buf));
   } catch (e) {
     // не .docx — может быть .xlsx (у 223-ФЗ ТЗ часто именно Excel: лист с
-    // наименованиями и характеристиками). Пробуем прочитать как таблицу.
+    // наименованиями и характеристиками). Разбираем лист как таблицу.
+    let sheets;
     try {
-      text = await LKTZ.xlsxTextFromBytes(new Uint8Array(buf));
+      sheets = await LKTZ.xlsxSheetsFromBytes(new Uint8Array(buf));
     } catch (e2) {
       // ZIP, но ни Word, ни Excel — не наш формат
       return { terms: [], docName: doc.name || "", status: "unsupported" };
     }
+    // текст для терминов: ячейки строки через пробел (число с единицей из соседних
+    // ячеек читается как требование), строки через \n
+    text = sheets.map((rows) => rows.map((r) => r.filter(Boolean).join(" "))
+      .filter(Boolean).join("\n")).filter(Boolean).join("\n");
+    // спецификация: каждый лист — одна таблица, дальше те же pickSpec/pickGoods
+    items = extractLotItemsFromTables(xlsxSheetsToTables(sheets)).items;
   }
-  // Спецификацию из таблицы пока извлекаем только из .docx (КТРУ/товарная таблица);
-  // у .xlsx свои строки-ячейки, разбор позиций из них — отдельный шаг.
+  // Из .docx позиции и текст растут из одного XML.
   if (xml != null) { items = extractLotItems(xml).items; text = LKTZ.xmlToText(xml); }
   const freq = LKTZ.termFreq(text || "");
   // Пустой текст при непустой спецификации бывает: документ целиком в таблице.
