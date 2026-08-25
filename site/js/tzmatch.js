@@ -275,7 +275,8 @@ const LKTZ = (() => {
     const name = (file.name || "").toLowerCase();
     if (name.endsWith(".txt") || file.type === "text/plain") return await file.text();
     if (name.endsWith(".docx")) return await readDocx(file);
-    if (name.endsWith(".pdf")) throw new Error("PDF пока не поддерживается — вставьте текст или загрузите .docx/.txt");
+    if (name.endsWith(".xlsx")) return await xlsxTextFromBytes(new Uint8Array(await file.arrayBuffer()));
+    if (name.endsWith(".pdf")) throw new Error("PDF пока не поддерживается — вставьте текст или загрузите .docx/.xlsx/.txt");
     // попробуем как текст
     return await file.text();
   }
@@ -290,6 +291,59 @@ const LKTZ = (() => {
     return await docxTextFromBytes(new Uint8Array(await file.arrayBuffer()));
   }
 
+  // Перечислить записи ZIP по центральному каталогу. Общий код для .docx и .xlsx
+  // (оба — Open XML = ZIP, отличаются лишь набором внутренних файлов). Возвращает
+  // [{name, method, compSize, localOffset}] или null, если это не ZIP.
+  function zipEntries(buf, dv) {
+    const EOCD_SIG = 0x06054b50;
+    let eocdOff = -1;
+    const minPos = Math.max(0, buf.length - 22 - 65535); // комментарий в конце — до 65535 байт
+    for (let p = buf.length - 22; p >= minPos; p--) {
+      if (dv.getUint32(p, true) === EOCD_SIG) { eocdOff = p; break; }
+    }
+    if (eocdOff < 0) return null;
+    const cdSize = dv.getUint32(eocdOff + 12, true);
+    const cdOffset = dv.getUint32(eocdOff + 16, true);
+    const CD_SIG = 0x02014b50;
+    let p = cdOffset;
+    const cdEnd = cdOffset + cdSize;
+    const entries = [];
+    while (p < cdEnd && p + 46 <= buf.length) {
+      if (dv.getUint32(p, true) !== CD_SIG) break;
+      const method = dv.getUint16(p + 10, true);
+      const compSize = dv.getUint32(p + 20, true);
+      const nameLen = dv.getUint16(p + 28, true);
+      const extraLen = dv.getUint16(p + 30, true);
+      const commentLen = dv.getUint16(p + 32, true);
+      const localOffset = dv.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(buf.slice(p + 46, p + 46 + nameLen));
+      entries.push({ name, method, compSize, localOffset });
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    return entries;
+  }
+
+  // Распаковать одну запись в байты. Локальный заголовок нужен только за именем/
+  // extra-полем (их длины могут отличаться от копии в центральном каталоге), сам
+  // размер — из записи каталога.
+  async function zipInflate(buf, dv, entry) {
+    const lp = entry.localOffset;
+    const lNameLen = dv.getUint16(lp + 26, true);
+    const lExtraLen = dv.getUint16(lp + 28, true);
+    const dataStart = lp + 30 + lNameLen + lExtraLen;
+    const data = buf.slice(dataStart, dataStart + entry.compSize);
+    if (entry.method === 0) return data;
+    const ds = new DecompressionStream("deflate-raw");
+    const stream = new Blob([data]).stream().pipeThrough(ds);
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  async function zipReadText(buf, dv, entries, name) {
+    const e = entries.find(x => x.name === name);
+    if (!e) return null;
+    return new TextDecoder("utf-8").decode(await zipInflate(buf, dv, e));
+  }
+
   // Тот же разбор, но от голых байт — так им пользуется сборщик в Node, где
   // никакого File нет, а есть буфер скачанного документа.
   //
@@ -300,56 +354,82 @@ const LKTZ = (() => {
   async function docxXmlFromBytes(buf) {
     if (!(buf instanceof Uint8Array)) buf = new Uint8Array(buf);
     const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
-
-    const EOCD_SIG = 0x06054b50;
-    let eocdOff = -1;
-    const minPos = Math.max(0, buf.length - 22 - 65535); // комментарий в конце — до 65535 байт
-    for (let p = buf.length - 22; p >= minPos; p--) {
-      if (dv.getUint32(p, true) === EOCD_SIG) { eocdOff = p; break; }
-    }
-    if (eocdOff < 0) throw new Error("Не похоже на .docx (нет конца центрального каталога ZIP) — вставьте текст вручную");
-
-    const cdSize = dv.getUint32(eocdOff + 12, true);
-    const cdOffset = dv.getUint32(eocdOff + 16, true);
-
-    const CD_SIG = 0x02014b50;
-    let p = cdOffset;
-    const cdEnd = cdOffset + cdSize;
-    let target = null;
-    while (p < cdEnd && p + 46 <= buf.length) {
-      if (dv.getUint32(p, true) !== CD_SIG) break;
-      const method = dv.getUint16(p + 10, true);
-      const compSize = dv.getUint32(p + 20, true);
-      const nameLen = dv.getUint16(p + 28, true);
-      const extraLen = dv.getUint16(p + 30, true);
-      const commentLen = dv.getUint16(p + 32, true);
-      const localOffset = dv.getUint32(p + 42, true);
-      const name = new TextDecoder().decode(buf.slice(p + 46, p + 46 + nameLen));
-      if (name === "word/document.xml") { target = { method, compSize, localOffset }; break; }
-      p += 46 + nameLen + extraLen + commentLen;
-    }
-    if (!target) throw new Error("В файле нет word/document.xml — это не .docx? Вставьте текст вручную");
-
-    // локальный заголовок нужен только за именем/extra-полем (их длины могут
-    // отличаться от копии в центральном каталоге), сам размер — уже из target
-    const lp = target.localOffset;
-    const lNameLen = dv.getUint16(lp + 26, true);
-    const lExtraLen = dv.getUint16(lp + 28, true);
-    const dataStart = lp + 30 + lNameLen + lExtraLen;
-    const data = buf.slice(dataStart, dataStart + target.compSize);
-
-    let xmlBytes;
-    if (target.method === 0) xmlBytes = data;
-    else {
-      const ds = new DecompressionStream("deflate-raw");
-      const stream = new Blob([data]).stream().pipeThrough(ds);
-      xmlBytes = new Uint8Array(await new Response(stream).arrayBuffer());
-    }
-    return new TextDecoder("utf-8").decode(xmlBytes);
+    const entries = zipEntries(buf, dv);
+    if (!entries) throw new Error("Не похоже на .docx (нет конца центрального каталога ZIP) — вставьте текст вручную");
+    const xml = await zipReadText(buf, dv, entries, "word/document.xml");
+    if (xml == null) throw new Error("В файле нет word/document.xml — это не .docx? Вставьте текст вручную");
+    return xml;
   }
 
   async function docxTextFromBytes(buf) {
     return xmlToText(await docxXmlFromBytes(buf));
+  }
+
+  function unescapeXml(s) {
+    // &amp; — последним, иначе двойная распаковка (&amp;lt; → &lt; → <)
+    return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+  }
+
+  // Текст из .xlsx. Тоже ZIP (Open XML), но текст лежит иначе: строковые ячейки
+  // ссылаются на общий словарь `xl/sharedStrings.xml` по индексу (t="s"), числа —
+  // прямо в <v>, редкие inline-строки — в <is><t>. Собираем ПО СТРОКАМ (ячейки
+  // через пробел, строки через \n): так termFreq видит «0,1 мм» из соседних ячеек
+  // как одну фразу, а не слипшимися, и число с единицей извлекается как требование.
+  // У 223-ФЗ ТЗ часто именно .xlsx (лист с наименованиями и характеристиками) —
+  // раньше такой документ получал «формат не разобран».
+  async function xlsxTextFromBytes(buf) {
+    if (!(buf instanceof Uint8Array)) buf = new Uint8Array(buf);
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    const entries = zipEntries(buf, dv);
+    if (!entries) throw new Error("Не похоже на .xlsx (нет ZIP)");
+    if (!entries.some(e => /^xl\//i.test(e.name))) throw new Error("ZIP без xl/ — это не .xlsx");
+
+    // словарь общих строк: каждый <si> — одна запись; внутри может быть несколько
+    // <t> (rich text из нескольких run'ов) — склеиваем.
+    const shared = [];
+    const sst = await zipReadText(buf, dv, entries, "xl/sharedStrings.xml");
+    if (sst) {
+      const siRe = /<si\b[^>]*>([\s\S]*?)<\/si>/g;
+      let m;
+      while ((m = siRe.exec(sst))) {
+        const txt = (m[1].match(/<t\b[^>]*>([\s\S]*?)<\/t>/g) || [])
+          .map(t => t.replace(/<[^>]+>/g, "")).join("");
+        shared.push(unescapeXml(txt));
+      }
+    }
+
+    const sheetNames = entries.map(e => e.name)
+      .filter(n => /^xl\/worksheets\/sheet\d+\.xml$/i.test(n)).sort();
+    const lines = [];
+    for (const sn of sheetNames) {
+      const sheet = await zipReadText(buf, dv, entries, sn);
+      if (!sheet) continue;
+      const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
+      let r;
+      while ((r = rowRe.exec(sheet))) {
+        const cells = [];
+        const cRe = /<c\b([^>]*)>([\s\S]*?)<\/c>/g;
+        let c;
+        while ((c = cRe.exec(r[1]))) {
+          const attrs = c[1], inner = c[2];
+          const t = (/\bt="([^"]+)"/.exec(attrs) || [])[1];
+          if (t === "s") {
+            const idx = Number((/<v>([\s\S]*?)<\/v>/.exec(inner) || [])[1]);
+            if (Number.isInteger(idx) && shared[idx] != null) cells.push(shared[idx]);
+          } else if (t === "inlineStr") {
+            const txt = (inner.match(/<t\b[^>]*>([\s\S]*?)<\/t>/g) || [])
+              .map(x => x.replace(/<[^>]+>/g, "")).join("");
+            cells.push(unescapeXml(txt));
+          } else {
+            const v = (/<v>([\s\S]*?)<\/v>/.exec(inner) || [])[1];
+            if (v) cells.push(unescapeXml(v));
+          }
+        }
+        if (cells.length) lines.push(cells.join(" "));
+      }
+    }
+    return lines.join("\n");
   }
 
   function xmlToText(xml) {
@@ -365,12 +445,11 @@ const LKTZ = (() => {
       .replace(/<w:tab\b[^>]*>/g, " ")            // табуляция — разделитель колонок
       .replace(/<\/w:(?:p|tc|tr)>/g, "\n")        // абзац, ячейка, строка таблицы
       .replace(/<[^>]+>/g, "");
-    // &amp; — последним, иначе двойная распаковка (&amp;lt; → &lt; → <)
-    return xml.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+    return unescapeXml(xml);
   }
 
   return { compare, compareTerms, extractText, terms, termFreq, stem,
-    docxTextFromBytes, docxXmlFromBytes, xmlToText,
+    docxTextFromBytes, docxXmlFromBytes, xmlToText, xlsxTextFromBytes,
     makeIdf, subjectTerms, subjectMatch, stemSet, isMeasured, expandVariants, surfaceForms };
 })();
 

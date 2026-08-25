@@ -15,14 +15,15 @@
 //
 // Термины считает ОБЩИЙ с фронтом модуль (site/js/tzmatch.js): если бы алгоритм
 // стемминга разъехался между сборщиком и браузером, один и тот же документ дал бы
-// разные проценты. Он же умеет .docx без единой зависимости — ZIP + DecompressionStream,
-// они есть и в браузере, и в Node 18+.
+// разные проценты. Он же умеет .docx и .xlsx без единой зависимости — ZIP +
+// DecompressionStream, они есть и в браузере, и в Node 18+.
 //
-// Разбираем только .docx (и файлы без расширения, которые на деле ZIP — их узнаём
-// по сигнатуре PK). Это не лень: по факту в снапшоте .docx — 432 из ~615 документов,
-// похожих на ТЗ, то есть 70%. Остальное (pdf 16, doc 29, xls/xlsx 24, архивы 19)
-// требует тяжёлых парсеров ради хвоста; честнее отдать статус «формат не разобран»,
-// чем показать процент, посчитанный неизвестно по чему.
+// Разбираем .docx и .xlsx (и файлы без расширения, которые на деле ZIP — их узнаём
+// по сигнатуре PK, а внутри отличаем Word от Excel). .xlsx добавлен ради 223-ФЗ:
+// там ТЗ часто именно Excel-лист с наименованиями и характеристиками. Остальное
+// (pdf, doc/xls старые бинарные, rtf, архивы) требует тяжёлых парсеров ради хвоста;
+// честнее отдать статус «формат не разобран», чем показать процент, посчитанный
+// неизвестно по чему.
 
 const { curlBinary, mapLimit } = require("./util");
 const LKTZ = require("../../site/js/tzmatch.js");
@@ -49,8 +50,9 @@ const TZ_NAME_HINTS = [
 const HOPELESS_EXT = /\.(pdf|docx?|xlsx?|rtf|odt|ods|txt|jpe?g|png|tiff?|sig|zip|rar|7z|gz)$/i;
 function isHopeless(name) {
   const n = (name || "").trim().toLowerCase();
-  // .docx разбираем — из общего запрета на doc-подобные его надо вернуть
-  return HOPELESS_EXT.test(n) && !n.endsWith(".docx");
+  // .docx и .xlsx разбираем (Open XML) — из общего запрета на doc/xls-подобные их
+  // надо вернуть. .doc и .xls (старые бинарные форматы) остаются безнадёжными.
+  return HOPELESS_EXT.test(n) && !n.endsWith(".docx") && !n.endsWith(".xlsx");
 }
 
 // Кандидаты в ТЗ, от самого правдоподобного к наименее. Раньше здесь выбирался
@@ -67,8 +69,11 @@ function rankTzDocs(documents) {
       TZ_NAME_HINTS.forEach((hint, i) => {
         if (name.includes(hint)) score = Math.max(score, TZ_NAME_HINTS.length - i);
       });
-      // .docx предпочитаем при равном имени — только его мы и умеем разобрать
+      // .docx предпочитаем при равном имени: его текст богаче (абзацы, таблицы),
+      // а у .xlsx — голые ячейки. Но .xlsx тоже разбираем (важно для 223-ФЗ),
+      // поэтому даём меньший бонус, а не оставляем наравне с неразбираемыми.
       if (name.endsWith(".docx")) score += 0.5;
+      else if (name.endsWith(".xlsx")) score += 0.3;
       return { doc: d, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -142,18 +147,26 @@ async function termsForDoc(doc) {
     return { terms: [], docName: doc.name || "", status: "error" };
   }
   if (!looksLikeZip(buf)) return { terms: [], docName: doc.name || "", status: "unsupported" };
-  let xml;
+  let xml = null, text = null, items = [];
   try {
     // Берём XML, а не сразу текст: из него растут ОБА результата — мешок основ
     // и спецификация из таблицы КТРУ. Документ уже скачан, второй проход по нему
     // бесплатен, а второе скачивание стоило бы вдвое дороже всего разбора.
     xml = await LKTZ.docxXmlFromBytes(new Uint8Array(buf));
   } catch (e) {
-    // это ZIP, но не Word (часто .xlsx под именем без расширения) — не наш формат
-    return { terms: [], docName: doc.name || "", status: "unsupported" };
+    // не .docx — может быть .xlsx (у 223-ФЗ ТЗ часто именно Excel: лист с
+    // наименованиями и характеристиками). Пробуем прочитать как таблицу.
+    try {
+      text = await LKTZ.xlsxTextFromBytes(new Uint8Array(buf));
+    } catch (e2) {
+      // ZIP, но ни Word, ни Excel — не наш формат
+      return { terms: [], docName: doc.name || "", status: "unsupported" };
+    }
   }
-  const items = extractLotItems(xml).items;
-  const freq = LKTZ.termFreq(LKTZ.xmlToText(xml) || "");
+  // Спецификацию из таблицы пока извлекаем только из .docx (КТРУ/товарная таблица);
+  // у .xlsx свои строки-ячейки, разбор позиций из них — отдельный шаг.
+  if (xml != null) { items = extractLotItems(xml).items; text = LKTZ.xmlToText(xml); }
+  const freq = LKTZ.termFreq(text || "");
   // Пустой текст при непустой спецификации бывает: документ целиком в таблице.
   // Объявлять такую закупку «пустой» нельзя — позиции у нас на руках.
   if (!freq.size && !items.length) return { terms: [], docName: doc.name || "", status: "empty" };

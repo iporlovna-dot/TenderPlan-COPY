@@ -13,6 +13,35 @@ const assert = require("node:assert");
 const {
   annotateTz, hasTerms, unparsedFirst, rankTzDocs, isHopeless, termsForPurchase, applyTz,
 } = require("./sources/tzterms");
+const LKTZ = require("../site/js/tzmatch.js");
+
+// Минимальный ZIP из STORED-записей (метод 0, без сжатия) — читается тем же
+// разбором центрального каталога, что и настоящий .xlsx. Позволяет проверить
+// извлечение текста из Excel без бинарной фикстуры и без сети.
+function zipStored(files) {
+  const parts = [], central = [];
+  let off = 0;
+  for (const f of files) {
+    const nm = Buffer.from(f.name, "utf8"), data = f.data;
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4);
+    lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(data.length, 22);
+    lh.writeUInt16LE(nm.length, 26);
+    const localOff = off;
+    parts.push(lh, nm, data); off += 30 + nm.length + data.length;
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6);
+    ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(data.length, 24);
+    ch.writeUInt16LE(nm.length, 28); ch.writeUInt32LE(localOff, 42);
+    central.push(ch, nm);
+  }
+  const cd = Buffer.concat(central), cdOff = off;
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(files.length, 8); eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(cd.length, 12); eocd.writeUInt32LE(cdOff, 16);
+  return Buffer.concat([...parts, cd, eocd]);
+}
 
 const DOC = { id: "d1", name: "Техническое задание.docx", url: "https://example.invalid/tz.docx" };
 
@@ -122,12 +151,48 @@ test("разбор без спецификации не стирает добы�
 const doc = (name) => ({ id: name, name, url: "https://example.invalid/" + name });
 
 test("заведомо неразбираемые форматы опознаются по имени", () => {
+  // .xls (старый бинарный) остаётся безнадёжным, .xlsx (Open XML) — нет
   for (const n of ["ТЗ.pdf", "смета.xls", "проект.doc", "прил.rar", "скан.JPEG", "подпись.sig", "арх.zip"]) {
     assert.equal(isHopeless(n), true, n);
   }
-  for (const n of ["ТЗ.docx", "Приложение 1", "техзадание", "файл.DOCX"]) {
+  for (const n of ["ТЗ.docx", "спец.xlsx", "Приложение 1", "техзадание", "файл.DOCX", "таблица.XLSX"]) {
     assert.equal(isHopeless(n), false, n);
   }
+});
+
+test("кандидаты: .xlsx разбираем, но .docx предпочитаем при равном имени", () => {
+  const got = rankTzDocs([
+    doc("Техническое задание.xlsx"), doc("Обоснование НМЦК.pdf"), doc("Проект контракта.docx"),
+  ]).map(d => d.name);
+  assert.ok(got.includes("Техническое задание.xlsx"), "xlsx не отбрасываем");
+  assert.ok(!got.includes("Обоснование НМЦК.pdf"), "pdf по-прежнему безнадёжен");
+  const eq = rankTzDocs([doc("Спецификация.xlsx"), doc("Спецификация.docx")]).map(d => d.name);
+  assert.equal(eq[0], "Спецификация.docx", "при равных именах .docx выше .xlsx");
+});
+
+test("xlsxTextFromBytes: текст из sharedStrings + число с единицей", async () => {
+  const shared = `<?xml version="1.0"?><sst><si><t>Перчатки нитриловые</t></si>`
+    + `<si><r><t>0,1 </t></r><r><t>мм</t></r></si></sst>`;
+  const sheet = `<worksheet><sheetData>`
+    + `<row><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>`
+    + `<row><c r="A2" t="inlineStr"><is><t>ГОСТ 1292</t></is></c></row>`
+    + `</sheetData></worksheet>`;
+  const zip = zipStored([
+    { name: "xl/sharedStrings.xml", data: Buffer.from(shared, "utf8") },
+    { name: "xl/worksheets/sheet1.xml", data: Buffer.from(sheet, "utf8") },
+  ]);
+  const text = await LKTZ.xlsxTextFromBytes(new Uint8Array(zip));
+  assert.match(text, /Перчатки нитриловые/);
+  assert.match(text, /0,1 мм/, "rich-text runs склеены, единица рядом с числом");
+  assert.match(text, /ГОСТ 1292/, "inline-строка прочитана");
+  const freq = LKTZ.termFreq(text);
+  assert.ok([...freq.keys()].some(t => t.startsWith("перчатк")), "предмет извлечён");
+  assert.ok(freq.has("0,1 мм"), "числовое требование извлечено");
+});
+
+test("xlsxTextFromBytes: не-xlsx ZIP → ошибка (падаем на unsupported)", async () => {
+  const zip = zipStored([{ name: "word/document.xml", data: Buffer.from("<x/>", "utf8") }]);
+  await assert.rejects(() => LKTZ.xlsxTextFromBytes(new Uint8Array(zip)), /не \.xlsx/i);
 });
 
 test("кандидаты: безнадёжные отброшены, похожие на ТЗ впереди", () => {
