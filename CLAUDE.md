@@ -233,8 +233,13 @@ downstream по тем же публичным `filestore/public/…file.html?ui
 **Как включается.** В `collectEis` шаг 3 (обогащение) для **44-ФЗ** сперва пробует
 API (`enrichViaApi`→`getDocsByReestrNumber`), при неудаче (ошибка/noData/туннель
 недоступен) — **тихо откатывается на скрейпинг**, закупка не остаётся без документов.
-223-ФЗ пока всегда скрейпингом (у него другая подсистема ЕИС и структура XML — это
-следующий шаг). Перед прогоном воркера — один `ping()` туннеля; если stunnel не
+223-ФЗ пока всегда скрейпингом. **Не потому что API его не отдаёт** — отдаёт:
+`fetchByReestr(num, {subsystemType:"RI223"})` на реальных 223-номерах вернул архивы
+(проверено). Дело в XML: у 223 корень **`purchaseNotice*`** (`purchaseNoticeAESMBO` и
+т.п., namespace 223), а не 44-шный `epNotification*`, и `parseNotification` заточен
+под 44. Подключение 223 = отдельный парсер под схему `purchaseNotice` (subsystemType
+RI223) + ветка по `it.law` в `enrichViaApi` — следующий шаг. Перед прогоном воркера —
+один `ping()` туннеля; если stunnel не
 поднят, весь шаг идёт скрейпингом. `customerInn` добавлен в `CARRY` накопителя —
 добытый через API ИНН переживает прогон без туннеля.
 
@@ -242,11 +247,20 @@ API (`enrichViaApi`→`getDocsByReestrNumber`), при неудаче (ошиб�
 ГОСТ-TLS (браузер/обычный curl → `ERR_CONNECTION_CLOSED`, это норма). Локальный
 **stunnel-msspi** (КриптоПро) принимает обычный HTTP на `127.0.0.1:1443` и заворачивает
 в ГОСТ-TLS к `int.zakupki.gov.ru:443`, подставляя КЭП как клиентский сертификат.
-Запуск: `cd C:\Users\nikit\Downloads && stunnel_msspi.exe stunnel.conf` (accept
-127.0.0.1:1443 → int.zakupki.gov.ru:443). ⚠️ Для ежечасного `refresh.cmd` туннель
-должен быть **always-on** (служба/автозапуск) — иначе scheduled-прогоны идут
-скрейпингом (безопасно, но без выигрыша API). Оформление туннеля службой — общий
-пререквизит и для scope B (полная замена ленты через `getDocsByOrgRegion`).
+Конфиг: `C:\Users\nikit\Downloads\stunnel.conf` (accept 127.0.0.1:1443 →
+int.zakupki.gov.ru:443, лог `stunnel-eis.log`).
+
+**Туннель оформлен автозапуском — Запланированная задача `LekaloEisTunnel`**
+(при входе, от имени `nikit` Interactive, перезапуск при падении раз в минуту).
+⚠️ Именно **задача от имени пользователя**, а НЕ Windows-служба: stunnel-msspi
+предъявляет КЭП из **пользовательского** хранилища КриптоПро, а служба под
+LocalSystem (сессия 0) его не видит — клиентский сертификат не находится.
+Проверено боем: под задачей `ping()` true, API отдаёт данные. Управление:
+`schtasks /Run|/End /TN LekaloEisTunnel`, `Get-ScheduledTask LekaloEisTunnel`.
+Ручной запуск (для отладки): `cd C:\Users\nikit\Downloads && stunnel_msspi.exe stunnel.conf`.
+Если задача не запущена (машина не в сессии пользователя) — `ping()` вернёт false и
+шаг обогащения тихо уйдёт в скрейпинг. Эта же задача — пререквизит scope B (полная
+замена ленты через `getDocsByOrgRegion`).
 
 **Токен — СЕКРЕТ**, только в `.env` как `LK_EIS_TOKEN` (в git не коммитить,
 `.env`/`*.env` в `.gitignore`); это токен «сервисов отдачи» (получен через
