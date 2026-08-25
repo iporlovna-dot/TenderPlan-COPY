@@ -54,7 +54,7 @@ Node-сборщики (tools/) → site/data/purchases.json → статичес
 | `tools/sources/eissweep.js` | дата-срезы ЕИС: докуда дочитан каждый день публикации (обход потолка в 5000) |
 | `tools/test_*.js` | тесты сборщика: `node --test tools/test_*.js`, без зависимостей, сеть не трогают |
 | `tools/sources/portal.js` | адаптер Портала поставщиков (mos.ru) |
-| `tools/sources/eis.js` | адаптер ЕИС (zakupki.gov.ru) — скрейпинг списка/карточек + обогащение 44-ФЗ через официальный API |
+| `tools/sources/eis.js` | адаптер ЕИС (zakupki.gov.ru) — скрейпинг списка/карточек + обогащение 44/223 через официальный API |
 | `tools/sources/eisapi.js` | **официальный интеграционный API ЕИС** (getDocsIP) через ГОСТ-TLS туннель: SOAP→ZIP→XML извещения→наша схема (см. «Официальный API ЕИС» ниже) |
 | `tools/sources/util.js` | `curlAsync` + `mapLimit` (конкурентность) |
 | `tools/build_analytics.js` | собирает реестр контрактов по темам → `site/data/analytics.json` (ценовой ориентир, история заказчика) |
@@ -230,16 +230,18 @@ Env: `LK_EIS_SWEEP_DAYS` (окно дней публикации, 21), `LK_EIS_S
 downstream по тем же публичным `filestore/public/…file.html?uid=` (жилой IP, без
 туннеля — проверено).
 
-**Как включается.** В `collectEis` шаг 3 (обогащение) для **44-ФЗ** сперва пробует
-API (`enrichViaApi`→`getDocsByReestrNumber`), при неудаче (ошибка/noData/туннель
-недоступен) — **тихо откатывается на скрейпинг**, закупка не остаётся без документов.
-223-ФЗ пока всегда скрейпингом. **Не потому что API его не отдаёт** — отдаёт:
-`fetchByReestr(num, {subsystemType:"RI223"})` на реальных 223-номерах вернул архивы
-(проверено). Дело в XML: у 223 корень **`purchaseNotice*`** (`purchaseNoticeAESMBO` и
-т.п., namespace 223), а не 44-шный `epNotification*`, и `parseNotification` заточен
-под 44. Подключение 223 = отдельный парсер под схему `purchaseNotice` (subsystemType
-RI223) + ветка по `it.law` в `enrichViaApi` — следующий шаг. Перед прогоном воркера —
-один `ping()` туннеля; если stunnel не
+**Как включается.** В `collectEis` шаг 3 (обогащение) для закупок ЕИС **(44 и 223)**
+сперва пробует API (`enrichViaApi`→`getDocsByReestrNumber`), при неудаче (ошибка/
+noData/туннель недоступен) — **тихо откатывается на скрейпинг**, закупка не остаётся
+без документов. Подсистема выбирается по закону: 44 → `PRIZ` (схема `epNotification*`),
+223 → `RI223` (схема `purchaseNotice*` / `purchaseNoticeAESMBO*` и т.п.). Парсер
+выбирается по корню XML (`parseNotice` → `parseNotification` для 44 /
+`parseNotification223` для 223): у 223 иные теги (`inn` не `INN`, `initialSum` не
+`maxPrice`, документы в `attachments/document`, контакты в `placer/contact`) и
+**регион лежит прямо в XML** (`<region>`, ALL CAPS → нормализуем тем же `tidyRegion`) —
+поэтому у 223 региональной регрессии нет, хотя `regionFromNumber` для 223-номеров не
+работает. Документы 223 — публичный `/223/filestore/…file.html?uid=` (качаются как
+44-шные, проверено). Перед прогоном воркера — один `ping()` туннеля; если stunnel не
 поднят, весь шаг идёт скрейпингом. `customerInn` добавлен в `CARRY` накопителя —
 добытый через API ИНН переживает прогон без туннеля.
 
@@ -438,9 +440,10 @@ contacts?{person,phone,email}, lots[{name,qty,price,okpd}], documents[{id,name,u
 неизвестен): best-effort, как регион/срок. **Портал контактов не отдаёт** (в
 `Auction/Get` только имя/ИНН заказчика — проверено). Переносится между прогонами
 (`store.js` CARRY), остаётся в ленте (не тяжёлый, `split.js` не выносит в довесок).
-Для **44-ФЗ контакты и ИНН теперь надёжно приходят из официального API** (`eisapi.js`
-`parseNotification` → `contactPersonInfo`/`INN`), когда туннель поднят — не зависят
-от того, заходили ли в карточку (см. «Официальный API ЕИС» выше).
+Для **ЕИС (44 и 223) контакты и ИНН теперь надёжно приходят из официального API**
+(`eisapi.js` — 44: `contactPersonInfo`/`INN`, 223: `placer/contact`/`inn`), когда
+туннель поднят — не зависят от того, заходили ли в карточку (см. «Официальный API
+ЕИС» выше). У 223 оттуда же и регион.
 
 ---
 

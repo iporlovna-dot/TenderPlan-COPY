@@ -248,6 +248,67 @@ function parseNotification(xml) {
   };
 }
 
+// --- разбор XML извещения 223-ФЗ (purchaseNotice*, namespace 223fz/purchase/1) ---
+// У 223 иная схема, чем у 44: корень purchaseNotice / purchaseNoticeAESMBO / …
+// (разные процедуры), но внутренняя структура общая — заказчик в customer/mainInfo,
+// контакты в placer/contact, документы в attachments/document. Теги другие:
+// inn (не INN), initialSum (не maxPrice), region лежит прямо в mainInfo.
+function parseNotification223(xml) {
+  const s = String(xml).replace(/\r?\n/g, "\n");
+  const number = grabText(s, "registrationNumber");
+  const title = grabText(s, "name") || grabText(s, "subject");
+
+  // Заказчик и регион — в customer/mainInfo (scope важен: inn/region встречаются
+  // и в других местах документа, берём из блока заказчика).
+  const mainInfo = grab(s, "mainInfo") || s;
+  const customer = grabText(mainInfo, "fullName");
+  const customerInn = grabText(mainInfo, "inn");
+  const region = grabText(mainInfo, "region");
+
+  // Контакты — в placer/contact (у 44 это contactPersonInfo).
+  const cp = grab(s, "contact") || "";
+  const person = [grabText(cp, "lastName"), grabText(cp, "firstName"), grabText(cp, "middleName")]
+    .filter(Boolean).join(" ") || null;
+  const contacts = { person, email: grabText(cp, "email"), phone: grabText(cp, "phone") };
+  const hasContacts = contacts.person || contacts.email || contacts.phone;
+
+  // Начальная сумма (для полноты; ленту не перетираем — цену берём из списка).
+  const priceRaw = grabText(s, "initialSum");
+  const price = priceRaw != null ? Number(priceRaw) : null;
+
+  // Документы: attachments/document с fileName + прямым публичным url (223 filestore).
+  const documents = [];
+  const attBlock = grab(s, "attachments") || "";
+  const docRe = /<(?:\w+:)?document[ >]([\s\S]*?)<\/(?:\w+:)?document>/g;
+  let d;
+  while ((d = docRe.exec(attBlock))) {
+    const blk = d[1];
+    const name = grabText(blk, "fileName");
+    const url = grabText(blk, "url");
+    const uid = url && (url.match(/uid=([0-9A-Fa-f]+)/) || [])[1];
+    if (url) documents.push({ id: uid || url, name: name || "", url });
+  }
+
+  return {
+    number, title, law: "223", source: "eis-api",
+    customer, customerInn, region,
+    price: Number.isFinite(price) ? price : null,
+    href: grabText(s, "urlEIS"),
+    beginDate: grabText(s, "applSubmisionStartDate") || grabText(s, "publicationDateTime"),
+    endDate: grabText(s, "submissionCloseDateTime"),
+    publishDate: grabText(s, "publicationDateTime"),
+    contacts: hasContacts ? contacts : null,
+    documents,
+  };
+}
+
+// Диспетчер: по корню XML/имени файла выбирает 44- или 223-парсер.
+function parseNotice(name, xml) {
+  return /purchaseNotice/i.test(name) || /purchaseNotice/i.test(String(xml).slice(0, 400))
+    ? parseNotification223(xml)
+    : parseNotification(xml);
+}
+
 // Проба туннеля: доступен ли ГОСТ-TLS шлюз прямо сейчас (stunnel может быть не
 // запущен — тогда обогащение откатывается на скрейпинг, а не падает). Дёшево:
 // GET WSDL сервиса. Возвращает true только если ответ похож на WSDL.
@@ -261,10 +322,12 @@ async function ping() {
   } catch (e) { return false; }
 }
 
-// В архиве лежат несколько XML жизненного цикла — извещение это epNotification*,
-// и версий может быть несколько: берём с наибольшим _N_ в имени (последнюю ревизию).
+// В архиве лежат несколько XML жизненного цикла — извещение это epNotification*
+// (44) или purchaseNotice* (223), и версий может быть несколько: берём с наибольшим
+// _N_ в имени (последнюю ревизию). Разъяснения (explanation_..._null_) отсеиваются
+// самим фильтром имени.
 function pickNotification(entries) {
-  const notes = entries.filter(e => /epNotification/i.test(e.name));
+  const notes = entries.filter(e => /epNotification|purchaseNotice/i.test(e.name));
   if (!notes.length) return null;
   notes.sort((x, y) => (verOf(y.name) - verOf(x.name)));
   return notes[0];
@@ -287,7 +350,7 @@ async function fetchByReestr(reestrNumber, opts = {}) {
   }
   const note = pickNotification(entries);
   return {
-    purchase: note ? parseNotification(note.data.toString("utf8")) : null,
+    purchase: note ? parseNotice(note.name, note.data.toString("utf8")) : null,
     entries: entries.map(e => e.name),
     archiveUrls: resp.archiveUrls,
   };
@@ -305,8 +368,8 @@ async function fetchByOrgRegion(orgRegion, documentType, exactDate, opts = {}) {
     catch (e) { /* пропускаем битый архив */ }
   }
   const purchases = entries
-    .filter(e => /epNotification/i.test(e.name))
-    .map(e => { try { return parseNotification(e.data.toString("utf8")); } catch { return null; } })
+    .filter(e => /epNotification|purchaseNotice/i.test(e.name))
+    .map(e => { try { return parseNotice(e.name, e.data.toString("utf8")); } catch { return null; } })
     .filter(Boolean);
   return { purchases, archiveUrls: resp.archiveUrls };
 }
@@ -314,7 +377,8 @@ async function fetchByOrgRegion(orgRegion, documentType, exactDate, opts = {}) {
 module.exports = {
   // низкоуровневое — для тестов и переиспользования
   buildReestrRequest, buildOrgRegionRequest, envelope, indexBlock,
-  parseResponse, unzip, parseNotification, pickNotification, tunnelize,
+  parseResponse, unzip, parseNotification, parseNotification223, parseNotice,
+  pickNotification, verOf, tunnelize,
   // высокоуровневое
   ping, postSoap, downloadArchive, fetchByReestr, fetchByOrgRegion,
   config: { TUNNEL, HOST, SERVICE_PATH, hasToken: !!TOKEN },

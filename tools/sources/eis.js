@@ -326,21 +326,27 @@ async function fetchDocs(docsUrl) {
   } catch (e) { return []; }
 }
 
-// Обогащение одной 44-ФЗ закупки через официальный API ЕИС (см. eisapi.js):
-// один SOAP-вызов отдаёт документы (с прямыми публичными URL, качаются как сейчас),
-// контакты и ИНН заказчика — вместо двух HTTP-запросов в HTML-карточку. Регион и
-// срок поставки из извещения не берём: регион и так выводится из номера (короткий
-// путь скрейпинга давал region:"" ровно для этого 44-ФЗ когорты — регрессии нет),
-// срок поставки на common-info был лишь у 8% карточек. Возвращает запись формата
-// docsCache или null (тогда вызывающий откатывается на скрейпинг).
-async function enrichViaApi(number) {
+// Обогащение одной закупки ЕИС через официальный API (см. eisapi.js): один
+// SOAP-вызов отдаёт документы (с прямыми публичными URL, качаются как сейчас),
+// контакты и ИНН заказчика — вместо двух HTTP-запросов в HTML-карточку. Работает
+// и для 44-ФЗ (подсистема PRIZ, схема epNotification*), и для 223-ФЗ (RI223,
+// purchaseNotice*) — парсер выбирается по корню XML внутри eisapi.
+//   • 44: регион НЕ берём из извещения — он выводится из номера downstream (короткий
+//     путь скрейпинга давал region:"" ровно для этой когорты — регрессии нет).
+//   • 223: номер региона не даёт, поэтому берём <region> из XML и нормализуем тем же
+//     tidyRegion, что и скрейп (ALL CAPS → «Нижегородская область»).
+// Срок поставки из извещения не берём (на карточке был лишь у ~8%). Возвращает
+// запись формата docsCache или null (тогда вызывающий откатывается на скрейпинг).
+async function enrichViaApi(number, law) {
   try {
-    const r = await eisapi.fetchByReestr(number);
+    const is223 = law === "223-ФЗ";
+    const r = await eisapi.fetchByReestr(number, { subsystemType: is223 ? "RI223" : "PRIZ" });
     if (r.error || r.noData || !r.purchase) return null;
     const p = r.purchase;
     return {
       docs: p.documents || [],
-      region: "", deliveryDays: null, procStage: "",
+      region: is223 ? tidyRegion(p.region || "") : "",
+      deliveryDays: null, procStage: "",
       contacts: p.contacts || null,
       customerInn: p.customerInn || "",
       fetchedAt: Date.now(), via: "api",
@@ -541,25 +547,24 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   const direct = queue.filter(it => it.directDocsUrl).length;
 
   // Официальный API ЕИС: если токен задан (.env LK_EIS_TOKEN) и ГОСТ-TLS туннель
-  // поднят, 44-ФЗ обогащаем им — документы+контакты+ИНН одним SOAP-вызовом вместо
-  // двух HTTP в HTML-карточку (см. enrichViaApi). Пробуем туннель ОДИН раз: stunnel
-  // может быть не запущен (ежечасный refresh на другой машине) — тогда тихо остаёмся
-  // на скрейпинге, сборка не падает. LK_EIS_API=0 — принудительно выключить.
-  // 223-ФЗ пока всегда скрейпингом: у него другая подсистема ЕИС и структура XML.
+  // поднят, закупки ЕИС обогащаем им — документы+контакты+ИНН(+регион у 223) одним
+  // SOAP-вызовом вместо двух HTTP в HTML-карточку (см. enrichViaApi). Пробуем туннель
+  // ОДИН раз: stunnel может быть не запущен (ежечасный refresh на другой машине) —
+  // тогда тихо остаёмся на скрейпинге, сборка не падает. LK_EIS_API=0 — выключить.
   let useApi = false;
   if (eisapi.config.hasToken && process.env.LK_EIS_API !== "0") {
     useApi = await eisapi.ping();
     console.log(useApi
-      ? "  ЕИС API: туннель доступен — 44-ФЗ обогащаем официальным API"
+      ? "  ЕИС API: туннель доступен — 44-ФЗ и 223-ФЗ обогащаем официальным API"
       : "  ЕИС API: токен есть, но туннель недоступен — обогащение скрейпингом");
   }
   let apiOk = 0, apiFail = 0;
 
   await mapLimit(queue, CONC, async (it) => {
-    // 44-ФЗ через API; если API не смог (ошибка/noData/туннель отвалился) — падаем
-    // на скрейпинг ниже, а не оставляем закупку без документов.
-    if (useApi && it.law === "44-ФЗ") {
-      const r = await enrichViaApi(it.number);
+    // Закупки ЕИС (44 и 223) через API; если API не смог (ошибка/noData/туннель
+    // отвалился) — падаем на скрейпинг ниже, а не оставляем закупку без документов.
+    if (useApi && (it.law === "44-ФЗ" || it.law === "223-ФЗ")) {
+      const r = await enrichViaApi(it.number, it.law);
       if (r) { docsCache[it.number] = r; apiOk++; return; }
       apiFail++;
     }
@@ -581,7 +586,7 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     };
   }, (k, t) => process.stdout.write(`\r  ЕИС документы: ${k}/${t}`));
   if (queue.length) process.stdout.write("\n");
-  if (useApi) console.log(`  ЕИС API: обогащено ${apiOk} закупок 44-ФЗ`
+  if (useApi) console.log(`  ЕИС API: обогащено ${apiOk} закупок (44/223)`
     + (apiFail ? `, откат на скрейпинг ${apiFail}` : ""));
 
   const queued = new Set(queue.map(it => it.number));

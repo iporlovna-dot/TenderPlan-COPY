@@ -229,6 +229,89 @@ test("pickNotification: берёт последнюю версию (_N_)", () =>
   assert.match(chosen.name, /_2_BBB/);
 });
 
+test("pickNotification: 223 (purchaseNotice), игнорит explanation_null", () => {
+  const chosen = api.pickNotification([
+    { name: "purchaseNotice_32616289305_1_AAA.xml", data: Buffer.alloc(0) },
+    { name: "explanation_32616289305_null_ZZZ.xml", data: Buffer.alloc(0) },
+    { name: "purchaseNotice_32616289305_3_CCC.xml", data: Buffer.alloc(0) },
+    { name: "purchaseProtocol_32616289305_1_DDD.xml", data: Buffer.alloc(0) },
+  ]);
+  assert.match(chosen.name, /_3_CCC/);
+});
+
+// --- разбор XML извещения 223-ФЗ ---
+
+const SAMPLE_NOTICE_223 = `<?xml version="1.0"?>
+<ns2:purchaseNotice xmlns="http://zakupki.gov.ru/223fz/types/1" xmlns:ns2="http://zakupki.gov.ru/223fz/purchase/1">
+ <body><item><purchaseNoticeData>
+  <registrationNumber>32616289305</registrationNumber>
+  <name>Поставка Свинца ССу2</name>
+  <urlEIS>https://zakupki.gov.ru/223/purchase/public/purchase/info/common-info.html?regNumber=32616289305</urlEIS>
+  <customer>
+   <mainInfo>
+    <fullName>АО "ННИИММ "ПРОМЕТЕЙ"</fullName>
+    <shortName>АО "ННИИММ "ПРОМЕТЕЙ"</shortName>
+    <inn>5263004406</inn>
+    <kpp>526301001</kpp>
+    <region>НИЖЕГОРОДСКАЯ ОБЛАСТЬ</region>
+    <legalAddress>603003, НИЖЕГОРОДСКАЯ ОБЛАСТЬ, Г. НИЖНИЙ НОВГОРОД</legalAddress>
+    <placer><contact>
+     <lastName>Елистратов</lastName><firstName>Н.</firstName><middleName>В.</middleName>
+     <phone>+8 (831) 2730375</phone><email>omtsp@yandex.ru</email>
+    </contact></placer>
+   </mainInfo>
+  </customer>
+  <publicationDateTime>2026-08-13T10:00:00+03:00</publicationDateTime>
+  <submissionCloseDateTime>2026-08-25T09:00:00+03:00</submissionCloseDateTime>
+  <lots><lot><lotData><initialSum>5050000</initialSum><currency><code>RUB</code></currency></lotData></lot></lots>
+  <attachments>
+   <totalDocumentsCount>2</totalDocumentsCount>
+   <document>
+    <fileName>Техническое задание.xlsx</fileName>
+    <description>ТЗ</description>
+    <url>https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A8F042F0CFDF4779BE03A7BF4D2C314D</url>
+   </document>
+   <document>
+    <fileName>Проект договора.docx</fileName>
+    <url>https://zakupki.gov.ru/223/filestore/public/1.0/download/fz223/file.html?uid=A60BF36AF6014AAB</url>
+   </document>
+  </attachments>
+ </purchaseNoticeData></item></body>
+</ns2:purchaseNotice>`;
+
+test("parseNotification223: ключевые поля 223", () => {
+  const p = api.parseNotification223(SAMPLE_NOTICE_223);
+  assert.equal(p.number, "32616289305");
+  assert.equal(p.title, "Поставка Свинца ССу2");
+  assert.equal(p.law, "223");
+  assert.equal(p.customer, 'АО "ННИИММ "ПРОМЕТЕЙ"');
+  assert.equal(p.customerInn, "5263004406");
+  assert.equal(p.region, "НИЖЕГОРОДСКАЯ ОБЛАСТЬ");
+  assert.equal(p.price, 5050000);
+  assert.match(p.href, /regNumber=32616289305/);
+  assert.equal(p.endDate, "2026-08-25T09:00:00+03:00");
+});
+
+test("parseNotification223: контакты и документы 223", () => {
+  const p = api.parseNotification223(SAMPLE_NOTICE_223);
+  assert.equal(p.contacts.person, "Елистратов Н. В.");
+  assert.equal(p.contacts.email, "omtsp@yandex.ru");
+  assert.equal(p.contacts.phone, "+8 (831) 2730375");
+  assert.equal(p.documents.length, 2);
+  assert.equal(p.documents[0].name, "Техническое задание.xlsx");
+  assert.match(p.documents[0].url, /223\/filestore/);
+  assert.equal(p.documents[0].id, "A8F042F0CFDF4779BE03A7BF4D2C314D");
+});
+
+test("parseNotice: диспетчер по корню (44 vs 223)", () => {
+  const p223 = api.parseNotice("purchaseNotice_326_3_X.xml", SAMPLE_NOTICE_223);
+  assert.equal(p223.law, "223");
+  assert.equal(p223.number, "32616289305");
+  const p44 = api.parseNotice("epNotificationEOK2020_0145_2_Y.xml", SAMPLE_NOTICE);
+  assert.equal(p44.law, "44");
+  assert.equal(p44.number, "0145300010026000234");
+});
+
 test("tunnelize: разбирает абсолютный archiveUrl", () => {
   const t = api.tunnelize("https://int.zakupki.gov.ru/dstore/common/download/compound?docRequestUid=X&compoundUid=Y");
   assert.equal(t.host, "int.zakupki.gov.ru");
