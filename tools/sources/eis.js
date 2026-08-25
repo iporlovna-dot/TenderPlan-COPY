@@ -20,6 +20,7 @@ const { regionFromNumber } = require("./eisregion");
 const {
   enumerateSlices, pickSlices, advance, pruneSweep, sweepStats, SLICE_PAGES, SWEEP_TAKE,
 } = require("./eissweep");
+const eisapi = require("./eisapi");
 
 const RESULTS = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html";
 const DAY = 86400000;
@@ -325,6 +326,28 @@ async function fetchDocs(docsUrl) {
   } catch (e) { return []; }
 }
 
+// Обогащение одной 44-ФЗ закупки через официальный API ЕИС (см. eisapi.js):
+// один SOAP-вызов отдаёт документы (с прямыми публичными URL, качаются как сейчас),
+// контакты и ИНН заказчика — вместо двух HTTP-запросов в HTML-карточку. Регион и
+// срок поставки из извещения не берём: регион и так выводится из номера (короткий
+// путь скрейпинга давал region:"" ровно для этого 44-ФЗ когорты — регрессии нет),
+// срок поставки на common-info был лишь у 8% карточек. Возвращает запись формата
+// docsCache или null (тогда вызывающий откатывается на скрейпинг).
+async function enrichViaApi(number) {
+  try {
+    const r = await eisapi.fetchByReestr(number);
+    if (r.error || r.noData || !r.purchase) return null;
+    const p = r.purchase;
+    return {
+      docs: p.documents || [],
+      region: "", deliveryDays: null, procStage: "",
+      contacts: p.contacts || null,
+      customerInn: p.customerInn || "",
+      fetchedAt: Date.now(), via: "api",
+    };
+  } catch (e) { return null; }
+}
+
 function toPurchase(it, documents, region, deliveryDays, regionGuessed, contacts) {
   const now = Date.now();
   const end = it.endIso ? new Date(it.endIso).getTime() : null;
@@ -333,7 +356,7 @@ function toPurchase(it, documents, region, deliveryDays, regionGuessed, contacts
     number: it.number,
     title: it.title,
     customer: it.customer,
-    customerInn: "",
+    customerInn: it.customerInn || "",
     law: it.law,
     source: "ЕИС (zakupki.gov.ru)",
     region: region || "", okpd: "", price: it.price, stage: "active",
@@ -517,7 +540,29 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
   }
   const direct = queue.filter(it => it.directDocsUrl).length;
 
+  // Официальный API ЕИС: если токен задан (.env LK_EIS_TOKEN) и ГОСТ-TLS туннель
+  // поднят, 44-ФЗ обогащаем им — документы+контакты+ИНН одним SOAP-вызовом вместо
+  // двух HTTP в HTML-карточку (см. enrichViaApi). Пробуем туннель ОДИН раз: stunnel
+  // может быть не запущен (ежечасный refresh на другой машине) — тогда тихо остаёмся
+  // на скрейпинге, сборка не падает. LK_EIS_API=0 — принудительно выключить.
+  // 223-ФЗ пока всегда скрейпингом: у него другая подсистема ЕИС и структура XML.
+  let useApi = false;
+  if (eisapi.config.hasToken && process.env.LK_EIS_API !== "0") {
+    useApi = await eisapi.ping();
+    console.log(useApi
+      ? "  ЕИС API: туннель доступен — 44-ФЗ обогащаем официальным API"
+      : "  ЕИС API: токен есть, но туннель недоступен — обогащение скрейпингом");
+  }
+  let apiOk = 0, apiFail = 0;
+
   await mapLimit(queue, CONC, async (it) => {
+    // 44-ФЗ через API; если API не смог (ошибка/noData/туннель отвалился) — падаем
+    // на скрейпинг ниже, а не оставляем закупку без документов.
+    if (useApi && it.law === "44-ФЗ") {
+      const r = await enrichViaApi(it.number);
+      if (r) { docsCache[it.number] = r; apiOk++; return; }
+      apiFail++;
+    }
     if (it.directDocsUrl) {
       docsCache[it.number] = {
         docs: await fetchDocs(it.directDocsUrl),
@@ -536,6 +581,8 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     };
   }, (k, t) => process.stdout.write(`\r  ЕИС документы: ${k}/${t}`));
   if (queue.length) process.stdout.write("\n");
+  if (useApi) console.log(`  ЕИС API: обогащено ${apiOk} закупок 44-ФЗ`
+    + (apiFail ? `, откат на скрейпинг ${apiFail}` : ""));
 
   const queued = new Set(queue.map(it => it.number));
   const reused = items.filter(it => docsCache[it.number] && !queued.has(it.number)).length;
@@ -557,6 +604,8 @@ async function collectEis(listLimit = 600, docsLimit = 150, keywords = DEFAULT_K
     // Список свежее карточки (её могли не заходить неделю — см. DOCS_TTL_MS),
     // поэтому этап из СПИСКА в приоритете, карточка — только фолбэк.
     it.procStage = it.procStage || (m && m.procStage) || "";
+    // ИНН заказчика скрейпинг из списка не даёт — его приносит только API (m.customerInn).
+    it.customerInn = (m && m.customerInn) || "";
     const p = toPurchase(it, (m && m.docs) || [], region, (m && m.deliveryDays) ?? null, regionGuessed, (m && m.contacts) || null);
     // Заходили ли мы вообще в карточку. Без этого пустой documents[] неотличим от
     // «приложений нет», и «Умная сверка» говорила бы «у закупки нет документов» тем
