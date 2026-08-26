@@ -287,6 +287,12 @@ const LKTZ = (() => {
     return sample.length > 0 && bad / sample.length > 0.1;
   }
 
+  // Чтение PDF подключается СНАРУЖИ (браузер: appview.js грузит pdf.js лениво и
+  // ставит сюда экстрактор). В tzmatch.js прямой зависимости на pdf.js нет —
+  // модуль общий с Node-сборщиком, а тому PDF не нужен (снапшот PDF не разбирает).
+  let pdfExtractor = null;
+  function setPdfExtractor(fn) { pdfExtractor = fn; }
+
   async function extractText(file) {
     const name = (file.name || "").toLowerCase();
     if (name.endsWith(".txt") || file.type === "text/plain") return await file.text();
@@ -299,8 +305,14 @@ const LKTZ = (() => {
     const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
     const startsWith = (bytes) => bytes.every((b, i) => head[i] === b);
 
-    if (name.endsWith(".pdf") || startsWith([0x25, 0x50, 0x44, 0x46]))  // "%PDF"
-      throw new Error("PDF пока не читается в браузере — вставьте текст в поле ниже или загрузите .docx/.xlsx/.txt");
+    if (name.endsWith(".pdf") || startsWith([0x25, 0x50, 0x44, 0x46])) {  // "%PDF"
+      if (pdfExtractor) {
+        const t = await pdfExtractor(file);
+        if (t && t.trim().length >= 20) return t;
+        throw new Error("В PDF не нашлось текста — похоже на скан (страницы-картинки). Вставьте текст в поле ниже.");
+      }
+      throw new Error("Модуль чтения PDF ещё не готов — обновите страницу и попробуйте снова, либо вставьте текст.");
+    }
     if (name.endsWith(".doc") || name.endsWith(".xls") || startsWith([0xD0, 0xCF, 0x11, 0xE0]))  // OLE2 — старый .doc/.xls
       throw new Error("Старый формат .doc не читается — откройте файл в Word и сохраните как .docx (Файл → Сохранить как → «Документ Word .docx»), либо вставьте текст в поле ниже");
     if (name.endsWith(".rtf") || startsWith([0x7B, 0x5C, 0x72, 0x74]))  // "{\rt" — RTF
@@ -523,7 +535,7 @@ const LKTZ = (() => {
     return unescapeXml(xml);
   }
 
-  return { compare, compareTerms, extractText, terms, termFreq, stem,
+  return { compare, compareTerms, extractText, setPdfExtractor, terms, termFreq, stem,
     docxTextFromBytes, docxXmlFromBytes, xmlToText, xlsxTextFromBytes, xlsxSheetsFromBytes,
     makeIdf, subjectTerms, subjectMatch, stemSet, isMeasured, expandVariants, surfaceForms };
 })();

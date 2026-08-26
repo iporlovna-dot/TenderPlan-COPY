@@ -52,6 +52,45 @@
     prodMatchEnabled: false   // тумблер «Сверка по товару» (движок matcher)
   };
 
+  // ---------- чтение PDF (ленивая подгрузка pdf.js — только когда реально нужен) ----------
+  // pdf.js ~1.5 МБ, поэтому не тянем его на каждого: грузим self-hosted-сборку при
+  // ПЕРВОМ PDF в сверке. Текстовый слой (getTextContent) читается и по-русски у PDF
+  // с обычными/встроенными шрифтами; скан (страницы-картинки) текста не даёт — тогда
+  // extractText в tzmatch.js честно сообщит «похоже на скан». Node-сборщик pdf.js не
+  // трогает: экстрактор ставится хуком LKTZ.setPdfExtractor только в браузере.
+  let _pdfLibPromise = null;
+  function ensurePdfLib() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (_pdfLibPromise) return _pdfLibPromise;
+    _pdfLibPromise = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "js/vendor/pdfjs/pdf.min.js";
+      s.onload = () => {
+        if (!window.pdfjsLib) return reject(new Error("модуль PDF не инициализировался"));
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "js/vendor/pdfjs/pdf.worker.min.js";
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = () => reject(new Error("не удалось загрузить модуль чтения PDF"));
+      document.head.appendChild(s);
+    });
+    return _pdfLibPromise;
+  }
+  async function pdfTextFromFile(file) {
+    const pdfjs = await ensurePdfLib();
+    const data = new Uint8Array(await file.arrayBuffer());
+    // isEvalSupported:false — под нашей CSP eval запрещён; на извлечение текста не влияет
+    const doc = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
+    const pages = Math.min(doc.numPages, 60);   // очень большие PDF не читаем бесконечно
+    const parts = [];
+    for (let i = 1; i <= pages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      parts.push(content.items.map(it => it.str).join(" "));
+    }
+    return parts.join("\n");
+  }
+  LKTZ.setPdfExtractor(pdfTextFromFile);
+
   // ---------- шапка / юзер ----------
 
   document.getElementById("user-company").textContent = company.name;
@@ -1901,8 +1940,22 @@
         score: m.score, verdict: m.verdict,
       }).catch(() => {});
     }
-    const checks = m.checks.map(c => `
-      <div class="check-row"><span>${lkEscape(c.req)}${c.note ? ` — <span class="check-note">${lkEscape(c.note)}</span>` : ""}</span>
+    // compareTerms возвращает covered/missing/measured, а НЕ checks (то поле
+    // осталось от старого движка — из-за m.checks.map() рендер падал ещё до
+    // показа процента, и человек видел вечное «Читаю файлы и сравниваю…»).
+    // Показываем сперва ИЗМЕРИМЫЕ требования (числа с единицами — по ним и
+    // отклоняют заявку), а если их нет — совпавшие/недостающие слова, чтобы
+    // блок не был пустым.
+    const items = [
+      ...m.measured.covered.map(t => ({ req: t, status: "pass" })),
+      ...m.measured.missing.map(t => ({ req: t, status: "fail" })),
+    ];
+    if (!items.length) {
+      m.covered.slice(0, 15).forEach(t => items.push({ req: t, status: "pass" }));
+      m.missing.slice(0, 15).forEach(t => items.push({ req: t, status: "fail" }));
+    }
+    const checks = items.map(c => `
+      <div class="check-row"><span>${lkEscape(c.req)}</span>
       <span class="check-status ${checkClass(c.status)}">${checkIcon(c.status)}</span></div>`).join("");
     res.innerHTML = `
       <div class="tz-verdict">
