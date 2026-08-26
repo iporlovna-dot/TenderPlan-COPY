@@ -271,14 +271,54 @@ const LKTZ = (() => {
 
   // ---------- извлечение текста из файла ----------
 
+  // Строка похожа на разобранный бинарь? Раньше .doc/.pdf/любой неопознанный
+  // файл тихо проваливался в file.text(): браузер декодировал байты как UTF-8,
+  // получалась строка из replacement-символов и обрывков, из неё не извлекалось
+  // НИ ОДНОГО термина — и сверка молча показывала пустой результат вместо
+  // честной ошибки («висит и не сравнивает»). Отличаем по доле «мусорных» байт.
+  function looksBinary(s) {
+    if (!s) return false;
+    const sample = s.slice(0, 4000);
+    let bad = 0;
+    for (let i = 0; i < sample.length; i++) {
+      const c = sample.charCodeAt(i);
+      if (c === 0xFFFD || (c < 32 && c !== 9 && c !== 10 && c !== 13)) bad++;
+    }
+    return sample.length > 0 && bad / sample.length > 0.1;
+  }
+
   async function extractText(file) {
     const name = (file.name || "").toLowerCase();
     if (name.endsWith(".txt") || file.type === "text/plain") return await file.text();
     if (name.endsWith(".docx")) return await readDocx(file);
     if (name.endsWith(".xlsx")) return await xlsxTextFromBytes(new Uint8Array(await file.arrayBuffer()));
-    if (name.endsWith(".pdf")) throw new Error("PDF пока не поддерживается — вставьте текст или загрузите .docx/.xlsx/.txt");
-    // попробуем как текст
-    return await file.text();
+
+    // Опознаём формат по СИГНАТУРЕ первых байт, а не только по расширению: имя
+    // файла может врать, а неподдерживаемый бинарь обязан дать понятную ошибку,
+    // а не тихо превратиться в мусорный «текст».
+    const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+    const startsWith = (bytes) => bytes.every((b, i) => head[i] === b);
+
+    if (name.endsWith(".pdf") || startsWith([0x25, 0x50, 0x44, 0x46]))  // "%PDF"
+      throw new Error("PDF пока не читается в браузере — вставьте текст в поле ниже или загрузите .docx/.xlsx/.txt");
+    if (name.endsWith(".doc") || name.endsWith(".xls") || startsWith([0xD0, 0xCF, 0x11, 0xE0]))  // OLE2 — старый .doc/.xls
+      throw new Error("Старый формат .doc не читается — откройте файл в Word и сохраните как .docx (Файл → Сохранить как → «Документ Word .docx»), либо вставьте текст в поле ниже");
+    if (name.endsWith(".rtf") || startsWith([0x7B, 0x5C, 0x72, 0x74]))  // "{\rt" — RTF
+      throw new Error("RTF пока не читается — сохраните как .docx или вставьте текст в поле ниже");
+
+    // Файл — ZIP (PK), но имя не .docx/.xlsx: попробуем оба Open XML разбора.
+    if (startsWith([0x50, 0x4B])) {  // "PK"
+      const buf = new Uint8Array(await file.arrayBuffer());
+      try { return await docxTextFromBytes(buf); } catch (_) {}
+      try { return await xlsxTextFromBytes(buf); } catch (_) {}
+    }
+
+    // Ничего не опознали — читаем как текст, но если это бинарь, честно
+    // отказываемся, а не отдаём мусор, который «сравнится» в пустоту.
+    const text = await file.text();
+    if (looksBinary(text))
+      throw new Error("Формат файла не распознан — загрузите .docx/.xlsx/.txt или вставьте текст в поле ниже");
+    return text;
   }
 
   // Разбор через центральный каталог ZIP (конец файла), а не побайтовый поиск

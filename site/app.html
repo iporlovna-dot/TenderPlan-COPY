@@ -249,8 +249,9 @@
 
     <div class="tz-col">
       <label>Файл ТЗ или описание товара</label>
-      <input type="file" id="mytz-file" accept=".txt,.docx">
+      <input type="file" id="mytz-file" accept=".txt,.docx,.xlsx">
       <textarea id="mytz-text" placeholder="…или вставьте текст сюда"></textarea>
+      <div class="tz-hint" style="margin-top:4px;">Читаются .docx, .xlsx, .txt. Старый .doc / .pdf — сохраните в Word как .docx или вставьте текст.</div>
     </div>
 
     <p style="color:var(--ink-faint);font-size:0.85rem;margin-top:10px;" id="mytz-current"></p>
@@ -269,16 +270,17 @@
   <div class="modal-box">
     <h2>Сверка ТЗ</h2>
     <p style="color:var(--ink-faint);font-size:0.9rem;" id="tz-modal-sub">Загрузите своё ТЗ и ТЗ закупки — сравним по требованиям.</p>
+    <p class="tz-hint">Читаются файлы .docx, .xlsx, .txt. Старый формат .doc и .pdf в браузере не читаются — откройте в Word и сохраните как .docx, либо вставьте текст в поля ниже.</p>
 
     <div class="tz-cols">
       <div class="tz-col">
         <label>Ваше ТЗ / описание товара</label>
-        <input type="file" id="tz-my-file" accept=".txt,.docx">
+        <input type="file" id="tz-my-file" accept=".txt,.docx,.xlsx">
         <textarea id="tz-my-text" placeholder="…или вставьте текст сюда"></textarea>
       </div>
       <div class="tz-col">
         <label>ТЗ закупки</label>
-        <input type="file" id="tz-p-file" accept=".txt,.docx">
+        <input type="file" id="tz-p-file" accept=".txt,.docx,.xlsx">
         <textarea id="tz-p-text" placeholder="Скачайте документ закупки (кнопка «Документы» в карточке) и загрузите/вставьте сюда"></textarea>
       </div>
     </div>
