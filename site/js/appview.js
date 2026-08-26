@@ -48,7 +48,8 @@
     pageSize: LK.getPageSize(),
     filters: DEFAULT_FILTERS(),
     sort: "fresh",
-    matchEnabled: false
+    matchEnabled: false,      // тумблер «Умная сверка по ТЗ»
+    prodMatchEnabled: false   // тумблер «Сверка по товару» (движок matcher)
   };
 
   // ---------- шапка / юзер ----------
@@ -448,7 +449,7 @@
       state.matchEnabled = false;
       btn.textContent = "Загрузить своё ТЗ";
       hint.textContent = "— загрузите своё ТЗ, и лента оставит только закупки по вашему товару";
-      document.getElementById("match-bar").classList.remove("is-on");
+      setMatchBarTint();
       return;
     }
     // ТЗ загружено — значит сверка нужна: включаем сразу, без лишнего клика.
@@ -463,7 +464,7 @@
       state.sort = "score";
       document.getElementById("sort-select").value = "score";
     }
-    document.getElementById("match-bar").classList.add("is-on");
+    setMatchBarTint();
     btn.textContent = "Заменить ТЗ";
     // Показываем именно предмет: человеку важно видеть, ЧТО система в его ТЗ
     // считает товаром — если она ошиблась, это видно сразу, а не через пустую ленту.
@@ -474,7 +475,7 @@
 
   document.getElementById("match-enable").addEventListener("change", (e) => {
     state.matchEnabled = e.target.checked;
-    document.getElementById("match-bar").classList.toggle("is-on", state.matchEnabled);
+    setMatchBarTint();
     // при включении полезно сразу увидеть лучшее сверху, но выбор пользователя
     // не перетираем, если он уже сам задал сортировку по совпадению
     if (state.matchEnabled && state.sort !== "score") {
@@ -482,6 +483,49 @@
       document.getElementById("sort-select").value = "score";
     }
     renderFeed();
+  });
+
+  // ---------- надстройка: сверка по товару (движок matcher/ на бэкенде) ----------
+  // Параллельный тумблер к «Умной сверке по ТЗ». Умная сверка — текст↔текст в
+  // браузере; здесь структура↔структура: карточки товара из кабинета против
+  // позиций спецификации закупки (POST /api/match/spec, см. ensureProdMatch).
+  // Тинт панели общий для обоих тумблеров — считаем его одним местом.
+  function setMatchBarTint() {
+    document.getElementById("match-bar")
+      .classList.toggle("is-on", state.matchEnabled || state.prodMatchEnabled);
+  }
+  function renderProdMatchBar() {
+    const toggle = document.getElementById("prodmatch-enable");
+    const btn = document.getElementById("prodmatch-btn");
+    const hint = document.getElementById("prodmatch-hint");
+    if (!toggle) return;
+    // Движку нужна хотя бы одна карточка товара (её топливо). Нет товара —
+    // тумблер выключен и ведёт в кабинет, а не молчит непонятно почему.
+    const hasProducts = LK.getProducts().length > 0;
+    if (!hasProducts) {
+      toggle.checked = false;
+      toggle.disabled = true;
+      state.prodMatchEnabled = false;
+      btn.textContent = "Добавить товар";
+      hint.textContent = "— добавьте карточку товара в кабинете, и движок отметит закупки, где вы проходите по характеристикам лота";
+    } else {
+      toggle.disabled = false;
+      toggle.checked = state.prodMatchEnabled;
+      btn.textContent = "Мои товары";
+      hint.textContent = state.prodMatchEnabled
+        ? "— лента сужена до закупок с распознанной спецификацией; бейдж на карточке показывает вердикт движка"
+        : "— включите, и на закупках с распознанной спецификацией появится вердикт: проходите / есть пробелы / не проходите";
+    }
+    setMatchBarTint();
+  }
+
+  document.getElementById("prodmatch-enable").addEventListener("change", (e) => {
+    state.prodMatchEnabled = e.target.checked;
+    renderProdMatchBar();
+    renderFeed();
+  });
+  document.getElementById("prodmatch-btn").addEventListener("click", () => {
+    window.location.href = "account.html";
   });
 
   // Предмет закупки берём из названия и лотов, а не из её ТЗ: название есть у
@@ -523,6 +567,16 @@
     if (!state.matchEnabled || !mySubject) return true;
     const m = matchFor(p);
     return Boolean(m && m.subject.score > 0);
+  }
+
+  // «Сверка по товару» включена → показываем только закупки, где ЕСТЬ что сверять:
+  // распознанная спецификация (specCount приезжает с лентой, сам разбор позиций —
+  // довеском spec.json по требованию). Сам вердикт движка считается лениво на
+  // видимой странице (см. renderFeed), фильтровать по нему всю ленту нельзя —
+  // это был бы серверный вызов на каждую из 50 000 закупок.
+  function passesProdMatch(p) {
+    if (!state.prodMatchEnabled) return true;
+    return (p.specCount || 0) > 0;
   }
 
   function subjectVerdict(score) {
@@ -724,12 +778,12 @@
   let basePoolCache = { key: null, pool: null };
   let searchNarrowCache = { key: null, query: "", list: null };
   function poolKey() {
-    return JSON.stringify([poolCacheGen, state.filters, state.matchEnabled,
+    return JSON.stringify([poolCacheGen, state.filters, state.matchEnabled, state.prodMatchEnabled,
       mySubject ? mySubject.map(s => s.term).join(",") : "", LK.allPurchases().length]);
   }
   function getBasePool(key) {
     if (basePoolCache.key !== key) {
-      basePoolCache = { key, pool: LK.allPurchases().filter(notDone).filter(passesFilters).filter(passesMatch) };
+      basePoolCache = { key, pool: LK.allPurchases().filter(notDone).filter(passesFilters).filter(passesMatch).filter(passesProdMatch) };
     }
     return basePoolCache.pool;
   }
@@ -1084,6 +1138,21 @@
   function verdictLabel(v) {
     return v === "eligible" ? "проходит" : v === "eligible_with_gaps" ? "есть пробелы" : "не проходит";
   }
+
+  // Компактный бейдж вердикта движка на карточке ленты — показывается только при
+  // включённом тумблере «Сверка по товару» и только там, где спецификация есть.
+  // Состояния данных те же, что у specMatchBlock (грузится / истёк / результат) —
+  // врать в бейдже нельзя, поэтому «сверяю…» отличимо от готового вердикта.
+  function prodBadge(p) {
+    if (!state.prodMatchEnabled || !((p.specCount || 0) > 0)) return "";
+    if (!LK.getProducts().length) return "";
+    const r = p._prodMatch;
+    if (r === undefined) return `<span class="badge badge-prod-load">товар: сверяю…</span>`;
+    if (r === "expired") return `<span class="badge badge-prod-load" title="демо/тариф закончился">товар: тариф истёк</span>`;
+    if (!r) return "";  // сервис не ответил — молчим, а не показываем ложный вердикт
+    return `<span class="badge badge-prod badge-${verdictClass(r.verdict)}" title="Сверка вашего товара с позициями лота (движок matcher)">товар: ${verdictLabel(r.verdict)} ${r.covered}/${r.total}</span>`;
+  }
+
   function specMatchBlock(p) {
     if (!(p.lotItems && p.lotItems.length)) return "";        // сверять нечего — спецификации нет
     if (!LK.getProducts().length) {
@@ -1377,7 +1446,7 @@
               ? `<span class="badge badge-stage stage-noncomp" title="приём заявок закрыт, формальная дата ещё не наступила">${lkEscape(p.procStage || "Приём закрыт")}</span>`
               : `<span class="badge badge-stage ${STAGE[liveStage(p)].cls}">${STAGE[liveStage(p)].label}</span>`}
             <span class="badge badge-source">${lkEscape(p.source)}</span>
-            ${fresh}${lot}
+            ${fresh}${lot}${prodBadge(p)}
             <span class="board-head-controls">${boardAssigneeChip(p)}${boardStatusSelect(p)}</span>
           </div>
           <h3 class="tender-title">${highlight(p.title)}</h3>
@@ -1544,6 +1613,15 @@
 
     const byId = {};
     shownList.forEach(p => { byId[p.id] = p; });
+
+    // «Сверка по товару»: считаем вердикт движка для видимой страницы, не дожидаясь
+    // раскрытия карточки — грузим лоты (spec.json) и по каждой закупке зовём
+    // /api/match/spec. Ответ каждой сам перерисует ленту (ensureProdMatch → finally
+    // renderFeed(false)), и бейдж «сверяю…» сменится вердиктом. Пул уже сужен
+    // passesProdMatch до закупок со спецификацией, лишних вызовов нет.
+    if (state.prodMatchEnabled && LK.getProducts().length) {
+      ensureSpec().then(() => shownList.forEach(p => ensureProdMatch(p)));
+    }
 
     feed.querySelectorAll(".tender-card__main").forEach(el => {
       el.addEventListener("click", () => {
@@ -1855,6 +1933,7 @@
   }
 
   renderMatchBar();
+  renderProdMatchBar();
   renderSidebar();
 
   employees = await LK.getEmployees();  // для селекта ответственного в карточках

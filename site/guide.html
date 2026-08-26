@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Как устроено Лекало — путеводитель по возможностям</title>
+<meta name="description" content="Как работает Лекало: поиск и фильтры, умная сверка по ТЗ, сверка товара по характеристикам (движок matcher), доска закупок, аналитика и уведомления.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css?v=728f970c">
+<style>
+  .guide { max-width: 900px; margin: 0 auto; padding: 44px 0 72px; }
+  .guide-hero { margin-bottom: 40px; }
+  .guide-hero h1 { font-size: 2.1rem; line-height: 1.12; margin: 0 0 10px; }
+  .guide-hero p { font-size: 1.08rem; line-height: 1.6; color: var(--ink-soft); max-width: 720px; }
+  .guide-lead { background: var(--paper-alt); border: 1px solid var(--line-soft);
+    border-radius: 14px; padding: 20px 24px; margin: 24px 0 8px; }
+  .guide-lead p { margin: 0; line-height: 1.65; color: var(--ink); }
+  .guide-toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 8px; }
+  .guide-toc a { font-size: .9rem; padding: 6px 12px; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--ink-soft); text-decoration: none; }
+  .guide-toc a:hover { border-color: var(--rust); color: var(--rust); }
+
+  .block { border: 1px solid var(--line-soft); border-radius: 16px; padding: 26px 28px;
+    margin: 22px 0; background: var(--white); }
+  .block__num { display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px; background: var(--rust-tint);
+    color: var(--rust); font-weight: 700; font-size: .95rem; }
+  .block__head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .block__head h2 { font-size: 1.32rem; margin: 0; }
+  .block__q { color: var(--ink-faint); font-size: .95rem; margin: 0 0 14px; font-style: italic; }
+  .block p { line-height: 1.65; color: var(--ink); margin: 10px 0; }
+  .block ul { padding-left: 20px; margin: 10px 0; }
+  .block li { line-height: 1.6; margin: 6px 0; color: var(--ink); }
+  .block b { color: var(--ink); }
+  .block__how { background: var(--paper-alt); border-radius: 10px; padding: 14px 18px; margin: 14px 0 4px; }
+  .block__how strong { color: var(--rust); }
+  .badge-demo { display: inline-flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+
+  .cta-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .guide-outro { text-align: center; margin: 44px 0 0; padding: 28px; background: var(--rust-tint);
+    border-radius: 16px; }
+  .guide-outro h3 { margin: 0 0 8px; font-size: 1.25rem; }
+  .guide-outro p { margin: 0 0 16px; color: var(--ink-soft); }
+  .guide-nav { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line-soft); font-size: .95rem; }
+  .guide-nav a { color: var(--rust); margin-right: 18px; }
+  @media (max-width: 640px) {
+    .guide-hero h1 { font-size: 1.6rem; }
+    .block { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html">
+      <svg class="brand__mark" viewBox="0 0 100 100" fill="none" style="color:var(--rust)">
+        <path d="M23 82 C16 66 18 44 34 30 C46 19.5 62 15 76 19 C82.5 21 83.5 29 77.5 32.5 C67 38.5 53 42 45 53 C38 62.5 38 73 45 83 C48.5 88 43 92.5 36.5 91 C31 89.7 26 87 23 82 Z" fill="currentColor"/>
+        <circle cx="66" cy="27" r="7" fill="var(--paper)"/>
+      </svg>
+      <span class="brand__word">Лекало</span>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html#how">Как это работает</a>
+      <a href="index.html#pricing">Тарифы</a>
+      <a href="security.html">Безопасность</a>
+    </nav>
+    <div class="header-actions">
+      <a class="btn btn-quiet" href="app.html">Открыть ленту</a>
+      <a class="btn btn-primary" href="register.html">Начать бесплатно</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <article class="guide">
+
+      <div class="guide-hero">
+        <h1>Как устроено Лекало</h1>
+        <p>Короткий путеводитель по возможностям площадки: что делает каждый блок,
+           на какой вопрос отвечает и как им пользоваться.</p>
+      </div>
+
+      <div class="guide-lead">
+        <p><b>Лекало</b> — площадка поиска госзакупок 44-ФЗ и 223-ФЗ со всех площадок в одной ленте.
+           Главное отличие от агрегаторов — <b>свой сбор данных</b> напрямую с площадок и надстройка
+           сверху: сверка вашего товара и вашего ТЗ с требованиями закупки. Ниже — четыре блока,
+           из которых состоит работа в системе.</p>
+      </div>
+
+      <div class="guide-toc">
+        <a href="#search">1 · Поиск и фильтры</a>
+        <a href="#tz">2 · Умная сверка по ТЗ</a>
+        <a href="#matcher">3 · Сверка по товару</a>
+        <a href="#tools">4 · Доска, аналитика, уведомления</a>
+      </div>
+
+      <!-- 1 -->
+      <section class="block" id="search">
+        <div class="block__head"><span class="block__num">1</span><h2>Поиск и фильтры</h2></div>
+        <p class="block__q">«Где закупки именно про то, что я продаю?»</p>
+        <p>Точка входа — строка ключевых слов над лентой. Поиск идёт по названию закупки и
+           названиям позиций лота, по <b>началу слова</b> (а не по любому месту в строке), с учётом
+           русских окончаний — чтобы «клинки» находили «клинок», а «IT» не цеплял «Security».</p>
+        <div class="block__how">
+          <p style="margin:0"><strong>Как пользоваться.</strong> Пишите <b>сколько угодно фраз через запятую</b>.
+             Между фразами — «ИЛИ»: закупка попадёт в ленту, если совпала хотя бы одна. Слова
+             внутри одной фразы (через пробел) должны найтись все.</p>
+        </div>
+        <ul>
+          <li><code>перчатки, маски, халаты</code> — закупки про <b>любое</b> из трёх;</li>
+          <li><code>строительные материалы</code> — только где есть <b>оба</b> слова (одна фраза);</li>
+          <li><b>Минус-слова</b> — так же через запятую: закупки с этими словами уйдут из ленты.</li>
+        </ul>
+        <p>Дальше — фильтры: заказчик, регион, срок поставки, сумма (НМЦК), закон (44/223), этап,
+           площадка. Удачный поиск можно <b>сохранить</b> — он появится в левой панели и будет
+           считать новые подходящие закупки.</p>
+      </section>
+
+      <!-- 2 -->
+      <section class="block" id="tz">
+        <div class="block__head"><span class="block__num">2</span><h2>Умная сверка по ТЗ</h2></div>
+        <p class="block__q">«Это вообще про мой товар — и насколько совпадают требования?»</p>
+        <p>Вы один раз загружаете <b>своё ТЗ</b> (описание товара) — и лента превращается в поиск
+           по нему: остаются закупки про ваш товар, сверху самые близкие, а в карточке видно,
+           что совпало и чего не хватает. Работает прямо в браузере, файл никуда не уходит.</p>
+        <p>Система показывает <b>два сигнала отдельно</b>, не смешивая их в одно число:</p>
+        <ul>
+          <li><b>Предмет</b> — то ли это вообще товар (по названию и лотам, есть у 100% закупок);</li>
+          <li><b>Требования</b> — насколько сходятся параметры (по разобранному ТЗ закупки).</li>
+        </ul>
+        <div class="block__how">
+          <p style="margin:0"><strong>Как включить.</strong> Тумблер <b>«Умная сверка по ТЗ»</b> над лентой →
+             «Загрузить своё ТЗ». Поддерживаются <code>.docx</code>, <code>.xlsx</code>, <code>.txt</code>
+             (старый <code>.doc</code> и <code>.pdf</code> — сохраните в Word как .docx или вставьте текст).</p>
+        </div>
+        <p>Отдельно есть окно <b>«Сверка ТЗ»</b> в карточке закупки — сравнить своё ТЗ с ТЗ конкретной
+           закупки один на один и получить процент совпадения с разбором по требованиям.</p>
+      </section>
+
+      <!-- 3 -->
+      <section class="block" id="matcher">
+        <div class="block__head"><span class="block__num">3</span><h2>Сверка по товару (движок matcher)</h2></div>
+        <p class="block__q">«А по характеристикам лота я прохожу?»</p>
+        <p>Самый глубокий уровень сверки. Вы заводите в кабинете <b>карточки товара</b> с
+           характеристиками, а движок сверяет их с <b>позициями спецификации закупки</b> —
+           не по словам, а по значениям: операторы <code>≥ / ≤ / диапазон / одно из</code>,
+           веса и дисквалификация по конкретной характеристике. На выходе — честный вердикт по
+           каждой позиции лота:</p>
+        <div class="badge-demo">
+          <span class="badge badge-ok">Проходите</span>
+          <span class="badge badge-gap">Есть пробелы</span>
+          <span class="badge badge-bad">Не подходит</span>
+        </div>
+        <p>Лот работает по принципу «всё или ничего»: чтобы пройти, нужно закрыть все позиции разом —
+           движок подбирает под каждую позицию ближайший по КТРУ/названию товар из вашего кабинета.</p>
+        <div class="block__how">
+          <p style="margin:0 0 6px"><strong>Как включить — два шага.</strong></p>
+          <p style="margin:0">1. В личном кабинете, раздел <b>«Мои товары»</b>, добавьте карточку товара с характеристиками.<br>
+             2. В ленте включите тумблер <b>«Сверка по товару»</b> — на закупках с распознанной
+             спецификацией появится бейдж вердикта, а внутри карточки — разбор по каждой позиции.</p>
+        </div>
+        <div class="cta-row">
+          <a class="btn btn-primary btn-sm" href="app.html">Открыть ленту и включить сверку</a>
+          <a class="btn btn-ghost btn-sm" href="account.html">Добавить карточку товара</a>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section class="block" id="tools">
+        <div class="block__head"><span class="block__num">4</span><h2>Доска, аналитика и уведомления</h2></div>
+        <p class="block__q">«Как вести отобранные закупки и не упустить новые?»</p>
+        <ul>
+          <li><b>Доска закупок</b> — сохраняйте интересные закупки и ведите их по статусам
+              (Интересно → Участвуем → В просчёте → …), назначайте ответственного из сотрудников.
+              Доска общая на компанию.</li>
+          <li><b>Ценовой ориентир</b> — по реестру заключённых контрактов ЕИС показываем медиану и
+              диапазон реальных цен по теме закупки и отклонение текущей НМЦК от рынка.</li>
+          <li><b>История заказчика</b> — сколько контрактов и на какие суммы он заключал раньше.</li>
+          <li><b>Уведомления в Telegram</b> — привязали Telegram при регистрации: новые подходящие
+              закупки и статусы приходят прямо в бот.</li>
+        </ul>
+        <p>Сотрудники добавляются владельцем в кабинете — у каждого свой вход, свои сохранённые
+           закупки и история сверок.</p>
+      </section>
+
+      <div class="guide-outro">
+        <h3>Готовы попробовать?</h3>
+        <p>Откройте ленту, включите нужную сверку и найдите свои закупки.</p>
+        <div class="cta-row" style="justify-content:center;">
+          <a class="btn btn-primary" href="app.html">Открыть ленту</a>
+          <a class="btn btn-ghost" href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Написать в поддержку</a>
+        </div>
+      </div>
+
+      <div class="guide-nav">
+        <a href="app.html">Открыть ленту</a>
+        <a href="account.html">Личный кабинет</a>
+        <a href="index.html">На главную</a>
+      </div>
+    </article>
+  </div>
+</main>
+
+</body>
+</html>

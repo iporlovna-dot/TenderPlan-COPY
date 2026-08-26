@@ -1549,13 +1549,14 @@ section { padding: 92px 0; position: relative; }
 /* надстройка сверки по ТЗ */
 .match-bar {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   padding: 12px 30px;
   background: var(--paper-alt);
   border-bottom: 1px solid var(--line-soft);
-  flex-wrap: wrap;
 }
+.match-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .match-bar.is-on { background: var(--rust-tint); border-bottom-color: var(--rust); }
 .match-toggle { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
 .match-toggle input { display: none; }
@@ -1581,6 +1582,9 @@ section { padding: 92px 0; position: relative; }
 }
 .match-bar select:disabled { opacity: 0.5; }
 .match-hint { font-size: 0.82rem; color: var(--ink-soft); }
+/* бейдж «сверка по товару» на карточке ленты */
+.badge-prod-load { background: var(--line); color: var(--ink-soft); }
+.badge-prod { cursor: help; }
 
 /* badges: закон / этап / новизна */
 .badge-law { background: var(--sage-tint); color: var(--sage); }

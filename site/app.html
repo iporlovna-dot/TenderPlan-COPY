@@ -88,6 +88,7 @@
           <div class="user-company">компания</div>
         </div>
         <div class="user-avatar" id="user-avatar">ЛК</div>
+        <a class="btn btn-ghost btn-sm" href="guide.html">Как это работает</a>
         <a class="btn btn-ghost btn-sm" href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Поддержка</a>
         <button class="btn btn-quiet btn-sm" id="logout-btn">Выйти</button>
       </div>
@@ -150,13 +151,24 @@
          готовит сборщик (tools/sources/tzterms.js) и кладёт в снапшот — браузер
          сам их достать не может, документы лежат на гос-сайтах без CORS. -->
     <div class="match-bar" id="match-bar">
-      <label class="match-toggle">
-        <input type="checkbox" id="match-enable" disabled>
-        <span class="match-toggle__track"><span class="match-toggle__thumb"></span></span>
-        <span class="match-toggle__label">Умная сверка по ТЗ</span>
-      </label>
-      <button class="btn btn-ghost btn-sm" id="match-tz-btn">Загрузить своё ТЗ</button>
-      <span class="match-hint" id="match-hint">— загрузите своё ТЗ, и лента оставит только закупки по вашему товару</span>
+      <div class="match-row">
+        <label class="match-toggle">
+          <input type="checkbox" id="match-enable" disabled>
+          <span class="match-toggle__track"><span class="match-toggle__thumb"></span></span>
+          <span class="match-toggle__label">Умная сверка по ТЗ</span>
+        </label>
+        <button class="btn btn-ghost btn-sm" id="match-tz-btn">Загрузить своё ТЗ</button>
+        <span class="match-hint" id="match-hint">— загрузите своё ТЗ, и лента оставит только закупки по вашему товару</span>
+      </div>
+      <div class="match-row">
+        <label class="match-toggle">
+          <input type="checkbox" id="prodmatch-enable" disabled>
+          <span class="match-toggle__track"><span class="match-toggle__thumb"></span></span>
+          <span class="match-toggle__label">Сверка по товару</span>
+        </label>
+        <button class="btn btn-ghost btn-sm" id="prodmatch-btn">Добавить товар</button>
+        <span class="match-hint" id="prodmatch-hint">— добавьте карточку товара, и движок отметит закупки, где вы проходите по характеристикам</span>
+      </div>
     </div>
 
     <div id="plan-expired-banner" class="plan-expired-banner" hidden></div>
