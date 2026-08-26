@@ -145,6 +145,13 @@ const LK = (() => {
   }
 
   async function initSession() {
+    // Явное демо (?demo=1) — гостевой режим без аккаунта: не дёргаем серверные
+    // ручки. Иначе /api/auth/me у гостя отвечает 401 и светит ошибкой в консоли
+    // (сам по себе безвреден, но выглядит как «что-то сломалось»).
+    if (typeof location !== "undefined" && new URLSearchParams(location.search).get("demo") === "1") {
+      hasServerSession = false;
+      return;
+    }
     try {
       const me = await apiGet("/api/auth/me");
       setCompany({

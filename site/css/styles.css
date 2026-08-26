@@ -1501,7 +1501,9 @@ section { padding: 92px 0; position: relative; }
   color: var(--ink-faint);
   cursor: pointer;
   padding: 2px;
-  opacity: 0;
+  /* всегда чуть виден (не только по наведению) — иначе на тач-устройствах
+     карандаш недоступен, а изменить/удалить поиск можно только через него */
+  opacity: 0.45;
   display: flex;
 }
 .saved-search:hover .saved-search__edit { opacity: 1; }
