@@ -847,10 +847,21 @@ def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(bas
                 for u in users
             )
             plan_extra = " · ♻️ автопродление" if c["auto_renew"] else ""
-            action = (
-                f'<a href="/api/admin/companies/{c["id"]}/revoke-auto-renew">Снять автопродление</a>' if c["auto_renew"]
-                else f'<a href="/api/admin/companies/{c["id"]}/grant-business">Выдать Бизнес без оплаты</a>'
-            )
+            cid = c["id"]
+            actions = [
+                f'<a href="/api/admin/companies/{cid}/revoke-auto-renew">Снять автопродление</a>' if c["auto_renew"]
+                else f'<a href="/api/admin/companies/{cid}/grant-business">Выдать Бизнес без оплаты</a>',
+                # аннулировать подписку — отрезать доступ сейчас (аккаунт остаётся)
+                f'<a href="/api/admin/companies/{cid}/revoke-subscription" '
+                f'onclick="return confirm(\'Аннулировать подписку компании #{cid}? Доступ отключится сразу, аккаунт останется.\')">'
+                f'Аннулировать подписку</a>',
+                # удалить компанию целиком — POST + подтверждение (необратимо)
+                f'<form method="post" action="/api/admin/companies/{cid}/delete" style="display:inline" '
+                f'onsubmit="return confirm(\'УДАЛИТЬ компанию #{cid} со всеми сотрудниками и данными? Это необратимо.\')">'
+                f'<button type="submit" style="color:#b3401f;background:none;border:none;cursor:pointer;padding:0;font:inherit;text-decoration:underline">'
+                f'Удалить компанию</button></form>',
+            ]
+            action = "<br>".join(actions)
             limit = _employee_limit(c["plan"])
             over = " style='color:#b3401f;font-weight:600'" if len(users) > limit else ""
             group_badge = (f'<br><span style="color:#b3401f;font-size:.8em">👥 группа #{c["group_id"]}</span>'
@@ -951,6 +962,59 @@ def admin_revoke_auto_renew(company_id: int, request: Request, credentials: HTTP
         conn.execute("UPDATE companies SET auto_renew=0 WHERE id=?", (company_id,))
         conn.commit()
         audit.log("admin_revoke_auto_renew", company=company_id)
+        return RedirectResponse(url="/api/admin", status_code=303)
+    finally:
+        conn.close()
+
+
+@router.get("/admin/companies/{company_id}/revoke-subscription")
+def admin_revoke_subscription(company_id: int, request: Request, credentials: HTTPBasicCredentials = Depends(basic)):
+    """Аннулировать подписку — отрезать доступ к продукту СРАЗУ. В отличие от
+    revoke-auto-renew (снимает автопродление, но доступ живёт до plan_expires_at),
+    здесь ставим срок в прошлое и снимаем автопродление, поэтому
+    _require_active_user начинает возвращать 402 немедленно. Аккаунт при этом
+    НЕ удаляется: человек может войти в кабинет и оформить тариф заново."""
+    _guard_admin(request, credentials)
+    conn = db.get_conn()
+    try:
+        row = conn.execute("SELECT id FROM companies WHERE id = ?", (company_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "UPDATE companies SET auto_renew=0, plan='demo', plan_expires_at=? WHERE id=?",
+            (now, company_id),
+        )
+        conn.commit()
+        audit.log("admin_revoke_subscription", company=company_id)
+        return RedirectResponse(url="/api/admin", status_code=303)
+    finally:
+        conn.close()
+
+
+@router.post("/admin/companies/{company_id}/delete")
+def admin_delete_company(company_id: int, request: Request, credentials: HTTPBasicCredentials = Depends(basic)):
+    """Удалить компанию целиком — вместе со всеми её пользователями, сессиями,
+    доской, историей сверок, сохранёнными поисками, счетами (каскад по внешним
+    ключам, PRAGMA foreign_keys=ON в db.get_conn). Необратимо, поэтому только
+    POST (форма с подтверждением в админке), не GET-ссылка: случайный переход/
+    префетч не должен сносить клиента."""
+    _guard_admin(request, credentials)
+    conn = db.get_conn()
+    try:
+        row = conn.execute("SELECT id, group_id FROM companies WHERE id = ?", (company_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+        group_id = row["group_id"]
+        conn.execute("DELETE FROM companies WHERE id = ?", (company_id,))
+        # Группа из одного участника бессмысленна — если после удаления в группе
+        # остался один, снимаем группу и с него (та же логика, что у unlink).
+        if group_id is not None:
+            rest = conn.execute("SELECT id FROM companies WHERE group_id = ?", (group_id,)).fetchall()
+            if len(rest) == 1:
+                conn.execute("UPDATE companies SET group_id = NULL WHERE id = ?", (rest[0]["id"],))
+        conn.commit()
+        audit.log("admin_delete_company", company=company_id)
         return RedirectResponse(url="/api/admin", status_code=303)
     finally:
         conn.close()
