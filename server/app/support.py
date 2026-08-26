@@ -129,8 +129,23 @@ async def _handle_start(chat_id: str, token: str) -> None:
     finally:
         conn.close()
     await _send(chat_id, ABOUT_TEXT)
+    # Явное подтверждение — последним сообщением (оно самое заметное): человек
+    # только что привязал Telegram из кабинета и должен понять, что регистрация
+    # завершена и можно возвращаться на сайт. Без этого он видел лишь длинный
+    # ABOUT_TEXT и не понимал, сработало ли.
     if activated_until:
-        await _send(chat_id, f"✅ Демо-доступ активирован, действует до {activated_until.date().isoformat()}.")
+        await _send(
+            chat_id,
+            "✅ Готово! Регистрация завершена, Telegram подключён.\n"
+            f"Демо-доступ активирован — действует до {activated_until.date().isoformat()}.\n\n"
+            "Вернитесь на сайт и обновите страницу (F5) — можно пользоваться.",
+        )
+    else:
+        await _send(
+            chat_id,
+            "✅ Готово! Telegram подключён к вашему аккаунту.\n\n"
+            "Вернитесь на сайт и обновите страницу (F5) — можно пользоваться.",
+        )
 
 
 async def _send_tariffs_menu(chat_id: str) -> None:

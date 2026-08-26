@@ -555,6 +555,16 @@
   function tokens(str) {
     return [...(str || "").toLowerCase().matchAll(/[а-яёa-z0-9]+/g)].map(m => m[0]);
   }
+  // Разбор строки поиска на НЕЗАВИСИМЫЕ фразы: запятая / перевод строки / точка
+  // с запятой — разделитель фраз, пробелы внутри — слова одной фразы. Пустые
+  // отброшены. Ключевых и минус-фраз можно писать сколько угодно.
+  // Плюс: закупка проходит, если совпала ХОТЯ БЫ ОДНА фраза (ИЛИ между фразами);
+  // внутри фразы обязаны найтись ВСЕ слова (И внутри фразы). Так «строительные
+  // материалы» остаётся одной фразой (оба слова), а «перчатки, маски, халаты» —
+  // тремя независимыми вариантами.
+  function phraseGroups(str) {
+    return (str || "").split(/[,\n;]+/).map(tokens).filter(g => g.length);
+  }
   // грубый стемминг: отсекаем типичное русское окончание (не ровно 2 буквы — это
   // «клинки» → «клин» ловило «клинику»/«клинический», совсем другие слова).
   // Список окончаний отсортирован от длинных к коротким, чтобы резать максимум.
@@ -599,8 +609,8 @@
     // названия позиций, которых нет в общем заголовке закупки (мульти-лотовые).
     const hay = (p.title + " " + (p.lots || []).map(l => l.name).join(" ") + " " + p.number).toLowerCase();
     const hayWords = tokens(hay);
-    const plus = tokens(state.query);
-    const minus = tokens(state.minus);
+    const plusGroups = phraseGroups(state.query);
+    const minusGroups = phraseGroups(state.minus);
     // совпадение — по началу слова, а не по любому месту в строке: иначе
     // короткие запросы вроде «IT» ловят «Security»/«City» (буквы «it» просто
     // затесались посреди слова), а не только настоящие ИТ-закупки.
@@ -613,10 +623,14 @@
       return hayWords.some(hw => hw.startsWith(s) || (sAlt && hw.startsWith(sAlt))
         || (() => { const hwAlt = fleetingVowelVariant(hw); return hwAlt && hwAlt.startsWith(s); })());
     };
-    if (minus.some(matches)) return false;
-    // все слова запроса должны найтись — иначе «строительные материалы» ловит
-    // любую закупку со словом «материалы» (хоть горюче-смазочные)
-    if (plus.length && !plus.every(matches)) return false;
+    // фраза совпала = все её слова нашлись (И внутри фразы)
+    const groupMatches = (g) => g.every(matches);
+    // минус: любая минус-фраза целиком нашлась — исключаем
+    if (minusGroups.some(groupMatches)) return false;
+    // плюс: если фразы заданы, должна совпасть хотя бы одна (ИЛИ между фразами) —
+    // так «строительные материалы» требует оба слова, но «перчатки, маски» ловит
+    // закупки про любое из двух, а не только про оба сразу
+    if (plusGroups.length && !plusGroups.some(groupMatches)) return false;
     return true;
   }
 
@@ -721,7 +735,13 @@
   }
   function getSearchList(key) {
     if (!state.query) return getBasePool(key).slice();
-    if (searchNarrowCache.key === key && state.query.startsWith(searchNarrowCache.query)) {
+    // Дописывание запроса сужает результат ТОЛЬКО пока не добавлена новая
+    // ключевая фраза: лишняя запятая заводит ещё одну ветку ИЛИ и РАСШИРЯЕТ
+    // выдачу — тогда фильтровать по уже суженному списку нельзя, считаем заново
+    // от базового пула. Признак — число непустых фраз не изменилось.
+    const sameGroupCount =
+      phraseGroups(state.query).length === phraseGroups(searchNarrowCache.query).length;
+    if (searchNarrowCache.key === key && state.query.startsWith(searchNarrowCache.query) && sameGroupCount) {
       const list = searchNarrowCache.list.filter(passesSearch);
       searchNarrowCache = { key, query: state.query, list };
       return list;
