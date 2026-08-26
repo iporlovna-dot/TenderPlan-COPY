@@ -170,6 +170,27 @@ const LK = (() => {
         const searches = await apiGet("/api/searches");
         localStorage.setItem(KEY_SEARCHES, JSON.stringify(searches));
       } catch { /* сохранённые поиски недоступны — оставляем локальный кэш как есть */ }
+      try {
+        const serverProducts = await apiGet("/api/products");
+        if (serverProducts.length) {
+          // сервер — источник истины: перетираем локальный кэш
+          setProducts(serverProducts);
+        } else {
+          // сервер пуст. Возможен старый пользователь, у кого товары лежали
+          // только в localStorage (до серверного хранилища) — одноразово
+          // переносим их на сервер. Лимит тарифа отсечёт лишние (403 → пропуск).
+          const local = getProducts();
+          if (local.length) {
+            const migrated = [];
+            for (const p of local) {
+              const payload = { id: p.id || _newProductId(), name: p.name, ktru: p.ktru || [], attributes: p.attributes || [] };
+              try { migrated.push(await apiSend("POST", "/api/products", payload)); }
+              catch { /* лимит тарифа или дубль — просто не переносим этот товар */ }
+            }
+            setProducts(migrated);
+          }
+        }
+      } catch { /* товары недоступны — оставляем локальный кэш как есть */ }
     } catch {
       hasServerSession = false;  // демо или ещё не вошли — обычный локальный режим
     }
@@ -186,12 +207,12 @@ const LK = (() => {
   // guest  — «смотреть демо без регистрации» (seedDemo, localStorage, без сервера):
   //          1 страница ленты, остальные функции закрыты.
   // demo   — 3-дневное демо после регистрации (серверная сессия, plan==='demo'):
-  //          до 3 страниц ленты, 3 товара, 3 поиска, только владелец.
-  // full   — оплаченный тариф (start/business/corp): без демо-ограничений.
+  //          до 3 страниц ленты, 1 товар, 3 поиска, только владелец.
+  // full   — оплаченный тариф (start/business/corp): лимиты товаров/поисков по тарифу.
   const ACCESS_LIMITS = {
     none:  { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false },
     guest: { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false },
-    demo:  { feedPages: 3,        products: 3,        searches: 3,        tzMatch: true,  board: true  },
+    demo:  { feedPages: 3,        products: 1,        searches: 3,        tzMatch: true,  board: true  },
     full:  { feedPages: Infinity, products: Infinity, searches: Infinity, tzMatch: true,  board: true  },
   };
   function accessLevel() {
@@ -204,12 +225,18 @@ const LK = (() => {
   // лимит сохранённых поисков по тарифу для оплаченного доступа (совпадает с
   // server/app/accounts.py PLAN_SEARCH_LIMITS). Infinity = без лимита.
   const PLAN_SEARCH_LIMITS = { start: 5, business: Infinity, corp: Infinity };
+  // лимит товаров по тарифу (совпадает с server/app/accounts.py PLAN_PRODUCT_LIMITS)
+  const PLAN_PRODUCT_LIMITS = { start: 5, business: 25, corp: Infinity };
   function accessLimits() {
     const level = accessLevel();
     const base = ACCESS_LIMITS[level] || ACCESS_LIMITS.guest;
     if (level === "full") {
       const plan = (getCompany() || {}).plan;
-      return { ...base, searches: PLAN_SEARCH_LIMITS[plan] != null ? PLAN_SEARCH_LIMITS[plan] : Infinity };
+      return {
+        ...base,
+        searches: PLAN_SEARCH_LIMITS[plan] != null ? PLAN_SEARCH_LIMITS[plan] : Infinity,
+        products: PLAN_PRODUCT_LIMITS[plan] != null ? PLAN_PRODUCT_LIMITS[plan] : Infinity,
+      };
     }
     return base;
   }
@@ -221,18 +248,30 @@ const LK = (() => {
     return !!(c && c.isExpired);
   }
 
-  // ---------- товары (для надстройки «сверка по ТЗ») ----------
+  // ---------- товары (карточки для движка сверки matcher) ----------
+  // getProducts — синхронный кэш из localStorage (его читают лента и кабинет).
+  // Записи (add/delete) при серверной сессии пишутся НА СЕРВЕР (личные у юзера,
+  // лимит по тарифу), а кэш обновляется оптимистично. В демо-режиме без сессии —
+  // как раньше, локально. Загрузка серверных товаров и миграция старых
+  // localStorage-товаров — в initSession().
 
   function getProducts() {
     try { return JSON.parse(localStorage.getItem(KEY_PRODUCTS)) || []; } catch { return []; }
   }
   function setProducts(list) { localStorage.setItem(KEY_PRODUCTS, JSON.stringify(list)); }
-  function addProduct(p) {
-    const list = getProducts();
-    p.id = "prod_" + Math.random().toString(36).slice(2, 9);
-    list.push(p);
-    setProducts(list);
-    return p;
+  function _newProductId() { return "prod_" + Math.random().toString(36).slice(2, 9); }
+  async function addProduct(p) {
+    p.id = p.id || _newProductId();
+    const payload = { id: p.id, name: p.name, ktru: p.ktru || [], attributes: p.attributes || [] };
+    if (hasServerSession) {
+      // сервер — источник истины и последний рубеж лимита по тарифу: на 403
+      // (лимит) apiSend бросит ошибку, и кабинет её покажет, ничего не добавив
+      const saved = await apiSend("POST", "/api/products", payload);
+      const list = getProducts(); list.push(saved); setProducts(list);
+      return saved;
+    }
+    const list = getProducts(); list.push(payload); setProducts(list);
+    return payload;
   }
   function updateProduct(id, patch) {
     const list = getProducts();
@@ -240,9 +279,15 @@ const LK = (() => {
     if (i < 0) return null;
     list[i] = { ...list[i], ...patch, id };
     setProducts(list);
+    if (hasServerSession) apiSend("POST", "/api/products", {
+      id, name: list[i].name, ktru: list[i].ktru || [], attributes: list[i].attributes || [],
+    }).catch(() => {});
     return list[i];
   }
-  function deleteProduct(id) {
+  async function deleteProduct(id) {
+    if (hasServerSession) {
+      try { await apiSend("DELETE", "/api/products/" + encodeURIComponent(id)); } catch { /* всё равно чистим кэш */ }
+    }
     setProducts(getProducts().filter(p => p.id !== id));
   }
 

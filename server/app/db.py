@@ -88,6 +88,18 @@ CREATE TABLE IF NOT EXISTS notified_purchases (
     created_at TEXT NOT NULL,
     PRIMARY KEY (user_id, purchase_id)
 );
+-- карточки товара для движка сверки (matcher). Личные у пользователя (как
+-- история сверок), id генерит клиент (prod_xxx) — синхронное создание на фронте.
+-- Раньше товары жили только в localStorage браузера и терялись при смене
+-- устройства; теперь хранятся на сервере с лимитом по тарифу.
+CREATE TABLE IF NOT EXISTS products (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    ktru TEXT NOT NULL DEFAULT '[]',
+    attributes TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+);
 """
 
 

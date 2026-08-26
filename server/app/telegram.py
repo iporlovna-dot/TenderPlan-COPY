@@ -80,8 +80,8 @@ async def delete_webhook() -> None:
 def tariffs_keyboard() -> dict:
     return {
         "inline_keyboard": [
-            [{"text": "Старт — 15 000 ₽/мес", "callback_data": "buy:start"}],
-            [{"text": "Бизнес — 35 000 ₽/мес", "callback_data": "buy:business"}],
+            [{"text": "Старт — 4 900 ₽/мес", "callback_data": "buy:start"}],
+            [{"text": "Бизнес — 12 900 ₽/мес", "callback_data": "buy:business"}],
             [{"text": "Корпоративный — обсудить", "callback_data": "buy:corp"}],
         ]
     }

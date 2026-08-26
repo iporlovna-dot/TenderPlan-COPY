@@ -53,6 +53,17 @@ def _search_limit(plan: str):
     return PLAN_SEARCH_LIMITS.get(plan, DEFAULT_SEARCH_LIMIT)
 
 
+# Лимит карточек товара НА ПОЛЬЗОВАТЕЛЯ по тарифу (None = без лимита). Совпадает
+# с фронтом (app.js PLAN_PRODUCT_LIMITS). Демо — 1 (попробовать движок), Старт — 5,
+# Бизнес — 25, Корпоративный — без лимита.
+PLAN_PRODUCT_LIMITS = {"demo": 1, "start": 5, "business": 25, "corp": None}
+DEFAULT_PRODUCT_LIMIT = 1
+
+
+def _product_limit(plan: str):
+    return PLAN_PRODUCT_LIMITS.get(plan, DEFAULT_PRODUCT_LIMIT)
+
+
 # ---------- модели запросов ----------
 
 class RegisterBody(BaseModel):
@@ -130,6 +141,13 @@ class SearchUpdate(BaseModel):
     minus: str | None = None
     filters: dict | None = None
     newCount: int | None = None
+
+
+class ProductBody(BaseModel):
+    id: str            # клиент генерит (prod_xxx) — как у поисков, для синхронного создания
+    name: str
+    ktru: list = []
+    attributes: list = []
 
 
 # ---------- вспомогательное ----------
@@ -801,6 +819,83 @@ def delete_search(search_id: str, lekalo_session: str | None = Cookie(default=No
     conn, user = _require_active_user(lekalo_session)
     try:
         conn.execute("DELETE FROM searches WHERE id = ? AND user_id = ?", (search_id, user["id"]))
+        conn.commit()
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+# ---------- карточки товара (личные, привязаны к user_id; топливо движка matcher) ----------
+
+def _row_to_product(row) -> dict:
+    try:
+        ktru = json.loads(row["ktru"])
+    except (TypeError, ValueError):
+        ktru = []
+    try:
+        attrs = json.loads(row["attributes"])
+    except (TypeError, ValueError):
+        attrs = []
+    return {"id": row["id"], "name": row["name"], "ktru": ktru, "attributes": attrs}
+
+
+@router.get("/products")
+def list_products(lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_active_user(lekalo_session)
+    try:
+        rows = conn.execute(
+            "SELECT * FROM products WHERE user_id = ? ORDER BY created_at", (user["id"],)
+        ).fetchall()
+        return [_row_to_product(r) for r in rows]
+    finally:
+        conn.close()
+
+
+@router.post("/products")
+def create_product(body: ProductBody, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_active_user(lekalo_session)
+    try:
+        # id генерит клиент → строка с таким id может принадлежать другому юзеру.
+        # Без проверки INSERT OR REPLACE затёр бы чужую запись (межтенантная запись).
+        owner = conn.execute("SELECT user_id FROM products WHERE id = ?", (body.id,)).fetchone()
+        if owner and owner["user_id"] != user["id"]:
+            raise HTTPException(status_code=409, detail="Идентификатор товара занят")
+        # Лимит по тарифу — только для НОВОГО товара (повторный тот же id — апдейт).
+        if not owner:
+            company_row = conn.execute(
+                "SELECT plan FROM companies WHERE id = ?", (user["company_id"],)
+            ).fetchone()
+            limit = _product_limit(company_row["plan"])
+            if limit is not None:
+                count = conn.execute(
+                    "SELECT COUNT(*) AS n FROM products WHERE user_id = ?", (user["id"],)
+                ).fetchone()["n"]
+                if count >= limit:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=(f"На тарифе «{_plan_label(company_row['plan'])}» — до {limit} "
+                                f"{_plural_ru(limit, 'товара', 'товаров', 'товаров')} для сверки. "
+                                "Повысьте тариф, чтобы добавить больше."),
+                    )
+        conn.execute(
+            "INSERT OR REPLACE INTO products (id, user_id, name, ktru, attributes, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (body.id, user["id"], body.name.strip(),
+             json.dumps(body.ktru, ensure_ascii=False), json.dumps(body.attributes, ensure_ascii=False),
+             datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM products WHERE id = ?", (body.id,)).fetchone()
+        return _row_to_product(row)
+    finally:
+        conn.close()
+
+
+@router.delete("/products/{product_id}")
+def delete_product(product_id: str, lekalo_session: str | None = Cookie(default=None)):
+    conn, user = _require_active_user(lekalo_session)
+    try:
+        conn.execute("DELETE FROM products WHERE id = ? AND user_id = ?", (product_id, user["id"]))
         conn.commit()
         return {"ok": True}
     finally:

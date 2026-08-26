@@ -321,10 +321,11 @@
   });
 
   // ---------- товары (для сверки характеристик с позициями закупки) ----------
-  // Локальный кабинет (localStorage, LK.getProducts/addProduct/deleteProduct) —
-  // как и «своё ТЗ» выше, товары НЕ синхронизируются с сервером: их читает
-  // POST /api/match/spec прямо из тела запроса на клике «раскрыть карточку»
-  // в ленте (см. site/js/appview.js ensureProdMatch), сервер их не хранит.
+  // Товары (карточки для движка сверки). При серверной сессии они ЛИЧНЫЕ у
+  // пользователя и хранятся на сервере (GET/POST/DELETE /api/products, лимит по
+  // тарифу); LK.getProducts() — синхронный кэш в localStorage, наполняется в
+  // initSession. Сама сверка читает товары из этого кэша (см. appview.js
+  // ensureProdMatch → POST /api/match/spec). add/delete — async (пишут на сервер).
 
   function parseAttrs(text) {
     return text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
@@ -342,8 +343,10 @@
     const pHint = document.getElementById("product-limit-hint");
     document.getElementById("product-form").style.display = atLimit ? "none" : "";
     if (atLimit) {
-      pHint.textContent = `В демо доступно до ${cap} ${lkPlural(cap, ["товара", "товаров", "товаров"])} для сверки. ` +
-        "Оформите тариф в Telegram-боте, чтобы добавить больше.";
+      const plan = (LK.getCompany() || {}).plan;
+      pHint.textContent = plan === "demo"
+        ? `В демо доступно до ${cap} ${lkPlural(cap, ["товара", "товаров", "товаров"])} для сверки. Оформите тариф в Telegram-боте, чтобы добавить больше.`
+        : `На вашем тарифе доступно до ${cap} ${lkPlural(cap, ["товара", "товаров", "товаров"])} для сверки. Перейдите на старший тариф в Telegram-боте, чтобы добавить больше.`;
       pHint.style.display = "";
     } else {
       pHint.style.display = "none";
@@ -359,15 +362,16 @@
         <button class="btn btn-ghost btn-sm" data-del="${p.id}">Удалить</button>
       </div>`).join("") : `<div class="cabinet-empty">Пока нет товаров — заполните форму ниже, и в ленте закупок появится сверка характеристик.</div>`;
     document.getElementById("product-list").querySelectorAll("[data-del]").forEach(btn => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (!confirm("Удалить товар?")) return;
-        LK.deleteProduct(btn.dataset.del);
+        btn.disabled = true;
+        await LK.deleteProduct(btn.dataset.del);
         loadProducts();
       });
     });
   }
 
-  document.getElementById("product-form").addEventListener("submit", (e) => {
+  document.getElementById("product-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const cap = LK.accessLimits().products;
     if (cap !== Infinity && LK.getProducts().length >= cap) { loadProducts(); return; }
@@ -375,8 +379,18 @@
     if (!name) return;
     const ktru = document.getElementById("pf-ktru").value.split(",").map(s => s.trim()).filter(Boolean);
     const attributes = parseAttrs(document.getElementById("pf-attrs").value);
-    LK.addProduct({ name, ktru, attributes });
-    e.target.reset();
+    const submitBtn = e.target.querySelector('button[type="submit"], button:not([type])');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+      await LK.addProduct({ name, ktru, attributes });
+      e.target.reset();
+    } catch (err) {
+      // сервер отклонил (чаще всего — лимит тарифа): показываем причину,
+      // ничего не добавляя в список
+      alert(err && err.message ? err.message : "Не удалось сохранить товар. Проверьте лимит тарифа.");
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
     loadProducts();
   });
 
