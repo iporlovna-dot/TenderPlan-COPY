@@ -10,6 +10,21 @@
 const fs = require("fs");
 const path = require("path");
 
+// .env не подгружается системой сама — планировщик (refresh.cmd) не экспортирует
+// переменные из файла, а eisapi.js читает токен строго из process.env в момент
+// require. Без этого шага LK_EIS_TOKEN пустой на каждом автопрогоне, официальный
+// API ЕИС молча (это штатное поведение при недоступности) откатывается на
+// скрейпинг ВСЕГДА, и ИНН заказчика не добывается вовсе (замер: 0 записей
+// via:"api" в кэше документов при поднятом туннеле). Не переопределяем то, что
+// уже задано в окружении (ручной запуск с своими LK_* через сессию — приоритет).
+try {
+  const envPath = path.resolve(__dirname, "..", ".env");
+  for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2];
+  }
+} catch (e) { /* .env необязателен — без него просто нет токена ЕИС API */ }
+
 const { collectPortal } = require("./sources/portal");
 const { collectEis, refreshStages } = require("./sources/eis");
 const { annotateTz } = require("./sources/tzterms");
