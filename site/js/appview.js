@@ -42,7 +42,8 @@
     query: "",
     minus: "",
     searchId: null,          // id сохранённого поиска или null (свободный / «Все закупки»)
-    view: "all",             // all | saved («Мои закупки»)
+    counterpartyId: null,    // id выбранного отслеживаемого контрагента или null
+    view: "all",             // all | saved («Мои закупки») | counterparty
     boardStatus: "all",      // фильтр доски по статусу: all | один из BOARD_STATUSES
     page: 1,
     pageSize: LK.getPageSize(),
@@ -51,6 +52,14 @@
     matchEnabled: false,      // тумблер «Умная сверка по ТЗ»
     prodMatchEnabled: false   // тумблер «Сверка по товару» (движок matcher)
   };
+
+  // Лента приезжает отдельным файлом (~7 МБ), а аналитика — маленьким и быстрым.
+  // Пока настоящий снапшот в пути, allPurchases() отдаёт моки-заглушку из app.js
+  // (16 закупок, 13 активных), и любой ранний renderFeed (например из
+  // loadAnalytics) успевал мигнуть этими 13 «фантомами», прежде чем доедет
+  // реальный снапшот. Поэтому renderFeed молчит, пока feedReady не выставлен в
+  // loadPurchases().then — до тех пор в ленте висит «загружаем закупки…».
+  let feedReady = false;
 
   // ---------- чтение PDF (ленивая подгрузка pdf.js — только когда реально нужен) ----------
   // pdf.js ~1.5 МБ, поэтому не тянем его на каждого: грузим self-hosted-сборку при
@@ -98,7 +107,7 @@
     company.name.replace(/[^А-ЯA-Z]/g, "").slice(0, 2) || "ЛК";
   document.getElementById("plan-name").textContent =
     access === "guest" || access === "none" ? "Демо без регистрации" :
-    access === "demo" ? "Демо-доступ (3 дня)" :
+    access === "demo" ? "Демо-доступ (10 дней)" :
     company.plan === "business" ? "Тариф «Бизнес»" :
     company.plan === "corp" ? "Тариф «Корпоративный»" : "Тариф «Старт»";
   if (company.planExpiresAt) {
@@ -116,10 +125,10 @@
   // Гостю (демо без регистрации) закрыты все функции, кроме просмотра 1 страницы
   // ленты; демо после регистрации — с лимитами (товары/поиски/страницы).
   function denyGuest(what) {
-    lkToast(`${what} — доступно после регистрации (3 дня демо бесплатно)`);
+    lkToast(`${what} — доступно после регистрации (10 дней демо бесплатно)`);
   }
 
-  // Панель «что вам доступно» — для гостя и для 3-дневного демо (пункт 3).
+  // Панель «что вам доступно» — для гостя и для 10-дневного демо (пункт 3).
   function renderAccessBanner() {
     const el = document.getElementById("access-banner");
     if (!el) return;
@@ -132,23 +141,24 @@
             <li>вся лента закупок без ограничений по страницам;</li>
             <li>сохранённые поиски и уведомления о новых закупках в Telegram;</li>
             <li>Умная сверка по вашему ТЗ (% совпадения и разбор требований);</li>
-            <li>доска закупок для работы командой.</li>
+            <li>доска закупок для работы командой;</li>
+            <li>отслеживание контрагентов — закупки нужных заказчиков в один клик.</li>
           </ul>
         </div>
-        <a class="btn btn-primary" href="register.html">Зарегистрироваться — 3 дня демо бесплатно →</a>`;
+        <a class="btn btn-primary" href="register.html">Зарегистрироваться — 10 дней демо бесплатно →</a>`;
       el.hidden = false;
     } else if (access === "demo") {
       const l = accessLimits;
       el.innerHTML = `
         <div class="access-banner__body">
-          <b>✨ Демо-доступ — 3 дня, все функции с лимитами</b>
+          <b>✨ Демо-доступ — 10 дней, все функции открыты</b>
           <ul>
-            <li>лента закупок — до <b>${l.feedPages}</b> страниц;</li>
+            <li>вся лента закупок без ограничений по страницам;</li>
+            <li>Умная сверка по ТЗ, доска закупок и отслеживание контрагентов — доступны;</li>
             <li>до <b>${l.products}</b> товаров для сверки по ТЗ;</li>
-            <li>до <b>${l.searches}</b> сохранённых поисков;</li>
-            <li>Умная сверка по ТЗ и доска закупок — доступны.</li>
+            <li>до <b>${l.searches}</b> сохранённых поисков.</li>
           </ul>
-          <p class="access-banner__hint">Снять лимиты и продлить доступ — оформите тариф в Telegram-боте.</p>
+          <p class="access-banner__hint">10 дней, чтобы попробовать всё. Дальше — тариф в Telegram-боте, чтобы продлить доступ и снять лимиты на товары и поиски.</p>
         </div>
         <a class="btn btn-primary" href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Оформить тариф →</a>`;
       el.hidden = false;
@@ -190,6 +200,76 @@
         openSearchModal(btn.dataset.edit);
       });
     });
+    renderCounterpartyNav();   // список контрагентов обновляем вместе с сайдбаром
+  }
+
+  // ---------- отслеживаемые контрагенты (пункт 4) ----------
+
+  // Закупка относится к контрагенту, если его пресет (ИНН или название) находится
+  // в «заказчик + ИНН» — та же логика, что у фильтра f-customer (passesFilters).
+  function matchesCounterparty(p, cp) {
+    const v = LK.counterpartyFilterValue(cp).toLowerCase();
+    if (!v) return false;
+    return (p.customer + " " + (p.customerInn || "")).toLowerCase().includes(v);
+  }
+
+  function renderCounterpartyNav() {
+    const wrap = document.getElementById("counterparty-nav");
+    if (!wrap) return;
+    const list = LK.getCounterparties();
+    if (!list.length) {
+      wrap.innerHTML = `<div class="saved-empty">Пока никого не отслеживаете.<br>Добавьте заказчика по ИНН или названию — будете видеть его закупки одним кликом.</div>`;
+      return;
+    }
+    // счётчик — только актуальные (живые) закупки этого заказчика в ленте
+    const live = LK.allPurchases().filter(notDone);
+    wrap.innerHTML = list.map(cp => {
+      const n = live.filter(p => matchesCounterparty(p, cp)).length;
+      const label = cp.name || ("ИНН " + cp.inn);
+      return `
+        <a href="#" class="saved-search ${cp.id === state.counterpartyId ? "is-active" : ""}" data-cp="${cp.id}">
+          <span class="saved-search__name">${lkEscape(label)}</span>
+          ${n ? `<span class="saved-search__count">${n}</span>` : ""}
+          <button class="saved-search__edit" data-cp-del="${cp.id}" title="Убрать из отслеживаемых" aria-label="Убрать">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </a>`;
+    }).join("");
+    wrap.querySelectorAll("[data-cp]").forEach(el => {
+      el.addEventListener("click", (e) => {
+        if (e.target.closest("[data-cp-del]")) return;
+        e.preventDefault();
+        selectCounterparty(el.dataset.cp);
+      });
+    });
+    wrap.querySelectorAll("[data-cp-del]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.dataset.cpDel;
+        LK.removeCounterparty(id);
+        if (state.counterpartyId === id) selectAllPurchases();
+        else renderCounterpartyNav();
+      });
+    });
+  }
+
+  // Выбор контрагента = пресет фильтра «Заказчик» поверх всей ленты. Переиспользует
+  // существующую фильтрацию (passesFilters по f.customer), пагинацию и кэш пула.
+  function selectCounterparty(id) {
+    const cp = LK.getCounterparties().find(c => c.id === id);
+    if (!cp) return;
+    state.searchId = null;
+    state.counterpartyId = id;
+    state.view = "counterparty";
+    state.query = "";
+    state.minus = "";
+    // stage:"all" — показываем все этапы заказчика (notDone всё равно отсеет
+    // истёкшие/завершённые, останутся именно актуальные его закупки)
+    state.filters = { ...DEFAULT_FILTERS(), stage: "all", customer: LK.counterpartyFilterValue(cp) };
+    syncControlsFromState();
+    renderSidebar();
+    renderFeed();
   }
 
   document.querySelector('[data-quick="all"]').addEventListener("click", (e) => {
@@ -207,6 +287,7 @@
     const s = LK.getSearches().find(x => x.id === id);
     if (!s) return;
     state.searchId = id;
+    state.counterpartyId = null;
     state.view = "all";
     state.query = s.query || "";
     state.minus = s.minus || "";
@@ -230,6 +311,7 @@
 
   function selectAllPurchases() {
     state.searchId = null;
+    state.counterpartyId = null;
     state.view = "all";
     state.query = "";
     state.minus = "";
@@ -243,6 +325,7 @@
 
   function selectSavedStatus(status) {
     state.searchId = null;
+    state.counterpartyId = null;
     state.view = "saved";
     state.boardStatus = status;
     state.query = "";
@@ -305,34 +388,86 @@
     document.getElementById("f-source").value = state.filters.source;
   }
 
-  // Регион приводим к субъекту РФ: район/город внутри области сворачиваем до самой
-  // области, чтобы в фильтре не плодились «р-н Боровичский» и т.п. рядом с самой
-  // «Новгородской областью». Клиентская нормализация текущего снапшота; карта
-  // легко расширяется по мере появления новых районов в данных.
+  // Регион приводим к ОДНОМУ из 89 субъектов РФ. В снапшоте «Место нахождения»
+  // заказчика приходит как попало: то субъект целиком, то район/город внутри него
+  // («р-н Бардымский», «г. Пермь»), то с почтовым индексом и улицей
+  // («614070 Пермский край Г Пермь Ул Студенческая»), то дублем-вариантом
+  // («Кемеровская область - Кузбасс Обл», «Республика Татарстан (татарстан)»),
+  // то с переставленными словами («область Нижегородская»). Без свёртки один
+  // Пермский край расщеплялся в фильтре на 6-7 «субъектов-фантомов».
+  //
+  // Распознаём по отличительной подстроке. ПОРЯДОК KEYS важен: специфичное раньше
+  // общего — иначе «Алтайский край» поймался бы ключом «алтай» Республики Алтай,
+  // «Ямало-Ненецкий» — ключом «ненецк», а «Томская»/«Костромская» — ключом
+  // «омская». Проверено на живом снапшоте: 111 сырых значений → ровно 89 субъектов,
+  // 0 ошибочных склеек (см. tools — валидатор гоняли по purchases.json).
+  // ⚠️ Кириллица + \b/\w в JS не работают (см. грабли §9) — только явные подстроки.
+  const REGION_KEYS = [
+    ["ямало", "Ямало-Ненецкий автономный округ"], ["ненецк", "Ненецкий автономный округ"],
+    ["алтайский", "Алтайский край"], ["республика алтай", "Республика Алтай"], ["алтай", "Республика Алтай"],
+    ["ханты", "Ханты-Мансийский автономный округ - Югра"], ["мансийск", "Ханты-Мансийский автономный округ - Югра"], ["югра", "Ханты-Мансийский автономный округ - Югра"],
+    ["кемеров", "Кемеровская область - Кузбасс"], ["кузбасс", "Кемеровская область - Кузбасс"],
+    ["чувашск", "Чувашская Республика - Чувашия"], ["чувашия", "Чувашская Республика - Чувашия"],
+    ["карачаево", "Карачаево-Черкесская Республика"], ["черкесск", "Карачаево-Черкесская Республика"],
+    ["кабардино", "Кабардино-Балкарская Республика"], ["балкарск", "Кабардино-Балкарская Республика"],
+    ["северная осетия", "Республика Северная Осетия - Алания"], ["осетия", "Республика Северная Осетия - Алания"],
+    ["марий", "Республика Марий Эл"],
+    ["московск", "Московская область"], ["ленинградск", "Ленинградская область"], ["воронежск", "Воронежская область"],
+    ["нижегород", "Нижегородская область"], ["ростовск", "Ростовская область"], ["самарск", "Самарская область"],
+    ["свердловск", "Свердловская область"], ["челябинск", "Челябинская область"], ["новосибирск", "Новосибирская область"],
+    ["саратовск", "Саратовская область"], ["тюменск", "Тюменская область"], ["иркутск", "Иркутская область"],
+    ["кировск", "Кировская область"], ["архангельск", "Архангельская область"], ["калининградск", "Калининградская область"],
+    ["рязанск", "Рязанская область"], ["ярославск", "Ярославская область"], ["волгоградск", "Волгоградская область"],
+    ["смоленск", "Смоленская область"], ["оренбургск", "Оренбургская область"], ["ульяновск", "Ульяновская область"],
+    ["калужск", "Калужская область"], ["владимирск", "Владимирская область"], ["псковск", "Псковская область"],
+    ["вологодск", "Вологодская область"], ["ивановск", "Ивановская область"],
+    ["томская", "Томская область"], ["костромск", "Костромская область"], ["омская", "Омская область"],
+    ["амурск", "Амурская область"], ["брянск", "Брянская область"], ["липецк", "Липецкая область"],
+    ["белгородск", "Белгородская область"], ["тамбовск", "Тамбовская область"], ["тверск", "Тверская область"],
+    ["курганск", "Курганская область"], ["курская", "Курская область"], ["пензенск", "Пензенская область"],
+    ["орловск", "Орловская область"], ["астраханск", "Астраханская область"], ["новгородск", "Новгородская область"],
+    ["магаданск", "Магаданская область"], ["мурманск", "Мурманская область"], ["сахалинск", "Сахалинская область"],
+    ["тульск", "Тульская область"], ["запорожск", "Запорожская область"], ["херсонск", "Херсонская область"],
+    ["краснодарск", "Краснодарский край"], ["красноярск", "Красноярский край"], ["пермск", "Пермский край"], ["пермь", "Пермский край"],
+    ["хабаровск", "Хабаровский край"], ["приморск", "Приморский край"], ["ставропольск", "Ставропольский край"],
+    ["забайкальск", "Забайкальский край"], ["камчатск", "Камчатский край"],
+    ["татарстан", "Республика Татарстан"], ["башкортостан", "Республика Башкортостан"], ["удмуртск", "Удмуртская Республика"],
+    ["крым", "Республика Крым"], ["республика коми", "Республика Коми"], ["дагестан", "Республика Дагестан"],
+    ["бурятия", "Республика Бурятия"], ["карелия", "Республика Карелия"], ["тыва", "Республика Тыва"],
+    ["мордовия", "Республика Мордовия"], ["якутия", "Республика Саха (Якутия)"], ["саха", "Республика Саха (Якутия)"],
+    ["хакасия", "Республика Хакасия"], ["ингушетия", "Республика Ингушетия"], ["адыгея", "Республика Адыгея"],
+    ["калмыкия", "Республика Калмыкия"], ["чеченск", "Чеченская Республика"],
+    ["еврейск", "Еврейская автономная область"], ["чукотск", "Чукотский автономный округ"],
+    ["донецк", "Донецкая Народная Республика"], ["луганск", "Луганская Народная Республика"],
+  ];
+  // Районы/города/пгт, в самой строке которых НЕТ названия субъекта — по карте.
   const REGION_ROLLUP = {
-    "р-н боровичский": "Новгородская область",
-    "р-н хвойнинский": "Новгородская область",
-    "р-н красновишерский": "Пермский край",
-    "г. кемерово": "Кемеровская область - Кузбасс",
-    "г. сургут": "Ханты-Мансийский автономный округ - Югра",
+    "бардымский": "Пермский край", "горнозаводский": "Пермский край", "красновишерский": "Пермский край",
+    "суксун": "Пермский край", "березник": "Пермский край",
+    "боровичский": "Новгородская область", "хвойнинский": "Новгородская область",
+    "окуловский": "Новгородская область", "новгородский": "Новгородская область",
+    "кемерово": "Кемеровская область - Кузбасс", "сургут": "Ханты-Мансийский автономный округ - Югра",
   };
-  const FED_CITIES_RE = /^г\.?\s*(москва|санкт[- ]петербург|севастополь)$/i;
-  const SUBJECT_RE = /(облас|край|республик|автономн|округ|кузбасс)/i;
   function canonicalRegion(r) {
-    const s = (r || "").trim();
+    let s = (r || "").trim();
     if (!s) return "";
-    const rolled = REGION_ROLLUP[s.toLowerCase()];
-    if (rolled) return rolled;
-    if (FED_CITIES_RE.test(s)) return s.replace(/^г\.?\s*/i, "г. ");
-    if (SUBJECT_RE.test(s)) return s;   // уже субъект РФ — оставляем как есть
-    return "";                          // район/город без известного субъекта → не мусорим фильтр
+    s = s.replace(/^\d{5,6}\s*/, "").trim();   // почтовый индекс в начале — прочь
+    const low = s.toLowerCase();
+    if (/севастопол/.test(low)) return "г. Севастополь";
+    if (/санкт[- ]петербург/.test(low)) return "г. Санкт-Петербург";
+    if (/москва/.test(low)) return "г. Москва";   // не ловит «московская» (нет подстроки «москва»)
+    for (const [tok, subj] of REGION_KEYS) if (low.includes(tok)) return subj;
+    for (const frag in REGION_ROLLUP) if (low.includes(frag)) return REGION_ROLLUP[frag];
+    return "";   // район/город без известного субъекта → не мусорим фильтр
   }
 
   // регион и площадка — из реальных данных
   function populateFacets() {
     const all = LK.allPurchases();
-    fillSelect("f-region", "all", "Вся РФ",
-      [...new Set(all.map(p => canonicalRegion(p.region)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru")));
+    const regions = [...new Set(all.map(p => canonicalRegion(p.region)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru"));
+    fillSelect("f-region", "all", "Вся РФ", regions);
+    // тот же список субъектов — в модалку сохранённого поиска (пункт 2)
+    fillSelect("sf-region", "all", "Вся РФ", regions);
     fillSelect("f-source", "all", "Все площадки",
       [...new Set(all.map(p => p.source).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru")));
   }
@@ -1552,7 +1687,7 @@
     if (totalPages > navPages) {
       const isGuest = access === "guest" || access === "none";
       el.innerHTML = isGuest
-        ? `Показана 1 страница из ${totalPages}. <b>Зарегистрируйтесь</b>, чтобы открыть всю ленту — 3 дня демо бесплатно. <a class="btn btn-primary btn-sm" href="register.html">Регистрация →</a>`
+        ? `Показана 1 страница из ${totalPages}. <b>Зарегистрируйтесь</b>, чтобы открыть всю ленту — 10 дней демо бесплатно. <a class="btn btn-primary btn-sm" href="register.html">Регистрация →</a>`
         : `В демо доступно ${navPages} ${lkPlural(navPages, ["страница","страницы","страниц"])} из ${totalPages}. Оформите тариф, чтобы открыть всю ленту. <a class="btn btn-primary btn-sm" href="https://t.me/Bot_Lekalo_bot" target="_blank" rel="noopener noreferrer">Оформить тариф →</a>`;
       el.hidden = false;
     } else {
@@ -1561,6 +1696,8 @@
   }
 
   function renderFeed(resetPage = true) {
+    // Снапшот ещё не доехал — не мигаем моками-заглушкой (см. feedReady выше).
+    if (!feedReady) return;
     if (resetPage) state.page = 1;
     const feed = document.getElementById("feed-content");
     const title = document.getElementById("feed-title");
@@ -1568,8 +1705,11 @@
 
     const current = state.searchId ? LK.getSearches().find(s => s.id === state.searchId) : null;
     const savedView = state.view === "saved";
+    const cpActive = state.view === "counterparty"
+      ? LK.getCounterparties().find(c => c.id === state.counterpartyId) : null;
     title.textContent = savedView
       ? (state.boardStatus === "all" ? "★ Мои закупки" : "★ " + state.boardStatus)
+      : cpActive ? "🏢 " + (cpActive.name || ("ИНН " + cpActive.inn))
       : current ? current.name : (state.query ? `Поиск: «${state.query}»` : "Все закупки");
 
     // лента — без просроченных/завершённых/неконкурентных; доска — по boardVisible.
@@ -1607,14 +1747,18 @@
     // понимает, фильтр это или закупок правда нет. Называем причину и показываем,
     // ЧТО именно система сочла предметом — ошибку видно сразу.
     const emptyByMatch = !savedView && state.matchEnabled && mySubject && mySubject.length;
+    const emptyByCp = state.view === "counterparty";
     if (!list.length) {
       count.textContent = savedView ? "" : "ничего не найдено";
       feed.innerHTML = `<div class="empty-state">
         <h3>${savedView
           ? (state.boardStatus === "all" ? "Пока нет закупок на доске" : `В статусе «${lkEscape(state.boardStatus)}» пусто`)
+          : emptyByCp ? "У этого заказчика сейчас нет активных закупок"
           : emptyByMatch ? "Закупок по вашему ТЗ сейчас нет" : "Ничего не найдено"}</h3>
         <p>${savedView
           ? "В карточке закупки выберите статус (＋ На доску), чтобы добавить её в работу."
+          : emptyByCp
+            ? "Мы отслеживаем этого заказчика: как только у него появится закупка в ленте, она покажется здесь. Проверьте, что ИНН или название введены верно."
           : emptyByMatch
             ? `Искали по предмету: ${lkEscape(mySubject.slice(0, 5).map(s => s.term).join(", "))}. Выключите «Умную сверку», чтобы вернуть всю ленту, или загрузите ТЗ, где товар назван прямее.`
             : "Под текущие ключевые слова и фильтры закупок нет. Попробуйте убрать минус-слова, расширить регион или сменить этап."}</p>
@@ -1738,6 +1882,15 @@
   const modal = document.getElementById("search-modal");
   let editingId = null;
 
+  // Ставит регион в селект модалки. Если субъекта нет среди опций (facets ещё
+  // не заполнены или регион исчез из ленты) — откатываемся на «Вся РФ», чтобы
+  // не показать пустой выбор и не сохранить регион, которого в фильтре нет.
+  function setRegionSelect(value) {
+    const sel = document.getElementById("sf-region");
+    if (!sel) return;
+    sel.value = [...sel.options].some(o => o.value === value) ? value : "all";
+  }
+
   function openSearchModal(id) {
     editingId = id || null;
     const del = document.getElementById("search-delete");
@@ -1749,6 +1902,7 @@
       document.getElementById("sf-minus").value = s.minus || "";
       document.getElementById("sf-law").value = (s.filters && s.filters.law) || "all";
       document.getElementById("sf-window").value = (s.filters && s.filters.windowDays) || 30;
+      setRegionSelect((s.filters && s.filters.region) || "all");
       del.style.display = "";
     } else {
       document.getElementById("search-modal-title").textContent = "Новый поиск";
@@ -1757,6 +1911,9 @@
       document.getElementById("sf-minus").value = state.minus || "";
       document.getElementById("sf-law").value = "all";
       document.getElementById("sf-window").value = 30;
+      // Новый поиск наследует регион, уже выбранный в фильтрах ленты — так удобнее:
+      // отфильтровал ленту по региону, нажал «Сохранить поиск» — регион уже стоит.
+      setRegionSelect(state.filters.region || "all");
       del.style.display = "none";
     }
     modal.classList.add("is-open");
@@ -1801,7 +1958,8 @@
       minus: document.getElementById("sf-minus").value.trim(),
       filters: {
         law: document.getElementById("sf-law").value,
-        stage: "active", region: "all", priceMin: 0, priceMax: null,
+        stage: "active", region: document.getElementById("sf-region").value || "all",
+        priceMin: 0, priceMax: null,
         windowDays: Number(document.getElementById("sf-window").value) || 30,
         sources: ["ЕИС", "РТС-тендер", "РТС-маркет", "Сбербанк-АСТ", "Росэлторг"]
       }
@@ -1818,6 +1976,42 @@
     }
     closeSearchModal();
     loadSearch(id);
+  });
+
+  // ---------- модалка: контрагенты (пункт 4) ----------
+
+  const cpModal = document.getElementById("counterparty-modal");
+  function openCounterpartyModal() {
+    document.getElementById("cp-inn").value = "";
+    document.getElementById("cp-name").value = "";
+    const err = document.getElementById("cp-error");
+    err.style.display = "none"; err.textContent = "";
+    cpModal.classList.add("is-open");
+  }
+  function closeCounterpartyModal() { cpModal.classList.remove("is-open"); }
+
+  // отслеживание контрагентов — часть демо/тарифа; гостю без регистрации закрыто
+  document.getElementById("add-counterparty-btn").addEventListener("click", () => {
+    if (!accessLimits.counterparties) { denyGuest("Отслеживание контрагентов"); return; }
+    openCounterpartyModal();
+  });
+  document.getElementById("cp-cancel").addEventListener("click", closeCounterpartyModal);
+  cpModal.addEventListener("click", (e) => { if (e.target === cpModal) closeCounterpartyModal(); });
+
+  document.getElementById("counterparty-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const inn = document.getElementById("cp-inn").value.trim();
+    const name = document.getElementById("cp-name").value.trim();
+    const err = document.getElementById("cp-error");
+    const fail = (msg) => { err.textContent = msg; err.style.display = ""; };
+    if (!inn && !name) return fail("Укажите ИНН или название заказчика.");
+    // ИНН — 10 (юрлицо) или 12 (ИП) цифр; пустой ИНН допустим (тогда ищем по названию)
+    if (inn && !/^\d{10}$|^\d{12}$/.test(inn)) return fail("ИНН должен состоять из 10 или 12 цифр.");
+    const cp = LK.addCounterparty({ inn, name });
+    if (!cp) return fail("Не удалось добавить — проверьте данные.");
+    closeCounterpartyModal();
+    selectCounterparty(cp.id);
+    lkToast(`Заказчик «${cp.name || ("ИНН " + cp.inn)}» в отслеживаемых`);
   });
 
   // ---------- модалка: моё ТЗ (для сверки по всей ленте) ----------
@@ -1997,6 +2191,7 @@
   updateSavedCount();
 
   LK.loadPurchases().then(() => {
+    feedReady = true;  // снапшот (или фолбэк-моки) на руках — ленту можно рисовать
     renderMatchBar();
     populateFacets();  // регион/площадка из реальных данных
     // Термины ТЗ — отдельным файлом и только если человеку есть с чем сверять.

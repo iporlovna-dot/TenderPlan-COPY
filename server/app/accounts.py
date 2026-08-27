@@ -24,7 +24,7 @@ from app.telegram import BOT_USERNAME
 router = APIRouter(prefix="/api")
 basic = HTTPBasic()
 
-DEMO_DAYS = 3
+DEMO_DAYS = 10
 # автопродление (см. _require_active_user / admin_grant_business) ставит
 # expires далеко в будущее — само значение неважно, доступ держит auto_renew=1,
 # но дата всё равно нужна (колонка NOT NULL) и полезна как читаемая метка в админке
@@ -45,7 +45,7 @@ def _employee_limit(plan: str) -> int:
 # Совпадает с тарифами на лендинге и в terms.html. Демо — 3 (см. фронт accessLimits).
 # Фронт (app.js accessLimits) держит те же числа — сервер тут последний рубеж
 # (лимит на фронте обходится прямым вызовом API, см. todo-demo-limits-backend).
-PLAN_SEARCH_LIMITS = {"demo": 3, "start": 5, "business": None, "corp": None}
+PLAN_SEARCH_LIMITS = {"demo": 10, "start": 5, "business": None, "corp": None}
 DEFAULT_SEARCH_LIMIT = 3
 
 
@@ -56,7 +56,7 @@ def _search_limit(plan: str):
 # Лимит карточек товара НА ПОЛЬЗОВАТЕЛЯ по тарифу (None = без лимита). Совпадает
 # с фронтом (app.js PLAN_PRODUCT_LIMITS). Демо — 1 (попробовать движок), Старт — 5,
 # Бизнес — 25, Корпоративный — без лимита.
-PLAN_PRODUCT_LIMITS = {"demo": 1, "start": 5, "business": 25, "corp": None}
+PLAN_PRODUCT_LIMITS = {"demo": 3, "start": 5, "business": 25, "corp": None}
 DEFAULT_PRODUCT_LIMIT = 1
 
 
@@ -223,7 +223,7 @@ def _plural_ru(n: int, one: str, few: str, many: str) -> str:
 
 def _plan_label(plan: str) -> str:
     return {
-        "demo": "Демо-доступ (3 дня)",
+        "demo": "Демо-доступ (10 дней)",
         "start": "Тариф «Старт»", "business": "Тариф «Бизнес»", "corp": "Тариф «Корпоративный»",
     }.get(plan, plan)
 
@@ -260,7 +260,7 @@ def register(body: RegisterBody, request: Request, response: Response):
         now = datetime.now(timezone.utc)
         # Тарифа при регистрации ещё нет — 'demo' с plan_expires_at=now (уже
         # "истёк") до тех пор, пока человек не привяжет Telegram и не получит
-        # 3 дня демо через бота (см. app/support.py _handle_start). Реальный
+        # 10 дней демо через бота (см. app/support.py _handle_start). Реальный
         # доступ к продукту гейтит _require_active_user.
         cur = conn.execute(
             "INSERT INTO companies (name, inn, plan, plan_expires_at, created_at) VALUES (?, ?, 'demo', ?, ?)",

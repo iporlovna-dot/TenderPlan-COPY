@@ -58,7 +58,7 @@ ABOUT_TEXT = """🎯 Лекало — все торги России в одно
 Как получить доступ:
 1. Регистрация на сайте (2 минуты)
 2. Привязка Telegram — вы это уже сделали 🙂
-3. 3 дня демо-доступа бесплатно
+3. 10 дней демо-доступа бесплатно
 4. Дальше — тариф: команда /tariffs
 
 Тарифы:
@@ -97,7 +97,7 @@ async def _relay_to_admin(chat_id: str, who: str, text: str) -> None:
 async def _handle_start(chat_id: str, token: str) -> None:
     """/start <token> — deep-link из кабинета (register()/GET /telegram-link
     в accounts.py). Привязывает chat_id к аккаунту и, если демо ещё ни разу
-    не выдавалось, включает 3 дня демо-доступа."""
+    не выдавалось, включает 10 дней демо-доступа."""
     conn = db.get_conn()
     try:
         user = conn.execute("SELECT * FROM users WHERE telegram_link_token = ?", (token,)).fetchone()

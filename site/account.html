@@ -88,6 +88,12 @@
 
       <section class="cabinet-card">
         <h3>Сотрудники <span class="cabinet-num" id="employee-count"></span></h3>
+        <p class="cabinet-hint" style="color:var(--ink-faint);font-size:0.9rem;margin:-4px 0 12px;">
+          Каждому сотруднику заведите отдельный вход — имя, e-mail и пароль ниже. Сотрудник
+          входит на <a href="login.html">странице входа</a> под этим e-mail и паролем и работает
+          в общей ленте, доске закупок и поисках вашей компании. Пароль передайте ему сами
+          (например, в мессенджере). Так у каждого свой доступ — не нужно делить один логин на всех.
+        </p>
         <div class="form-error" id="employee-error"></div>
         <div id="employee-list" class="employee-list"></div>
         <div id="employee-limit-hint" class="cabinet-empty" style="display:none;margin-top:10px;"></div>
@@ -207,7 +213,7 @@
     window.location.href = "index.html";
   });
 
-  const planLabel = (p) => p === "demo" ? "Демо-доступ (3 дня)"
+  const planLabel = (p) => p === "demo" ? "Демо-доступ (10 дней)"
     : p === "business" ? "Тариф «Бизнес»" : p === "corp" ? "Тариф «Корпоративный»"
     : p === "start" ? "Тариф «Старт»" : p;
   const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "—" : d.toLocaleDateString("ru-RU"); };

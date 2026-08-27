@@ -32,6 +32,7 @@ const LK = (() => {
     localStorage.removeItem(KEY_CURRENT_SEARCH);
     localStorage.removeItem(KEY_SAVED);
     localStorage.removeItem(KEY_VIEWED);
+    localStorage.removeItem("lekalo_counterparties");
   }
 
   // ---------- сколько закупок показывать на странице ----------
@@ -206,14 +207,18 @@ const LK = (() => {
   // ---------- уровень доступа и лимиты (демо-воронка, см. пункт 3) ----------
   // guest  — «смотреть демо без регистрации» (seedDemo, localStorage, без сервера):
   //          1 страница ленты, остальные функции закрыты.
-  // demo   — 3-дневное демо после регистрации (серверная сессия, plan==='demo'):
-  //          до 3 страниц ленты, 1 товар, 3 поиска, только владелец.
+  // demo   — 10-дневное демо после регистрации (серверная сессия, plan==='demo'):
+  //          ВСЕ функции без урезания возможностей (полная лента, сверка, доска,
+  //          отслеживание контрагентов), лимит — щедрый, но не безлимит: 3 товара,
+  //          10 поисков. Ограничитель воронки — сам срок (10 дней), а не запертые
+  //          функции: клиент должен всё попробовать и захотеть тариф ради снятия
+  //          срока и лимитов, а не ради «первого показа».
   // full   — оплаченный тариф (start/business/corp): лимиты товаров/поисков по тарифу.
   const ACCESS_LIMITS = {
-    none:  { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false },
-    guest: { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false },
-    demo:  { feedPages: 3,        products: 1,        searches: 3,        tzMatch: true,  board: true  },
-    full:  { feedPages: Infinity, products: Infinity, searches: Infinity, tzMatch: true,  board: true  },
+    none:  { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false, counterparties: false },
+    guest: { feedPages: 1,        products: 0,        searches: 0,        tzMatch: false, board: false, counterparties: false },
+    demo:  { feedPages: Infinity, products: 3,        searches: 10,       tzMatch: true,  board: true,  counterparties: true  },
+    full:  { feedPages: Infinity, products: Infinity, searches: Infinity, tzMatch: true,  board: true,  counterparties: true  },
   };
   function accessLevel() {
     if (hasServerSession) {
@@ -335,6 +340,35 @@ const LK = (() => {
     if (localStorage.getItem(KEY_CURRENT_SEARCH) === id) localStorage.removeItem(KEY_CURRENT_SEARCH);
     if (hasServerSession) apiSend("DELETE", "/api/searches/" + id).catch(() => {});
   }
+  // ---------- отслеживаемые контрагенты (заказчики) ----------
+  // Контрагент — это сохранённый пресет фильтра «Заказчик»: по ИНН (точно) или по
+  // названию (подстрокой). Клиент добавляет тех, за кем следит, и одним кликом
+  // видит их актуальные закупки из ленты. Живёт в localStorage этого браузера —
+  // как доска и поиски в демо-режиме; серверная синхронизация между устройствами
+  // может быть добавлена позже (см. отдельную заметку в плане).
+  const KEY_COUNTERPARTIES = "lekalo_counterparties";
+  function getCounterparties() {
+    try { return JSON.parse(localStorage.getItem(KEY_COUNTERPARTIES)) || []; } catch { return []; }
+  }
+  function _setCounterparties(list) { localStorage.setItem(KEY_COUNTERPARTIES, JSON.stringify(list)); }
+  // Значение для фильтра «Заказчик»: ИНН точнее названия, поэтому предпочитаем его.
+  function counterpartyFilterValue(cp) { return (cp && (cp.inn || cp.name)) || ""; }
+  function addCounterparty({ inn, name }) {
+    inn = (inn || "").trim();
+    name = (name || "").trim();
+    if (!inn && !name) return null;
+    const list = getCounterparties();
+    // не плодим дубли: тот же ИНН или то же (без регистра) название
+    const dup = list.find(c =>
+      (inn && c.inn === inn) || (!inn && name && (c.name || "").toLowerCase() === name.toLowerCase()));
+    if (dup) return dup;
+    const cp = { id: "cp_" + Math.random().toString(36).slice(2, 9), inn, name };
+    list.unshift(cp);
+    _setCounterparties(list);
+    return cp;
+  }
+  function removeCounterparty(id) { _setCounterparties(getCounterparties().filter(c => c.id !== id)); }
+
   function getCurrentSearchId() { return localStorage.getItem(KEY_CURRENT_SEARCH) || null; }
   function setCurrentSearchId(id) {
     if (id) localStorage.setItem(KEY_CURRENT_SEARCH, id);
@@ -791,6 +825,7 @@ const LK = (() => {
     getProducts, setProducts, addProduct, updateProduct, deleteProduct,
     getMyTz, setMyTz,
     getSearches, setSearches, addSearch, updateSearch, deleteSearch,
+    getCounterparties, addCounterparty, removeCounterparty, counterpartyFilterValue,
     getCurrentSearchId, setCurrentSearchId,
     getSaved, isSaved, savedStatus, addToBoard, setBoardStatus, setBoardAssignee, removeSaved,
     getEmployees, BOARD_STATUSES,
