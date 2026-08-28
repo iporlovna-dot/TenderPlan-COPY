@@ -58,6 +58,35 @@ async function curlTunnel(args, opts) {
   throw lastErr;
 }
 
+// --- ограничитель частоты SOAP-вызовов ---
+// Замер в проде (2026-08-28): сервис отдаёт errorInfo code=13 «Превышено количество
+// допустимых запросов к сервису... ограничено значением - 90 за время - 60 сек.» —
+// и это приходит как обычный HTTP 200 с телом ошибки, а не сетевой сбой, поэтому
+// RETRIES/curlTunnel его не видит вообще: одно превышение лимита сразу считалось
+// провалом API и уходило в откат на скрейпинг. При CONC=10 (см. eis.js) и очереди
+// в сотни закупок за прогон лимит пробивался за секунды. Держим с запасом ниже
+// официального потолка — 80 не 90 — на случай неточной синхронизации окна с
+// сервером; окно скользящее, отсчитывается от момента ЗАПРОСА (не ответа), чтобы
+// не накапливать долг из-за собственной задержки на округление.
+const RATE_LIMIT = Number(process.env.LK_EIS_API_RATE_LIMIT || 80);
+const RATE_WINDOW_MS = Number(process.env.LK_EIS_API_RATE_WINDOW_MS || 60000);
+const callTimes = [];
+let admissionGate = Promise.resolve();
+function acquireSlot() {
+  const p = admissionGate.then(async () => {
+    let now = Date.now();
+    while (callTimes.length && now - callTimes[0] >= RATE_WINDOW_MS) callTimes.shift();
+    if (callTimes.length >= RATE_LIMIT) {
+      await sleep(RATE_WINDOW_MS - (now - callTimes[0]) + 50);
+      now = Date.now();
+      while (callTimes.length && now - callTimes[0] >= RATE_WINDOW_MS) callTimes.shift();
+    }
+    callTimes.push(Date.now());
+  });
+  admissionGate = p.catch(() => {}); // сбой прохода не должен запереть очередь навсегда
+  return p;
+}
+
 // --- построители SOAP-конверта ---
 // ⚠️ subsystemType живёт в <selectionParams>, а НЕ в <index>; <index> требует
 // id/createDateTime/mode (см. XSD getDocsIP-ws-api). Ошибка стоила пустого ответа.
@@ -115,6 +144,7 @@ function parseResponse(xml) {
 // --- HTTP-вызовы ---
 async function postSoap(xml) {
   if (!TOKEN) throw new Error("LK_EIS_TOKEN не задан (положите токен сервисов отдачи в .env)");
+  await acquireSlot();
   const url = `http://${TUNNEL}${SERVICE_PATH}`;
   return curlTunnel([
     "-X", "POST", url,
@@ -177,6 +207,25 @@ function unzip(buf) {
     off += 46 + nameLen + extraLen + commentLen;
   }
   return out;
+}
+
+// Замер в проде (2026-08-28): скачивание+распаковка архива под конкурентной
+// нагрузкой (mapLimit CONC=10) иногда даёт обрезанный ZIP — «не найден EOCD» —
+// хотя тот же URL, скачанный изолированно, отдаёт корректные байты каждый раз.
+// Похоже на помеху при параллельных ГОСТ-TLS сессиях в stunnel-msspi, а не на
+// проблему источника. Раньше единственный битый архив тихо считался «данных нет»
+// (см. вызывающих) и закупка уходила в откат на скрейпинг. Замер: 12/200 (6%) с
+// первой попытки, немедленный повтор спасает 12 из 14 — оставляет ~1% настоящих
+// сбоев.
+const DOWNLOAD_RETRIES = Number(process.env.LK_EIS_API_DOWNLOAD_RETRIES ?? 2);
+const DOWNLOAD_RETRY_DELAY_MS = Number(process.env.LK_EIS_API_DOWNLOAD_RETRY_DELAY_MS || 300);
+async function downloadEntries(url) {
+  let lastErr;
+  for (let attempt = 0; attempt <= DOWNLOAD_RETRIES; attempt++) {
+    try { return unzip(await downloadArchive(url)); }
+    catch (e) { lastErr = e; if (attempt < DOWNLOAD_RETRIES) await sleep(DOWNLOAD_RETRY_DELAY_MS); }
+  }
+  throw lastErr;
 }
 
 // --- разбор XML извещения 44-ФЗ (epNotification*) в нашу схему ---
@@ -337,16 +386,34 @@ function verOf(name) {
   return m ? Number(m[1]) : 0;
 }
 
+// acquireSlot держит нас ниже официального потолка, но не гарантирует его целиком:
+// окно может разъехаться с серверным (сеть, GC-пауза) или лимит шариться с другим
+// процессом на той же машине/токене. Единственная ошибка, которую имеет смысл
+// повторить, а не сразу списывать на «API не смог» (см. eis.js enrichViaApi) —
+// именно code=13: это не «данных нет» и не поломанный запрос, а «подожди».
+const RATE_LIMIT_RETRIES = Number(process.env.LK_EIS_API_RATE_LIMIT_RETRIES ?? 2);
+const RATE_LIMIT_RETRY_DELAY_MS = Number(process.env.LK_EIS_API_RATE_LIMIT_RETRY_DELAY_MS || 5000);
+async function postSoapRetrying(xml) {
+  for (let attempt = 0; ; attempt++) {
+    const resp = parseResponse(await postSoap(xml));
+    if (resp.error && resp.error.code === "13" && attempt < RATE_LIMIT_RETRIES) {
+      await sleep(RATE_LIMIT_RETRY_DELAY_MS);
+      continue;
+    }
+    return resp;
+  }
+}
+
 // --- высокоуровневые операции ---
 // Обогащение одной закупки: reestrNumber → распакованное извещение в нашей схеме.
 async function fetchByReestr(reestrNumber, opts = {}) {
-  const resp = parseResponse(await postSoap(buildReestrRequest(reestrNumber, opts.subsystemType)));
+  const resp = await postSoapRetrying(buildReestrRequest(reestrNumber, opts.subsystemType));
   if (resp.error) return { error: resp.error };
   if (resp.noData || !resp.archiveUrls.length) return { noData: true };
   const entries = [];
   for (const url of resp.archiveUrls) {
-    try { entries.push(...unzip(await downloadArchive(url))); }
-    catch (e) { /* один битый архив не должен рушить остальные */ }
+    try { entries.push(...await downloadEntries(url)); }
+    catch (e) { /* один битый архив не должен рушить остальные (даже с retry) */ }
   }
   const note = pickNotification(entries);
   return {
@@ -358,8 +425,7 @@ async function fetchByReestr(reestrNumber, opts = {}) {
 
 // Массовая выдача: регион+тип+день → список распакованных извещений.
 async function fetchByOrgRegion(orgRegion, documentType, exactDate, opts = {}) {
-  const resp = parseResponse(await postSoap(
-    buildOrgRegionRequest(orgRegion, documentType, exactDate, opts)));
+  const resp = await postSoapRetrying(buildOrgRegionRequest(orgRegion, documentType, exactDate, opts));
   if (resp.error) return { error: resp.error };
   if (resp.noData || !resp.archiveUrls.length) return { noData: true, purchases: [] };
   const entries = [];
