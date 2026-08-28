@@ -157,7 +157,9 @@
          готовит сборщик (tools/sources/tzterms.js) и кладёт в снапшот — браузер
          сам их достать не может, документы лежат на гос-сайтах без CORS. -->
     <div class="match-bar" id="match-bar">
-      <div class="match-row">
+      <!-- ⚠️ Временно скрыто (см. appview.js TZ_MATCH_HIDDEN) — DOM оставлен, чтобы
+           JS-обработчики вешались без ошибок; вернуть — убрать display:none. -->
+      <div class="match-row" style="display:none;">
         <label class="match-toggle">
           <input type="checkbox" id="match-enable" disabled>
           <span class="match-toggle__track"><span class="match-toggle__thumb"></span></span>
@@ -191,7 +193,6 @@
           <option value="deadline">По сроку подачи</option>
           <option value="price-desc">НМЦК: по убыванию</option>
           <option value="price-asc">НМЦК: по возрастанию</option>
-          <option value="score">По совпадению с вашим ТЗ</option>
         </select>
       </div>
 

@@ -154,7 +154,7 @@
       <section class="cabinet-card">
         <h3>Мои товары <span class="cabinet-num" id="product-count"></span></h3>
         <p style="color:var(--ink-faint);font-size:0.85rem;margin-top:-4px;">Карточки товара для сверки с
-          позициями закупки (движок сверки характеристик, не «Умная сверка» по ТЗ выше). Хранятся на
+          позициями закупки (движок сверки характеристик). Хранятся на
           сервере, привязаны к компании — доступны с любого устройства под вашим входом.</p>
         <div id="product-list" class="employee-list"></div>
         <div id="product-limit-hint" class="cabinet-empty" style="display:none;margin-top:10px;"></div>
@@ -178,7 +178,9 @@
         </form>
       </section>
 
-      <section class="cabinet-card">
+      <!-- ⚠️ Временно скрыто вместе с «Умной сверкой по ТЗ» (см. appview.js TZ_MATCH_HIDDEN) —
+           раздел без данных, если сама сверка недоступна из ленты. -->
+      <section class="cabinet-card" style="display:none;">
         <h3>История сверок ТЗ</h3>
         <div id="tz-history-list" class="tz-history-list"></div>
       </section>

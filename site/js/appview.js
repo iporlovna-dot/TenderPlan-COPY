@@ -4,6 +4,15 @@
 
 (async function () {
 
+  // ⚠️ Временно скрыто (2026-08-28, по решению): «Умная сверка по ТЗ» — term-overlap
+  // между своим ТЗ (localStorage) и tzTerms закупки. Остаётся только «Сверка по
+  // товару» (движок matcher). Флаг гасит всё разом в renderMatchBar() и в обработчике
+  // match-enable — не просто CSS-скрытие в app.html, потому что у части пользователей
+  // уже есть myTz с прошлого раза, и renderMatchBar включила бы сверку автоматически
+  // без единого клика (см. её логику ниже). Чтобы вернуть: убрать этот флаг и
+  // style="display:none" у .match-row в app.html.
+  const TZ_MATCH_HIDDEN = true;
+
   const params = new URLSearchParams(window.location.search);
 
   // ---------- гейт входа ----------
@@ -617,7 +626,7 @@
     const toggle = document.getElementById("match-enable");
     const hint = document.getElementById("match-hint");
     const btn = document.getElementById("match-tz-btn");
-    if (!myTzSet) {
+    if (TZ_MATCH_HIDDEN || !myTzSet) {
       toggle.checked = false;
       toggle.disabled = true;
       state.matchEnabled = false;
@@ -648,6 +657,7 @@
   }
 
   document.getElementById("match-enable").addEventListener("change", (e) => {
+    if (TZ_MATCH_HIDDEN) { e.target.checked = false; return; }
     state.matchEnabled = e.target.checked;
     setMatchBarTint();
     // при включении полезно сразу увидеть лучшее сверху, но выбор пользователя
@@ -1475,7 +1485,6 @@
             ${p.href
               ? `<a class="btn btn-primary btn-sm" href="${lkEscape(platformHref(p))}" target="_blank" rel="noopener noreferrer">Открыть на площадке ↗</a>`
               : `<span class="btn btn-primary btn-sm" style="opacity:.5;cursor:not-allowed;" title="Ссылка на площадку недоступна">Ссылка недоступна</span>`}
-            <a class="btn btn-ghost btn-sm" data-tz="${p.id}" href="#">Сверить своё ТЗ</a>
           </div>
         </div>
       </div>`;
