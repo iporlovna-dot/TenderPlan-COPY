@@ -762,21 +762,46 @@
   // ⚠️ specCount>0 само по себе НЕ значит «про ваш товар» — это только «у этой
   // закупки вообще есть таблица характеристик», и таких тысячи на любую тему.
   // Раньше человеку приходилось ДОПОЛНИТЕЛЬНО вписывать название товара в обычный
-  // поиск руками, чтобы получить релевантное. Теперь сужаем тем же способом
-  // автоматически: название товара из кабинета проверяем на пересечение основ с
-  // названием/лотами закупки — тем же `purchaseStems`/`LKTZ.stemSet`, что и
-  // «Умная сверка» (см. matchFor выше). Одной общей основы достаточно — ровно то,
-  // что раньше давало «1-2 слова» руками в поиске.
-  function productStemSets() {
-    return LK.getProducts().map(pr => LKTZ.stemSet(pr.name || "")).filter(s => s.size);
+  // поиск руками, чтобы получить релевантное.
+  //
+  // ⚠️ ПЕРВАЯ версия сужения (пересечение ЛЮБОЙ основы слова) ловила ложные
+  // совпадения ровно по той же причине, по которой у «Умной сверки» есть вес по
+  // редкости (см. buildCorpus выше): товар «Облучатель рециркулятор ВОЗДУХА
+  // ультрафиолетовый» ловил «кондиционирование воздуха», «сжатый воздух» и даже
+  // «санаторий Горный ВОЗДУХ» — общее слово «воздух» одно давало совпадение.
+  // Замер на живом снапшоте (48 101 закупка): без веса — ложные срабатывания;
+  // с весом по редкости — истинная закупка 55 баллов, все ложные ровно 20
+  // (совпадение только по «воздух»), порог 25 чётко разделяет.
+  //
+  // Корпус — по названиям/лотам ЛЕНТЫ, а не по tzTerms (тот корпус грузится
+  // только для «Умной сверки», которая временно скрыта). Ключ кэша — длина
+  // ленты, тот же грубый инвалидатор, что у poolKey() ниже.
+  let prodCorpusIdf = null;
+  let prodCorpusKey = -1;
+  function prodCorpus() {
+    const key = LK.allPurchases().length;
+    if (prodCorpusKey === key && prodCorpusIdf) return prodCorpusIdf;
+    const df = new Map();
+    const purchases = LK.allPurchases();
+    purchases.forEach(p => purchaseStems(p).forEach(t => df.set(t, (df.get(t) || 0) + 1)));
+    prodCorpusIdf = LKTZ.makeIdf(df, purchases.length);
+    prodCorpusKey = key;
+    return prodCorpusIdf;
+  }
+  const PROD_MATCH_MIN_SCORE = 25;   // как у subjectVerdict: ниже — шум, не сигнал
+  function productSubjects() {
+    const idf = prodCorpus();
+    return LK.getProducts()
+      .map(pr => LKTZ.subjectTerms(LKTZ.termFreq(pr.name || ""), idf, 8))
+      .filter(s => s.length);
   }
   function passesProdMatch(p) {
     if (!state.prodMatchEnabled) return true;
     if (!((p.specCount || 0) > 0)) return false;
-    const sets = productStemSets();
-    if (!sets.length) return true;   // товар без названия не бывает, но не запираем ленту зря
+    const subjects = productSubjects();
+    if (!subjects.length) return true;   // товар без названия не бывает, но не запираем ленту зря
     const hay = purchaseStems(p);
-    return sets.some(s => [...s].some(t => hay.has(t)));
+    return subjects.some(s => LKTZ.subjectMatch(s, hay).score >= PROD_MATCH_MIN_SCORE);
   }
 
   function subjectVerdict(score) {
