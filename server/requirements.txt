@@ -10,3 +10,4 @@ email-validator==2.2.0
 pyotp==2.9.0
 qrcode==8.0
 cryptography>=42.0.0  # шифрование TOTP-секрета at-rest (и так приходит с pdfplumber, фиксируем явно)
+anthropic>=1.2.0  # app/spec_llm.py — LLM-извлечение требований там, где ktrutable.js не нашёл таблицы

@@ -7,7 +7,10 @@
 
 Теперь у нас есть обе стороны настоящей сверки:
   • требования — `lotItems[].chars` из таблицы КТРУ (tools/sources/ktrutable.js),
-    уже с операторами gte/lte/range/eq/present и жёсткостью hard/soft;
+    уже с операторами gte/lte/range/eq/present и жёсткостью hard/soft; там, где
+    структурированной таблицы нет (см. spec_llm.py — 87%/98% позиций 44/223-ФЗ),
+    требования лениво извлекает LLM из названия позиции, только когда для неё
+    уже выбран товар пользователя ниже;
   • карточки товара — `Product` с атрибутами, из кабинета пользователя.
 Ядро `matcher.match()` умеет их сравнивать и покрыто 39 тестами. Здесь — только
 мост: прочитать позиции, перевести словарь, выбрать товар под позицию, собрать
@@ -39,6 +42,8 @@ from matcher import match as engine_match  # noqa: E402
 from schema import (  # noqa: E402
     Attribute, Hardness, MatchResult, Operator, Product, Requirement, Verdict,
 )
+
+from . import spec_llm  # noqa: E402
 
 # Файл довеска со спецификацией — тот же, что грузит фронт при раскрытии
 # карточки. Отдельной копии данных для бэкенда не заводим: разъехавшиеся копии
@@ -180,8 +185,14 @@ def match_lot(purchase_id: str, products: List[dict]) -> dict:
     prods = list(products or [])
     results = []
     covered = 0
+    unverified = 0
     for idx, item in enumerate(items):
         reqs = to_requirements(item)
+        # Кандидат товара решаем ДО обращения к LLM: без товара сверять
+        # позицию всё равно нечем, а извлечение требований стоит денег —
+        # тратить его на позицию без единого подходящего товара в кабинете
+        # бессмысленно (см. spec_llm.py: объём должен зависеть от реального
+        # интереса пользователя, не от размера корпуса).
         chosen, reason = pick_product(item, prods)
         if chosen is None:
             results.append({
@@ -191,6 +202,30 @@ def match_lot(purchase_id: str, products: List[dict]) -> dict:
                 "verdict": Verdict.DISQUALIFIED.value, "score": 0,
                 "checks": [], "requirements": len(reqs),
                 "note": "в каталоге нет подходящего товара",
+            })
+            continue
+        # Структурированной таблицы нет (goods-фолбэк ktrutable.js) — пробуем
+        # вытащить требования LLM'ом из названия позиции (см. spec_llm.py):
+        # заказчик часто пишет характеристики прямо в ячейке товара текстом.
+        if not reqs and spec_llm.should_try(item.get("name", "")):
+            llm_chars = spec_llm.extract_cached(item.get("name", ""))
+            if llm_chars:
+                reqs = to_requirements({"chars": llm_chars})
+        # ⚠️ Всё равно пусто — не «сверять нечего, значит проходит» (движок сам
+        # теперь честен и на пустом checks даёт ELIGIBLE_WITH_GAPS, см.
+        # matcher.py), а отдельный статус здесь, в мосте: позицию нельзя ни
+        # засчитать в `covered` (мы ничего не проверили), ни списать в провал
+        # всего лота (это дыра в данных, а не нарушение требования).
+        if not reqs:
+            unverified += 1
+            results.append({
+                "index": idx, "name": item.get("name", ""), "ktru": item.get("ktru", ""),
+                "qty": item.get("qty"), "unit": item.get("unit", ""),
+                "product_id": chosen.get("id"), "product_name": chosen.get("name", ""),
+                "match_by": reason,
+                "verdict": "unverified", "score": 0,
+                "checks": [], "requirements": 0,
+                "note": "в документе закупки нет структурированных характеристик для этой позиции — сверить нечем",
             })
             continue
         res: MatchResult = engine_match(to_product(chosen), reqs, purchase_id)
@@ -218,11 +253,24 @@ def match_lot(purchase_id: str, products: List[dict]) -> dict:
             } for c in res.checks],
         })
 
+    # Лот всё-или-ничего, но «не смогли проверить» и «проверили и не прошли» —
+    # разные вещи, и раньше первое молча тонуло во втором (covered < total →
+    # DISQUALIFIED целиком, даже если ни одного реального нарушения не было).
+    # Теперь: есть настоящий провал (нашли продукт, но требование нарушено) →
+    # дисквалификация как и раньше; иначе, если что-то осталось непроверенным
+    # (unverified) или без подходящего товара — «есть пробелы», не «не проходит».
+    failed = len(items) - covered - unverified
+    if failed > 0:
+        verdict = Verdict.DISQUALIFIED.value
+    elif covered == len(items):
+        verdict = Verdict.ELIGIBLE.value
+    else:
+        verdict = Verdict.ELIGIBLE_WITH_GAPS.value
+
     return {
         "status": "ok", "purchase_id": purchase_id,
         "positions": results, "covered": covered, "total": len(items),
-        # Лот всё-или-ничего: частичное покрытие — это НЕ частичный успех.
-        "verdict": Verdict.ELIGIBLE.value if covered == len(items) else Verdict.DISQUALIFIED.value,
+        "verdict": verdict,
     }
 
 

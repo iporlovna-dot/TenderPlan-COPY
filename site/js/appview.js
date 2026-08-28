@@ -758,9 +758,25 @@
   // довеском spec.json по требованию). Сам вердикт движка считается лениво на
   // видимой странице (см. renderFeed), фильтровать по нему всю ленту нельзя —
   // это был бы серверный вызов на каждую из 50 000 закупок.
+  //
+  // ⚠️ specCount>0 само по себе НЕ значит «про ваш товар» — это только «у этой
+  // закупки вообще есть таблица характеристик», и таких тысячи на любую тему.
+  // Раньше человеку приходилось ДОПОЛНИТЕЛЬНО вписывать название товара в обычный
+  // поиск руками, чтобы получить релевантное. Теперь сужаем тем же способом
+  // автоматически: название товара из кабинета проверяем на пересечение основ с
+  // названием/лотами закупки — тем же `purchaseStems`/`LKTZ.stemSet`, что и
+  // «Умная сверка» (см. matchFor выше). Одной общей основы достаточно — ровно то,
+  // что раньше давало «1-2 слова» руками в поиске.
+  function productStemSets() {
+    return LK.getProducts().map(pr => LKTZ.stemSet(pr.name || "")).filter(s => s.size);
+  }
   function passesProdMatch(p) {
     if (!state.prodMatchEnabled) return true;
-    return (p.specCount || 0) > 0;
+    if (!((p.specCount || 0) > 0)) return false;
+    const sets = productStemSets();
+    if (!sets.length) return true;   // товар без названия не бывает, но не запираем ленту зря
+    const hay = purchaseStems(p);
+    return sets.some(s => [...s].some(t => hay.has(t)));
   }
 
   function subjectVerdict(score) {
@@ -1072,7 +1088,9 @@
     return out;
   }
 
-  function verdictClass(v) { return v === "eligible" ? "ok" : v === "eligible_with_gaps" ? "gap" : "bad"; }
+  function verdictClass(v) {
+    return v === "eligible" ? "ok" : v === "eligible_with_gaps" ? "gap" : v === "unverified" ? "unknown" : "bad";
+  }
   function verdictBadge(v) {
     if (v === "eligible") return `<span class="badge badge-ok">Проходите</span>`;
     if (v === "eligible_with_gaps") return `<span class="badge badge-gap">Есть пробелы</span>`;
@@ -1320,7 +1338,10 @@
   // Три состояния данных (нет товаров / гружу / есть результат) — те же различия,
   // что у specBlock («таблицы нет» ≠ «довесок не приехал»): врать в карточке нельзя.
   function verdictLabel(v) {
-    return v === "eligible" ? "проходит" : v === "eligible_with_gaps" ? "есть пробелы" : "не проходит";
+    if (v === "eligible") return "проходит";
+    if (v === "eligible_with_gaps") return "есть пробелы";
+    if (v === "unverified") return "нет данных";
+    return "не проходит";
   }
 
   // Компактный бейдж вердикта движка на карточке ленты — показывается только при

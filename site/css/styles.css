@@ -556,6 +556,7 @@ p { margin: 0 0 1em; color: var(--ink-soft); text-wrap: pretty; }
 .badge-ok { background: var(--ok-bg); color: var(--ok); }
 .badge-gap { background: var(--gap-bg); color: var(--gap); }
 .badge-bad { background: var(--bad-bg); color: var(--bad); }
+.badge-unknown { background: var(--paper-deep); color: var(--ink-faint); }
 .badge-source { background: var(--paper-deep); color: var(--ink-soft); }
 
 .mock-card h4 { font-size: 1.02rem; margin-bottom: 4px; }

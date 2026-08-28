@@ -11,7 +11,7 @@ Haiku, извлечение требований из грязных ТЗ — So
 from __future__ import annotations
 
 # Актуальные id (см. claude-api). Sonnet 5 — рабочая лошадка, Opus 4.8 — топ, Haiku 4.5 — дёшево.
-HAIKU = "claude-haiku-4-5"
+HAIKU = "claude-haiku-4-5-20251001"
 SONNET = "claude-sonnet-5"
 OPUS = "claude-opus-4-8"
 

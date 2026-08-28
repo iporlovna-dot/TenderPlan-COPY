@@ -434,7 +434,11 @@ def match(product: Product, requirements: List[Requirement],
 
     if disqualified:
         verdict = Verdict.DISQUALIFIED
-    elif all(c.status == Status.PASS for c in checks):
+    # ⚠️ `all(...)` на пустом checks истинно вакуумно — «ноль требований, ноль
+    # нарушений» молча читалось бы как ELIGIBLE, хотя мы вообще ничего не
+    # проверили (нет извлечённых требований). Пустой список — это «нечего
+    # сверить», а не «сверили и всё сошлось»: другой вердикт, честнее.
+    elif checks and all(c.status == Status.PASS for c in checks):
         verdict = Verdict.ELIGIBLE
     else:
         verdict = Verdict.ELIGIBLE_WITH_GAPS

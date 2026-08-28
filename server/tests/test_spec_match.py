@@ -217,6 +217,45 @@ class TestMatchLot(unittest.TestCase):
         pos = sm.match_lot("eis_1", [GLOVES])["positions"][0]
         self.assertEqual((pos["qty"], pos["unit"]), (100, "пара"))
 
+    def test_позиция_без_характеристик_не_проходит_молча_и_не_топит_лот(self):
+        # ⚠️ Раньше пустой chars → matcher.match(product, [], ...) → `all([])`
+        # вакуумно истинно → тихий ELIGIBLE, хотя ничего не проверялось (замер
+        # 2026-08-28: goods-фолбэк ktrutable.js — 87% позиций 44-ФЗ, 98% 223-ФЗ).
+        # Название короткое («Бахилы», < LK_SPEC_LLM_NAME_MIN) — LLM-фолбэк
+        # (spec_llm.py) сам себя не пробует, тест остаётся offline-детерминированным.
+        bahily = {"id": "prod_bahily", "name": "Бахилы", "ktru": [], "attributes": []}
+        self.path = _write_spec([item(), item(name="Бахилы", ktru="", okpd="", chars=[])])
+        sm = _fresh_module(self.path)
+        res = sm.match_lot("eis_1", [GLOVES, bahily])
+        unverified = res["positions"][1]
+        self.assertEqual(unverified["verdict"], "unverified")
+        self.assertEqual(unverified["product_id"], "prod_bahily",
+                         "товар для позиции нашёлся — не хватает именно характеристик, а не товара")
+        self.assertTrue(unverified["note"], "должно быть понятно ПОЧЕМУ нет вердикта")
+        self.assertEqual(res["covered"], 1, "unverified не считается закрытой позицией")
+        self.assertEqual(res["verdict"], "eligible_with_gaps",
+                         "нет данных для проверки — пробел, а не отказ и не тихий проход")
+
+    def test_нет_товара_приоритетнее_llm_фолбэка(self):
+        # Товара под позицию нет вообще — LLM звать незачем (см. spec_match.py:
+        # pick_product решается ДО обращения к spec_llm, а не после).
+        self.path = _write_spec([item(name="Нечто без товара в каталоге", ktru="", okpd="", chars=[])])
+        sm = _fresh_module(self.path)
+        res = sm.match_lot("eis_1", [])
+        pos = res["positions"][0]
+        self.assertEqual(pos["verdict"], "disqualified")
+        self.assertEqual(pos["note"], "в каталоге нет подходящего товара")
+
+    def test_нарушение_остаётся_отказом_даже_рядом_с_unverified(self):
+        bad = item(chars=[{"key": "Материал", "operator": "eq", "value": "латекс",
+                           "hardness": "hard", "raw": "латекс"}])
+        empty = item(name="Бахилы", ktru="", okpd="", chars=[])
+        self.path = _write_spec([bad, empty])
+        sm = _fresh_module(self.path)
+        res = sm.match_lot("eis_1", [GLOVES])
+        self.assertEqual(res["verdict"], "disqualified",
+                         "настоящее нарушение важнее соседнего unverified — лот всё-или-ничего")
+
 
 class TestSpecFile(unittest.TestCase):
     def test_отсутствующий_файл_не_роняет_сверку(self):
