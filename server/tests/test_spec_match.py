@@ -19,7 +19,7 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "matcher", "tests")))
-from _llm_mock import MappingLLM  # noqa: E402
+from _llm_mock import ChecksLLM, MappingLLM  # noqa: E402
 
 
 def _fresh_module(spec_path, db_path=None):
@@ -407,6 +407,105 @@ class TestAlignKeysLlm(unittest.TestCase):
         ])), self.CARD, client=llm)
         self.assertEqual(out[0].key, "оттенок")
         self.assertEqual(llm.calls, 0, "флаг выключен — деньги не тратим")
+
+
+class TestAlignValues(unittest.TestCase):
+    """LK_ALIGN_VALUES — семантическая сверка значений с кэшем в align_values_cache
+    (Фаза 2 плана piped-forging-flame, matcher/src/keymatch.align_values). Мок
+    anthropic-клиента (ChecksLLM, matcher/tests/_llm_mock.py) — сети не бьём. Тестируем
+    `_align_values_cached` напрямую, тем же приёмом, что TestAlignKeysLlm."""
+
+    def setUp(self):
+        self._prev_flag = os.environ.get("LK_ALIGN_VALUES")
+        os.environ["LK_ALIGN_VALUES"] = "1"
+        fd, self.db_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        os.unlink(self.db_path)  # init_db создаст заново
+        self.path = _write_spec([item()])
+        self.sm = _fresh_module(self.path, db_path=self.db_path)
+        self.card = self.sm.to_product({
+            "id": "prod", "name": "x",
+            "attributes": [{"key": "Материал", "value": "нержавеющая сталь"}],
+        })
+
+    def tearDown(self):
+        if self._prev_flag is None:
+            os.environ.pop("LK_ALIGN_VALUES", None)
+        else:
+            os.environ["LK_ALIGN_VALUES"] = self._prev_flag
+        os.unlink(self.path)
+        if os.path.exists(self.db_path):
+            os.unlink(self.db_path)
+
+    def _reqs(self):
+        # ключ уже совпадает буквально («Материал»=«Материал») — расходится только
+        # ЗНАЧЕНИЕ («металл» вместо «нержавеющая сталь»), это и оценивает align_values.
+        return self.sm.to_requirements(item(chars=[
+            {"key": "Материал", "operator": "eq", "value": "металл",
+             "unit": "", "hardness": "hard", "raw": "металл"},
+        ]))
+
+    def test_llm_подтверждает_семантическое_совпадение(self):
+        llm = ChecksLLM(["Материал"])
+        out = self.sm._align_values_cached(self._reqs(), self.card, client=llm)
+        self.assertEqual(out[0].value, "нержавеющая сталь",
+                         "значение требования нормализовано к карточному — matcher засчитает pass")
+        self.assertEqual(llm.calls, 1)
+
+    def test_llm_отказывает_значение_остаётся_как_в_тз(self):
+        llm = ChecksLLM([])  # ни один ключ не подтверждён
+        out = self.sm._align_values_cached(self._reqs(), self.card, client=llm)
+        self.assertEqual(out[0].value, "металл", "не подтверждено — значение ТЗ не трогаем")
+
+    def test_повтор_идёт_из_кэша_не_в_сеть(self):
+        llm = ChecksLLM(["Материал"])
+        self.sm._align_values_cached(self._reqs(), self.card, client=llm)
+        self.sm._align_values_cached(self._reqs(), self.card, client=llm)
+        self.assertEqual(llm.calls, 1, "второй вызов должен прийти из кэша, не из сети")
+
+    def test_отказ_тоже_кэшируется(self):
+        llm = ChecksLLM([])
+        self.sm._align_values_cached(self._reqs(), self.card, client=llm)
+        self.sm._align_values_cached(self._reqs(), self.card, client=llm)
+        self.assertEqual(llm.calls, 1, "честное «не совпадает» — тоже успех, кэшируется")
+
+    def test_сбой_llm_не_падает_и_не_кэшируется(self):
+        class BoomLLM(ChecksLLM):
+            def respond(self, request):
+                raise RuntimeError("сеть легла")
+        out = self.sm._align_values_cached(self._reqs(), self.card, client=BoomLLM([]))
+        self.assertEqual(out[0].value, "металл", "сбой не должен ронять сверку")
+
+        llm2 = ChecksLLM(["Материал"])
+        out2 = self.sm._align_values_cached(self._reqs(), self.card, client=llm2)
+        self.assertEqual(out2[0].value, "нержавеющая сталь",
+                         "сбой не кэшируется — повтор должен попробовать снова")
+
+    def test_уже_совпадающие_строково_не_идут_в_llm(self):
+        reqs = self.sm.to_requirements(item(chars=[
+            {"key": "Материал", "operator": "eq", "value": "нержавеющая сталь",
+             "unit": "", "hardness": "hard", "raw": "нержавеющая сталь"},
+        ]))
+        llm = ChecksLLM(["Материал"])
+        out = self.sm._align_values_cached(reqs, self.card, client=llm)
+        self.assertEqual(out[0].value, "нержавеющая сталь")
+        self.assertEqual(llm.calls, 0, "уже совпадает строково — звать LLM незачем")
+
+    def test_флаг_выключен_match_lot_не_меняет_значение(self):
+        os.environ["LK_ALIGN_VALUES"] = "0"
+        pos = item(chars=[{"key": "Материал", "operator": "eq", "value": "металл",
+                           "unit": "", "hardness": "hard", "raw": "металл"}])
+        path = _write_spec([pos])
+        try:
+            sm2 = _fresh_module(path, db_path=self.db_path)
+            card = {"id": "prod", "name": "x", "ktru": ["32.50.13.190-00007686"],
+                    "attributes": [{"key": "Материал", "value": "нержавеющая сталь"}]}
+            res = sm2.match_lot("eis_1", [card])
+            checks = res["positions"][0]["checks"]
+            self.assertEqual(checks[0]["status"], "fail",
+                             "флаг выключен — буквальное расхождение значения остаётся нарушением")
+        finally:
+            os.unlink(path)
 
 
 class TestSpecFile(unittest.TestCase):

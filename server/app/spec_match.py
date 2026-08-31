@@ -63,6 +63,14 @@ ALIGN_KEYS = os.getenv("LK_ALIGN_KEYS", "1") != "0"
 # карточек товара). Включать осознанно, тем же паттерном, что LK_ALIGN_VALUES.
 ALIGN_KEYS_LLM = os.getenv("LK_ALIGN_KEYS_LLM", "0") == "1"
 
+# Семантическая сверка ЗНАЧЕНИЙ (Фаза 2 плана `piped-forging-flame`, keymatch.align_values)
+# — платный LLM-вызов на строковые eq-требования, где КЛЮЧ уже совпал (буквально или после
+# align_keys), но значение написано по-разному («металл» vs «нержавеющая сталь»). По
+# умолчанию ВЫКЛЮЧЕН тем же приёмом, что ALIGN_KEYS_LLM: доля таких пар на живом трафике
+# не оценена (2026-08-31 замер упёрся в то же — почти нет реальных карточек с атрибутами,
+# см. память spec-match-real-usage-empty).
+ALIGN_VALUES = os.getenv("LK_ALIGN_VALUES", "0") == "1"
+
 # Файл довеска со спецификацией — тот же, что грузит фронт при раскрытии
 # карточки. Отдельной копии данных для бэкенда не заводим: разъехавшиеся копии
 # врали бы по-разному.
@@ -230,6 +238,85 @@ def _align_keys(reqs: List[Requirement], product_attrs: List[dict], client=None)
     ]
 
 
+def _align_values_cache_key(key: str, req_value: str, card_value: str) -> str:
+    """Хэш ОДНОЙ пары (ключ, значение ТЗ, значение карточки) — в отличие от align_keys,
+    здесь единица кэша не весь запрос: keymatch._VAL_SYSTEM сравнивает значения попарно,
+    не оглядываясь на остальные поля, значит одна и та же пара «материал: металл /
+    нержавеющая сталь» законно кэшируется один раз и переиспользуется в других
+    закупках/позициях с тем же расхождением написания."""
+    payload = json.dumps({"key": key, "req": req_value, "card": card_value}, ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _align_values_cached(reqs: List[Requirement], product: Product, client=None) -> List[Requirement]:
+    """Семантическая сверка значений (`keymatch.align_values`) с кэшем ПО ПАРЕ в общей
+    SQLite (`align_values_cache`) — не по всему запросу разом, как `_llm_align_cached`
+    (см. её docstring про разницу в единице кэша).
+
+    Оцениваем только строковые eq-требования с уже совпавшим ключом и различным
+    написанием значения — та же фильтрация, что внутри `keymatch.align_values`, но
+    выполненная ЗДЕСЬ тоже, чтобы решить, какие пары есть в кэше, до платного вызова.
+
+    ⚠️ Кэшируем только успешный ответ. Сетевая/API-ошибка не кэшируется (та же логика,
+    что у `_llm_align_cached`/`spec_llm.extract_cached`) — разовый сбой канала не должен
+    навсегда запереть пару в «не совпадает»."""
+    pending = []  # (index, key, req_value, card_value, hash)
+    for i, r in enumerate(reqs):
+        attr = product.get(r.key)
+        if attr is None or not isinstance(r.value, str) or not isinstance(attr.value, str):
+            continue
+        if r.value.strip().lower() == attr.value.strip().lower():
+            continue  # уже совпадают строково — сверять нечего
+        pending.append((i, r.key, r.value, attr.value,
+                         _align_values_cache_key(r.key, r.value, attr.value)))
+    if not pending:
+        return reqs
+
+    conn = db.get_conn()
+    try:
+        satisfies: Dict[str, bool] = {}
+        for *_rest, h in pending:
+            row = conn.execute(
+                "SELECT satisfies FROM align_values_cache WHERE pair_hash = ?", (h,)
+            ).fetchone()
+            if row is not None:
+                satisfies[h] = bool(row["satisfies"])
+    finally:
+        conn.close()
+
+    uncached = [p for p in pending if p[4] not in satisfies]
+    if uncached:
+        raw = [{"key": k, "value": rv} for (_, k, rv, _, _) in uncached]
+        try:
+            evaluated = keymatch.align_values(raw, product, client=client)
+        except Exception as e:  # сеть, лимиты, отказ модели, отсутствующий ключ
+            log.warning("align_values: LLM упал: %s", e)
+            evaluated = None  # ⚠️ НЕ raw: ниже это отличает сбой от честного «не совпадает»
+        if evaluated is not None:
+            fresh_rows = []
+            now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            for (idx, k, rv, cv, h), out in zip(uncached, evaluated):
+                ok = out.get("value") == cv  # align_values подменяет value на карточное при satisfies
+                satisfies[h] = ok
+                fresh_rows.append((h, int(ok), now))
+            conn = db.get_conn()
+            try:
+                conn.executemany(
+                    "INSERT OR REPLACE INTO align_values_cache (pair_hash, satisfies, created_at) "
+                    "VALUES (?, ?, ?)",
+                    fresh_rows,
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+    out = list(reqs)
+    for idx, _k, _rv, cv, h in pending:
+        if satisfies.get(h):
+            out[idx] = dataclasses.replace(out[idx], value=cv)
+    return out
+
+
 # ──────────────────────────────────────────────── какой товар к какой позиции
 
 _WORD = re.compile(r"[а-яёa-z0-9]{3,}", re.IGNORECASE)
@@ -325,7 +412,10 @@ def match_lot(purchase_id: str, products: List[dict]) -> dict:
             })
             continue
         reqs = _align_keys(reqs, chosen.get("attributes") or [])
-        res: MatchResult = engine_match(to_product(chosen), reqs, purchase_id)
+        product = to_product(chosen)
+        if ALIGN_VALUES:
+            reqs = _align_values_cached(reqs, product)
+        res: MatchResult = engine_match(product, reqs, purchase_id)
         ok = res.verdict != Verdict.DISQUALIFIED
         if ok:
             covered += 1

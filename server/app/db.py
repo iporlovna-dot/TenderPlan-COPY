@@ -134,6 +134,20 @@ CREATE TABLE IF NOT EXISTS align_keys_cache (
     mapping TEXT NOT NULL,            -- JSON {remaining_key: card_key}
     created_at TEXT NOT NULL
 );
+-- Кэш align_values (см. app/spec_match.py, matcher/src/keymatch.align_values) — Фаза 2
+-- плана `piped-forging-flame`. В отличие от align_keys_cache единица кэша — ОТДЕЛЬНАЯ
+-- пара (ключ, значение ТЗ, значение карточки), не весь запрос разом: keymatch._VAL_SYSTEM
+-- сравнивает значения попарно, не разрешая конфликты между полями между собой (в отличие
+-- от align_keys, где имя каждого поля оценивается с оглядкой на ВСЕ поля карточки сразу),
+-- поэтому одна и та же пара «материал: металл / нержавеющая сталь» повторно всплывает в
+-- разных закупках и у разных позиций одного каталога — кэш её сводит один раз.
+-- ⚠️ Кэшируем ТОЛЬКО успешный вызов (включая честное satisfies=false). Сетевая/API-ошибка
+-- не кэшируется — та же логика, что у align_keys_cache/spec_llm_cache.
+CREATE TABLE IF NOT EXISTS align_values_cache (
+    pair_hash TEXT PRIMARY KEY,
+    satisfies INTEGER NOT NULL,       -- 0/1
+    created_at TEXT NOT NULL
+);
 """
 
 
