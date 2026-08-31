@@ -158,43 +158,50 @@ def _embed_map(remaining: Dict[str, object], product_fields: Dict[str, object],
     return out
 
 
-def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
-               client: Optional[anthropic.Anthropic] = None,
-               key_synonyms: Optional[List[list]] = None,
-               embedder=None,
-               llm_fallback: bool = True) -> Dict[str, str]:
-    """Сопоставить поля ТЗ с полями карточки по имени И значению. -> {ключ_тз: ключ_карточки}.
+def free_map(req_fields: Dict[str, object], product_fields: Dict[str, object],
+             key_synonyms: Optional[List[list]] = None,
+             embedder=None) -> tuple:
+    """Бесплатные слои align_keys, БЕЗ LLM: (1) детерминированный (морфология+словарь),
+    (2) на остатке — локальные эмбеддинги, если доступны. -> (mapping, remaining).
 
-    Слои (plan.md §3.7): (1) ДЕТЕРМИНИРОВАННЫЙ (морфология имени + словарь `key_synonyms` из профиля)
-    — стабильно и бесплатно; (2) на остатке — ЛОКАЛЬНЫЕ ЭМБЕДДИНГИ (bge-m3) с ВЫСОКИМ порогом:
-    сводят только уверенные пары, остаток НИЖЕ порога → пробел (решение 2026-07-28: полностью
-    локально/детерминированно, трудные синонимы добирает растущий `key_synonyms`, а не облако).
-    LLM (Haiku) — только МЯГКАЯ деградация, если эмбеддер недоступен (нет пакета/модели). Значения
-    нужны, чтобы разрешать расхождения раскладки и отсекать маппинг разного типа. Пустой вход → {}.
+    Вынесено отдельной функцией (не только внутренним шагом `align_keys`), потому что
+    потребителю иногда нужно решить САМОМУ, что делать с остатком — например, свериться
+    с платным кэшем перед тем, как вообще думать об LLM (см. Лекало `server/app/spec_match.py`,
+    Фаза 3 плана `piped-forging-flame`: кэш живёт на стороне сервера, а не в этом
+    бесплатном/безсетевом модуле).
 
-    embedder — инъекция эмбеддера (для тестов); None → singleton `embed.default_embedder()` (или
-    None, если недоступен → тогда LLM). client — anthropic-клиент для LLM-fallback.
-    llm_fallback — False запрещает и LLM-путь: остаток после детерминированного слоя (и
-    эмбеддингов, если эмбеддер доступен) просто остаётся несведённым, вызов `anthropic.Anthropic()`
-    не создаётся и деньги не тратятся. Нужно потребителям, которым важна гарантированно бесплатная
-    сверка (см. Лекало `server/app/spec_match.py`).
-    """
+    ⚠️ Если эмбеддер прогнан, остаток НИЖЕ порога — пробел, а не то, что можно передать
+    в LLM: решение 2026-07-28 сознательно не зовёт облако на то, что эмбеддинг отверг
+    (см. `align_keys` docstring). Поэтому remaining в этом случае — всегда `{}`."""
     if not req_fields or not product_fields:
-        return {}
+        return {}, {}
 
     mapping, remaining = _deterministic_map(req_fields, product_fields, key_synonyms)
     if not remaining:
-        return mapping                          # всё сведено детерминированно — ни эмбеддер, ни LLM
+        return mapping, {}                      # всё сведено детерминированно — ни эмбеддер, ни LLM
 
     embedder = embedder if embedder is not None else default_embedder()
     if embedder is not None:
         mapping.update(_embed_map(remaining, product_fields, embedder))
-        return mapping     # уверенные пары сведены; остаток ниже порога → пробел (локально, LLM не зовём)
+        return mapping, {}   # уверенные пары сведены; остаток ниже порога → пробел (локально, LLM не зовём)
 
-    if not llm_fallback:
-        return mapping                          # остаток без эмбеддера и без разрешения на LLM → пробел
+    return mapping, remaining
 
-    # эмбеддер недоступен → прежний LLM-путь (мягкая деградация)
+
+def llm_map(remaining: Dict[str, object], product_fields: Dict[str, object],
+            client: Optional[anthropic.Anthropic] = None) -> Dict[str, str]:
+    """LLM-добор ИМЁН на остатке после `free_map` (Haiku, батч на весь остаток разом —
+    модель видит все поля карточки сразу, это и позволяет ей разрешать конфликты
+    раскладки не хуже человека, см. `_SYSTEM`). Публична — вызывается напрямую там, где
+    нужен СВОЙ кэш вокруг платного вызова (сервер), а не только из `align_keys`.
+
+    Возвращает ТОЛЬКО новые пары (remaining_key → card_key), без слияния с прежними
+    слоями — тем же приёмом, что `_embed_map`. Пустой словарь — либо LLM честно ничего
+    не нашла, либо остаток пуст; и то и другое можно кэшировать как успех (решает
+    вызывающий, здесь кэша нет)."""
+    if not remaining or not product_fields:
+        return {}
+
     def _fmt(d):
         return [{"имя": k, "значение": v} for k, v in d.items() if k]
 
@@ -212,14 +219,46 @@ def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        return mapping  # обрыв ответа модели — оставляем детерминированный слой, не роняем прогон
+        return {}  # обрыв ответа модели — вызывающий останется с тем, что было до LLM
     card_set = set(product_fields)
+    out: Dict[str, str] = {}
     for m in data.get("mapping", []):
         tz, cd = m.get("tz_key"), m.get("card_key")
         if (cd in card_set and tz != cd and tz in remaining
                 # отсекаем маппинг с расхождением типа значения (строка↔число)
                 and _types_compatible(remaining.get(tz), product_fields.get(cd))):
-            mapping[tz] = cd
+            out[tz] = cd
+    return out
+
+
+def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
+               client: Optional[anthropic.Anthropic] = None,
+               key_synonyms: Optional[List[list]] = None,
+               embedder=None,
+               llm_fallback: bool = True) -> Dict[str, str]:
+    """Сопоставить поля ТЗ с полями карточки по имени И значению. -> {ключ_тз: ключ_карточки}.
+
+    Слои (plan.md §3.7): (1) ДЕТЕРМИНИРОВАННЫЙ (морфология имени + словарь `key_synonyms` из профиля)
+    — стабильно и бесплатно; (2) на остатке — ЛОКАЛЬНЫЕ ЭМБЕДДИНГИ (bge-m3) с ВЫСОКИМ порогом:
+    сводят только уверенные пары, остаток НИЖЕ порога → пробел (решение 2026-07-28: полностью
+    локально/детерминированно, трудные синонимы добирает растущий `key_synonyms`, а не облако).
+    LLM (Haiku) — только МЯГКАЯ деградация, если эмбеддер недоступен (нет пакета/модели). Значения
+    нужны, чтобы разрешать расхождения раскладки и отсекать маппинг разного типа. Пустой вход → {}.
+
+    Слои (1)+(2) — `free_map`, (3) — `llm_map`; `align_keys` просто их составляет. Обе
+    вынесены публично для потребителей со своим кэшем вокруг платного шага (см. `llm_map`).
+
+    embedder — инъекция эмбеддера (для тестов); None → singleton `embed.default_embedder()` (или
+    None, если недоступен → тогда LLM). client — anthropic-клиент для LLM-fallback.
+    llm_fallback — False запрещает и LLM-путь: остаток после детерминированного слоя (и
+    эмбеддингов, если эмбеддер доступен) просто остаётся несведённым, вызов `anthropic.Anthropic()`
+    не создаётся и деньги не тратятся. Нужно потребителям, которым важна гарантированно бесплатная
+    сверка (см. Лекало `server/app/spec_match.py`).
+    """
+    mapping, remaining = free_map(req_fields, product_fields, key_synonyms, embedder)
+    if not remaining or not llm_fallback:
+        return mapping
+    mapping.update(llm_map(remaining, product_fields, client))
     return mapping
 
 

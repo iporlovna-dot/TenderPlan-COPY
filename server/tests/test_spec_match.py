@@ -18,19 +18,33 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "matcher", "tests")))
+from _llm_mock import MappingLLM  # noqa: E402
 
 
-def _fresh_module(spec_path):
+def _fresh_module(spec_path, db_path=None):
     """Модуль читает tz.json по пути из окружения и кэширует по mtime — для
     каждого теста поднимаем его заново на своём файле.
 
     ⚠️ Одного sys.modules.pop мало: `from app import spec_match` сначала смотрит
     АТРИБУТ пакета `app`, а он после первого импорта остаётся и указывает на
     старый модуль со старым SPEC_FILE. Поэтому перезагружаем явно.
+
+    db_path — для тестов кэша align_keys_cache (LK_ALIGN_KEYS_LLM): `db.DB_PATH`
+    читается из окружения ТОЛЬКО при импорте модуля, тем же приёмом, что
+    test_spec_llm._fresh_spec_llm, поэтому `app.db` тоже перезагружаем явно.
     """
     import importlib
     os.environ["LK_SPEC_FILE"] = spec_path
+    if db_path is not None:
+        os.environ["LK_DB_PATH"] = db_path
     import app
+    if hasattr(app, "db"):
+        importlib.reload(app.db)
+    else:
+        importlib.import_module("app.db")
+    if db_path is not None:
+        app.db.init_db()
     if hasattr(app, "spec_match"):
         return importlib.reload(app.spec_match)
     return importlib.import_module("app.spec_match")
@@ -312,6 +326,87 @@ class TestAlignKeys(unittest.TestCase):
         checks = res["positions"][0]["checks"]
         self.assertEqual(checks[0]["key"], "цвет")
         self.assertEqual(checks[0]["status"], "gap")
+
+
+class TestAlignKeysLlm(unittest.TestCase):
+    """LK_ALIGN_KEYS_LLM — LLM-добор остатка align_keys с кэшем в align_keys_cache
+    (Фаза 3 плана piped-forging-flame, matcher/src/keymatch.llm_map). Мок anthropic-
+    клиента (MappingLLM, matcher/tests/_llm_mock.py) — сети не бьём. Тестируем
+    `_align_keys` напрямую (как test_spec_llm тестирует extract_cached напрямую),
+    не через match_lot — client туда не прокидывается сознательно, это приватный
+    тестовый шов, а не публичный параметр моста."""
+
+    CARD = [{"key": "Цвет", "value": "белый"}]
+
+    def setUp(self):
+        self._prev_llm = os.environ.get("LK_ALIGN_KEYS_LLM")
+        os.environ["LK_ALIGN_KEYS_LLM"] = "1"
+        fd, self.db_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        os.unlink(self.db_path)  # init_db создаст заново
+        self.path = _write_spec([item()])
+        self.sm = _fresh_module(self.path, db_path=self.db_path)
+
+    def tearDown(self):
+        if self._prev_llm is None:
+            os.environ.pop("LK_ALIGN_KEYS_LLM", None)
+        else:
+            os.environ["LK_ALIGN_KEYS_LLM"] = self._prev_llm
+        os.unlink(self.path)
+        if os.path.exists(self.db_path):
+            os.unlink(self.db_path)
+
+    def _reqs(self):
+        # «оттенок» не пересекается по токенам ни с одним ключом карточки —
+        # детерминированный слой обязан оставить остаток, чтобы был повод звать LLM.
+        return self.sm.to_requirements(item(chars=[
+            {"key": "оттенок", "operator": "eq", "value": "белый",
+             "unit": "", "hardness": "soft", "raw": "белый"},
+        ]))
+
+    def test_llm_сводит_остаток_после_детерминированного_слоя(self):
+        llm = MappingLLM([{"tz_key": "оттенок", "card_key": "Цвет"}])
+        out = self.sm._align_keys(self._reqs(), self.CARD, client=llm)
+        self.assertEqual(out[0].key, "Цвет")
+        self.assertTrue(out[0].remapped)
+        self.assertEqual(llm.calls, 1)
+
+    def test_повтор_идёт_из_кэша_не_в_сеть(self):
+        llm = MappingLLM([{"tz_key": "оттенок", "card_key": "Цвет"}])
+        self.sm._align_keys(self._reqs(), self.CARD, client=llm)
+        self.sm._align_keys(self._reqs(), self.CARD, client=llm)
+        self.assertEqual(llm.calls, 1, "второй вызов должен прийти из кэша, не из сети")
+
+    def test_пустой_результат_llm_тоже_кэшируется(self):
+        llm = MappingLLM([])  # LLM честно ничего не нашла
+        first = self.sm._align_keys(self._reqs(), self.CARD, client=llm)
+        second = self.sm._align_keys(self._reqs(), self.CARD, client=llm)
+        self.assertEqual(first[0].key, "оттенок")
+        self.assertEqual(second[0].key, "оттенок")
+        self.assertEqual(llm.calls, 1, "пустой ответ — тоже успех, кэшируется, не повторяем зря")
+
+    def test_сбой_llm_не_падает_и_не_кэшируется(self):
+        class BoomLLM(MappingLLM):
+            def respond(self, request):
+                raise RuntimeError("сеть легла")
+        out = self.sm._align_keys(self._reqs(), self.CARD, client=BoomLLM([]))
+        self.assertEqual(out[0].key, "оттенок", "сбой не должен ронять сверку")
+
+        llm2 = MappingLLM([{"tz_key": "оттенок", "card_key": "Цвет"}])
+        out2 = self.sm._align_keys(self._reqs(), self.CARD, client=llm2)
+        self.assertEqual(out2[0].key, "Цвет",
+                         "сбой не кэшируется — повтор должен попробовать снова")
+
+    def test_флаг_выключен_llm_не_зовётся(self):
+        os.environ["LK_ALIGN_KEYS_LLM"] = "0"
+        sm2 = _fresh_module(self.path, db_path=self.db_path)
+        llm = MappingLLM([{"tz_key": "оттенок", "card_key": "Цвет"}])
+        out = sm2._align_keys(sm2.to_requirements(item(chars=[
+            {"key": "оттенок", "operator": "eq", "value": "белый",
+             "unit": "", "hardness": "soft", "raw": "белый"},
+        ])), self.CARD, client=llm)
+        self.assertEqual(out[0].key, "оттенок")
+        self.assertEqual(llm.calls, 0, "флаг выключен — деньги не тратим")
 
 
 class TestSpecFile(unittest.TestCase):

@@ -25,11 +25,14 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
+import logging
 import os
 import re
 import sys
 import threading
+import time
 from typing import Dict, List, Optional, Tuple
 
 # Ядро живёт отдельным проектом, влитым сюда через git subtree, и зависимостей не
@@ -45,13 +48,20 @@ from schema import (  # noqa: E402
     Attribute, Hardness, MatchResult, Operator, Product, Requirement, Verdict,
 )
 
-from . import spec_llm  # noqa: E402
+from . import db, spec_llm  # noqa: E402
+
+log = logging.getLogger("lekalo.spec_match")
 
 # Детерминированный слой align_keys (морфология имени: регистр/ё-е/разделители) — бесплатный,
-# без сети, поэтому включён по умолчанию. LLM/эмбеддинг-добор остатка сюда сознательно НЕ
-# подключён (см. plan.md фазы 2-3) — llm_fallback=False ниже гарантирует, что вызов не создаст
-# anthropic-клиента и не потратит деньги.
+# без сети, поэтому включён по умолчанию.
 ALIGN_KEYS = os.getenv("LK_ALIGN_KEYS", "1") != "0"
+
+# LLM-добор остатка (Фаза 3 плана `piped-forging-flame`, keymatch.llm_map) — платный,
+# по умолчанию ВЫКЛЮЧЕН: в отличие от детерминированного слоя, расход на реальном
+# трафике ещё не оценён (см. измерение 2026-08-31 — только 9.2% позиций вообще имеют
+# структурированные chars, доля реального остатка после Фазы 1 неизвестна без живых
+# карточек товара). Включать осознанно, тем же паттерном, что LK_ALIGN_VALUES.
+ALIGN_KEYS_LLM = os.getenv("LK_ALIGN_KEYS_LLM", "0") == "1"
 
 # Файл довеска со спецификацией — тот же, что грузит фронт при раскрытии
 # карточки. Отдельной копии данных для бэкенда не заводим: разъехавшиеся копии
@@ -142,18 +152,76 @@ def to_product(d: dict) -> Product:
     return Product(id=d.get("id") or "product", name=d.get("name") or "", attributes=attrs)
 
 
-def _align_keys(reqs: List[Requirement], product_attrs: List[dict]) -> List[Requirement]:
+def _align_keys_cache_key(remaining: Dict[str, object], product_fields: Dict[str, object]) -> str:
+    """Хэш всего запроса к LLM-добору целиком (не пары ключей) — маппинг зависит от
+    ВСЕГО набора полей карточки разом (модель разрешает конфликты раскладки, видя все
+    кандидаты сразу, см. `keymatch._SYSTEM`), значит и единица кэша обязана быть той же
+    формы, иначе кэш соврёт: одна и та же пара «ключ ТЗ↔ключ карточки» могла бы уйти в
+    разные стороны в зависимости от того, какие ещё поля были в запросе."""
+    payload = json.dumps({
+        "req": sorted((k, str(v)) for k, v in remaining.items()),
+        "card": sorted((k, str(v)) for k, v in product_fields.items()),
+    }, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _llm_align_cached(remaining: Dict[str, object], product_fields: Dict[str, object],
+                       client=None) -> Dict[str, str]:
+    """LLM-добор остатка `align_keys` (`keymatch.llm_map`) с кэшем в общей SQLite
+    (`align_keys_cache`, см. db.py) — тем же приёмом, что `spec_llm.extract_cached`.
+
+    ⚠️ Кэшируем только успешный вызов, включая честный пустой mapping. Сетевая/API-
+    ошибка НЕ кэшируется — иначе разовый сбой канала навсегда запер бы этот набор
+    полей в «нечего сводить» (та же логика, что у `spec_llm_cache`)."""
+    h = _align_keys_cache_key(remaining, product_fields)
+    conn = db.get_conn()
+    try:
+        row = conn.execute(
+            "SELECT mapping FROM align_keys_cache WHERE request_hash = ?", (h,)
+        ).fetchone()
+        if row is not None:
+            return json.loads(row["mapping"])
+    finally:
+        conn.close()
+
+    try:
+        result = keymatch.llm_map(remaining, product_fields, client=client)
+    except Exception as e:  # сеть, лимиты, отказ модели, отсутствующий ключ — что угодно
+        log.warning("align_keys: LLM-добор упал: %s", e)
+        return {}
+
+    conn = db.get_conn()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO align_keys_cache (request_hash, mapping, created_at) "
+            "VALUES (?, ?, ?)",
+            (h, json.dumps(result, ensure_ascii=False),
+             time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return result
+
+
+def _align_keys(reqs: List[Requirement], product_attrs: List[dict], client=None) -> List[Requirement]:
     """Свести ключи требований к ключам карточки там, где расходится только написание
     (регистр/ё-е/разделители/порядок слов) — «Толщина, мм» ТЗ и «толщина» карточки иначе
     сравниваются буквально и дают ложный пробел вместо реальной проверки.
 
-    Только детерминированный слой `keymatch.align_keys` (`llm_fallback=False`) — без сети и
-    без денег; LLM/эмбеддинг-добор остатка сознательно не подключён (см. plan.md фазы 2-3)."""
+    Детерминированный слой (`keymatch.free_map`) — всегда, бесплатно, без сети. Остаток —
+    LLM-добор (`_llm_align_cached`), только если `ALIGN_KEYS_LLM` включён (см. флаг выше,
+    по умолчанию выключен: расход на реальном трафике ещё не оценён).
+
+    client — инъекция anthropic-клиента (для тестов, тем же приёмом, что
+    `spec_llm.extract_cached`); без инъекции — боевой клиент из окружения."""
     if not ALIGN_KEYS or not reqs or not product_attrs:
         return reqs
     req_fields = {r.key: r.value for r in reqs if r.key}
     product_fields = {a.get("key"): a.get("value") for a in product_attrs if a.get("key")}
-    mapping = keymatch.align_keys(req_fields, product_fields, llm_fallback=False)
+    mapping, remaining = keymatch.free_map(req_fields, product_fields)
+    if remaining and ALIGN_KEYS_LLM:
+        mapping.update(_llm_align_cached(remaining, product_fields, client=client))
     if not mapping:
         return reqs
     return [

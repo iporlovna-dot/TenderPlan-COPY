@@ -118,6 +118,22 @@ CREATE TABLE IF NOT EXISTS spec_llm_cache (
     requirements TEXT NOT NULL,      -- JSON-массив, формат schema.Requirement
     created_at TEXT NOT NULL
 );
+-- Кэш LLM-добора align_keys (см. app/spec_match.py, matcher/src/keymatch.llm_map) —
+-- Фаза 3 плана `piped-forging-flame`. Детерминированный слой (Фаза 1) сводит ключи
+-- ТЗ↔карточки морфологически (регистр/ё-е/разделители); остаток — за деньги, LLM
+-- сравнивает ВСЕ оставшиеся поля ТЗ разом со ВСЕМИ полями карточки (значение
+-- участвует в разрешении неоднозначности, см. keymatch._SYSTEM), поэтому единица
+-- кэша — не пара ключей, а весь запрос целиком: хэш от (отсортированных пар
+-- ключ+значение остатка ТЗ) + (отсортированных пар ключ+значение карточки). Тот же
+-- набор повторяется между закупками, где заказчики используют боилерплейт-ТЗ по
+-- одной товарной категории на один и тот же товар пользователя.
+-- ⚠️ Кэшируем ТОЛЬКО успешный вызов, включая честный пустой mapping — та же логика,
+-- что у spec_llm_cache. Сетевая/API-ошибка не кэшируется.
+CREATE TABLE IF NOT EXISTS align_keys_cache (
+    request_hash TEXT PRIMARY KEY,
+    mapping TEXT NOT NULL,            -- JSON {remaining_key: card_key}
+    created_at TEXT NOT NULL
+);
 """
 
 
