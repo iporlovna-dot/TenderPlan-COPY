@@ -24,6 +24,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import re
@@ -37,6 +38,7 @@ _MATCHER_SRC = os.path.join(os.path.dirname(__file__), "..", "..", "matcher", "s
 if _MATCHER_SRC not in sys.path:
     sys.path.insert(0, os.path.abspath(_MATCHER_SRC))
 
+import keymatch  # noqa: E402
 from ktru import ktru_relation, EXACT, GROUP, NONE  # noqa: E402
 from matcher import match as engine_match  # noqa: E402
 from schema import (  # noqa: E402
@@ -44,6 +46,12 @@ from schema import (  # noqa: E402
 )
 
 from . import spec_llm  # noqa: E402
+
+# Детерминированный слой align_keys (морфология имени: регистр/ё-е/разделители) — бесплатный,
+# без сети, поэтому включён по умолчанию. LLM/эмбеддинг-добор остатка сюда сознательно НЕ
+# подключён (см. plan.md фазы 2-3) — llm_fallback=False ниже гарантирует, что вызов не создаст
+# anthropic-клиента и не потратит деньги.
+ALIGN_KEYS = os.getenv("LK_ALIGN_KEYS", "1") != "0"
 
 # Файл довеска со спецификацией — тот же, что грузит фронт при раскрытии
 # карточки. Отдельной копии данных для бэкенда не заводим: разъехавшиеся копии
@@ -132,6 +140,26 @@ def to_product(d: dict) -> Product:
             doc=a.get("doc"),
         ))
     return Product(id=d.get("id") or "product", name=d.get("name") or "", attributes=attrs)
+
+
+def _align_keys(reqs: List[Requirement], product_attrs: List[dict]) -> List[Requirement]:
+    """Свести ключи требований к ключам карточки там, где расходится только написание
+    (регистр/ё-е/разделители/порядок слов) — «Толщина, мм» ТЗ и «толщина» карточки иначе
+    сравниваются буквально и дают ложный пробел вместо реальной проверки.
+
+    Только детерминированный слой `keymatch.align_keys` (`llm_fallback=False`) — без сети и
+    без денег; LLM/эмбеддинг-добор остатка сознательно не подключён (см. plan.md фазы 2-3)."""
+    if not ALIGN_KEYS or not reqs or not product_attrs:
+        return reqs
+    req_fields = {r.key: r.value for r in reqs if r.key}
+    product_fields = {a.get("key"): a.get("value") for a in product_attrs if a.get("key")}
+    mapping = keymatch.align_keys(req_fields, product_fields, llm_fallback=False)
+    if not mapping:
+        return reqs
+    return [
+        dataclasses.replace(r, key=mapping[r.key], remapped=True) if r.key in mapping else r
+        for r in reqs
+    ]
 
 
 # ──────────────────────────────────────────────── какой товар к какой позиции
@@ -228,6 +256,7 @@ def match_lot(purchase_id: str, products: List[dict]) -> dict:
                 "note": "в документе закупки нет структурированных характеристик для этой позиции — сверить нечем",
             })
             continue
+        reqs = _align_keys(reqs, chosen.get("attributes") or [])
         res: MatchResult = engine_match(to_product(chosen), reqs, purchase_id)
         ok = res.verdict != Verdict.DISQUALIFIED
         if ok:

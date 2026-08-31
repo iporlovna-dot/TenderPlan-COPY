@@ -5,9 +5,15 @@
 эмбеддинг-модель (bge-m3 / multilingual-e5) считает те же соответствия детерминированно, бесплатно и
 приватно: один вход → один вектор → стабильный маппинг.
 
-Модуль спроектирован так, чтобы импортироваться ДАЖЕ без `sentence-transformers`: если пакет/модель
-недоступны, `default_embedder()` вернёт None, и вызывающий код (keymatch) мягко деградирует на прежний
-LLM-путь. Тяжёлую модель грузим лениво (первый `encode`), один раз на процесс.
+Модуль спроектирован так, чтобы импортироваться ДАЖЕ без `sentence-transformers` И БЕЗ `numpy`:
+если пакет/модель недоступны, `default_embedder()` вернёт None, и вызывающий код (keymatch) мягко
+деградирует на прежний LLM-путь (или, при `llm_fallback=False`, просто оставляет остаток
+несведённым). Тяжёлую модель грузим лениво (первый `encode`), один раз на процесс.
+
+⚠️ `numpy` — тоже опциональный: детерминированный слой `keymatch.align_keys` (морфология имени,
+без эмбеддингов вообще) не должен требовать его лишь потому, что этот модуль лежит рядом на
+пути импорта. sentence-transformers сам тянет numpy транзитивно, так что деградация здесь той же
+формы, что и для sentence-transformers выше — просто на уровень раньше.
 
 Env:
 - SPECMATCH_EMBED_MODEL — id модели (по умолчанию bge-m3). e5-модели получают префикс «query:».
@@ -18,7 +24,10 @@ from __future__ import annotations
 import os
 from typing import List, Optional
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:  # numpy не гарантирован без sentence-transformers — см. предупреждение выше
+    np = None  # type: ignore
 
 _DEFAULT_MODEL = os.getenv("SPECMATCH_EMBED_MODEL", "BAAI/bge-m3")
 
@@ -60,6 +69,9 @@ def default_embedder() -> Optional[Embedder]:
     if _tried:
         return _singleton
     _tried = True
+    if np is None:
+        _singleton = None  # numpy недоступен — sentence-transformers тем более не заработает
+        return _singleton
     try:
         _singleton = Embedder()
     except Exception:

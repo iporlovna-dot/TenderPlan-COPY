@@ -257,6 +257,63 @@ class TestMatchLot(unittest.TestCase):
                          "настоящее нарушение важнее соседнего unverified — лот всё-или-ничего")
 
 
+class TestAlignKeys(unittest.TestCase):
+    """align_keys — детерминированный слой (llm_fallback=False, без сети и денег), сводит
+    расхождение в написании ключа между ТЗ и карточкой (matcher/src/keymatch.py)."""
+
+    def setUp(self):
+        self._prev_env = os.environ.get("LK_ALIGN_KEYS")
+
+    def tearDown(self):
+        if self._prev_env is None:
+            os.environ.pop("LK_ALIGN_KEYS", None)
+        else:
+            os.environ["LK_ALIGN_KEYS"] = self._prev_env
+        if getattr(self, "path", None):
+            os.unlink(self.path)
+
+    @staticmethod
+    def _pos():
+        # ключ ТЗ «материал» (строчными) — то же требование, что «Материал» у карточки,
+        # но буквальный лукап их не отождествит без align_keys.
+        return item(chars=[{"key": "материал", "operator": "eq", "value": "нитрил",
+                            "unit": "", "hardness": "hard", "raw": "нитрил"}])
+
+    def test_сводит_расхождение_в_регистре_ключа(self):
+        os.environ.pop("LK_ALIGN_KEYS", None)  # по умолчанию включено
+        self.path = _write_spec([self._pos()])
+        sm = _fresh_module(self.path)
+        res = sm.match_lot("eis_1", [GLOVES])
+        checks = res["positions"][0]["checks"]
+        self.assertEqual(checks[0]["key"], "Материал",
+                         "ключ требования сведён к ключу карточки — тот же материал, другое написание")
+        self.assertEqual(checks[0]["status"], "pass")
+        self.assertEqual(res["verdict"], "eligible")
+
+    def test_LK_ALIGN_KEYS_0_отключает_сведение(self):
+        os.environ["LK_ALIGN_KEYS"] = "0"
+        self.path = _write_spec([self._pos()])
+        sm = _fresh_module(self.path)
+        res = sm.match_lot("eis_1", [GLOVES])
+        checks = res["positions"][0]["checks"]
+        self.assertEqual(checks[0]["key"], "материал", "align выключен — ключ остаётся как в ТЗ")
+        self.assertEqual(checks[0]["status"], "gap",
+                         "буквальный лукап не находит «Материал» под ключом «материал»")
+
+    def test_несвязанные_ключи_не_сводятся_детерминированным_слоем(self):
+        # «цвет» не пересекается по токенам ни с одним ключом карточки — детерминированный
+        # слой (llm_fallback=False) обязан оставить это пробелом, а не выдумывать пару.
+        os.environ.pop("LK_ALIGN_KEYS", None)
+        pos = item(chars=[{"key": "цвет", "operator": "eq", "value": "белый",
+                           "unit": "", "hardness": "soft", "raw": "белый"}])
+        self.path = _write_spec([pos])
+        sm = _fresh_module(self.path)
+        res = sm.match_lot("eis_1", [GLOVES])
+        checks = res["positions"][0]["checks"]
+        self.assertEqual(checks[0]["key"], "цвет")
+        self.assertEqual(checks[0]["status"], "gap")
+
+
 class TestSpecFile(unittest.TestCase):
     def test_отсутствующий_файл_не_роняет_сверку(self):
         sm = _fresh_module(os.path.join(tempfile.gettempdir(), "нет-такого-файла.json"))

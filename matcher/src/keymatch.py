@@ -161,7 +161,8 @@ def _embed_map(remaining: Dict[str, object], product_fields: Dict[str, object],
 def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
                client: Optional[anthropic.Anthropic] = None,
                key_synonyms: Optional[List[list]] = None,
-               embedder=None) -> Dict[str, str]:
+               embedder=None,
+               llm_fallback: bool = True) -> Dict[str, str]:
     """Сопоставить поля ТЗ с полями карточки по имени И значению. -> {ключ_тз: ключ_карточки}.
 
     Слои (plan.md §3.7): (1) ДЕТЕРМИНИРОВАННЫЙ (морфология имени + словарь `key_synonyms` из профиля)
@@ -173,6 +174,10 @@ def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
 
     embedder — инъекция эмбеддера (для тестов); None → singleton `embed.default_embedder()` (или
     None, если недоступен → тогда LLM). client — anthropic-клиент для LLM-fallback.
+    llm_fallback — False запрещает и LLM-путь: остаток после детерминированного слоя (и
+    эмбеддингов, если эмбеддер доступен) просто остаётся несведённым, вызов `anthropic.Anthropic()`
+    не создаётся и деньги не тратятся. Нужно потребителям, которым важна гарантированно бесплатная
+    сверка (см. Лекало `server/app/spec_match.py`).
     """
     if not req_fields or not product_fields:
         return {}
@@ -185,6 +190,9 @@ def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
     if embedder is not None:
         mapping.update(_embed_map(remaining, product_fields, embedder))
         return mapping     # уверенные пары сведены; остаток ниже порога → пробел (локально, LLM не зовём)
+
+    if not llm_fallback:
+        return mapping                          # остаток без эмбеддера и без разрешения на LLM → пробел
 
     # эмбеддер недоступен → прежний LLM-путь (мягкая деградация)
     def _fmt(d):
