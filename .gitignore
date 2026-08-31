@@ -26,6 +26,7 @@ site/data/purchases.json
 site/data/tz.json
 site/data/docs.json
 site/data/spec.json
+site/data/tztext.json
 site/data/analytics.json
 
 # playwright и браузеры

@@ -35,6 +35,15 @@ const CONC = Number(process.env.LK_TZ_CONC || 8);
 // а вода отсекается — она есть у всех и на различение не влияет.
 const MAX_TERMS = Number(process.env.LK_TZ_MAX_TERMS || 120);
 
+// Сырой текст документа — топливо Фазы 4 (`piped-forging-flame`): LLM-извлечение
+// по ПОЛНОМУ тексту там, где ktrutable.js не нашёл таблицы характеристик и в
+// самом НАЗВАНИИ позиции их тоже нет (см. server/app/spec_llm.py). Кап
+// НАМЕРЕННО мал (не 20-30к, как в первой прикидке плана) — довесок tztext.json
+// живёт для ВСЕХ разобранных закупок разом (десятки тысяч), и до реального
+// замера веса на живом корпусе разумнее занизить, чем разово раздуть доставку
+// в разы (см. «доставка» в логе сборщика). Поднимать после замера.
+const TEXT_MAX = Number(process.env.LK_TZ_TEXT_MAX || 4000);
+
 // Имена, по которым документ похож на ТЗ. Порядок важен: «техническое задание»
 // точнее, чем «описание объекта закупки», а то и другое точнее, чем случайный файл.
 const TZ_NAME_HINTS = [
@@ -176,12 +185,26 @@ async function termsForDoc(doc) {
   // Пустой текст при непустой спецификации бывает: документ целиком в таблице.
   // Объявлять такую закупку «пустой» нельзя — позиции у нас на руках.
   if (!freq.size && !items.length) return { terms: [], docName: doc.name || "", status: "empty" };
+  // Текст храним только там, где он может ещё пригодиться: если у ВСЕХ позиций
+  // уже есть характеристики из таблицы (chars), LLM-фолбэк на полном тексте
+  // (spec_match.py) их и не позовёт — reqs у match_lot уже не пуст. Хранить
+  // текст ради товара, у которого сверка и так по нему сработает, — тратить
+  // место довеска на закупки, где Фаза 4 никогда не выстрелит.
   return {
     terms: freq.size ? topTerms(freq, MAX_TERMS) : [],
     items,
+    text: decideText(text, items),
     docName: doc.name || "",
     status: "ok",
   };
+}
+
+// Хранить ли сырой текст, и в каком объёме — вынесено отдельной чистой функцией
+// (без сети), чтобы решение было тестируемо напрямую, а не только сквозь
+// termsForDoc целиком (curlBinary внутри неё не мокается).
+function decideText(text, items) {
+  const hasChars = (items || []).some((it) => it.chars && it.chars.length);
+  return (text && !hasChars) ? text.slice(0, TEXT_MAX) : "";
 }
 
 // Перебрать кандидатов закупки, пока один не разберётся. `spend()` списывает
@@ -303,7 +326,12 @@ function applyTz(p, res) {
   // документе нет» и «мы её ещё не извлекали» — разные вещи, и отсутствие поля
   // честнее пустого массива (то же правило, что у docsFetched).
   if (res.items && res.items.length) p.lotItems = res.items;
+  // Сырой текст (Фаза 4) — только если он реально был сохранён (см. termsForDoc:
+  // хасChars). ⚠️ Не чистим p.tzText, если res.text пуст: повторный разбор без
+  // текста (например, версия таблиц изменилась, а версия текста нет — реопен
+  // по другой метке) не должен стирать уже добытый текст прошлого прогона.
+  if (res.text) p.tzText = res.text;
 }
 
 module.exports = { annotateTz, pickTzDoc, rankTzDocs, isHopeless, looksLikeZip, topTerms,
-                    termsForDoc, termsForPurchase, hasTerms, unparsedFirst, applyTz };
+                    termsForDoc, termsForPurchase, hasTerms, unparsedFirst, applyTz, decideText };

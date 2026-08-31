@@ -97,5 +97,105 @@ class TestSpecLlm(unittest.TestCase):
         self.assertEqual(len(second), 1, "сбой не кэшируется — повтор должен попробовать снова")
 
 
+class TestSpecLlmFulltext(unittest.TestCase):
+    """LK_SPEC_LLM_FULLTEXT — извлечение по полному тексту ТЗ (Фаза 4 плана
+    piped-forging-flame, extract_from_text_cached). Дальний фолбэк: зовётся, когда
+    ни таблицы, ни названия недостаточно. Кэш — по паре (purchase_id, name), НЕ
+    по одному названию, как у extract_cached: то же название в другой закупке
+    стоит за другим документом."""
+
+    def setUp(self):
+        self._prev_flag = os.environ.get("LK_SPEC_LLM_FULLTEXT")
+        os.environ["LK_SPEC_LLM_FULLTEXT"] = "1"
+        fd, self.db_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        os.unlink(self.db_path)  # init_db создаст заново
+        self.sm = _fresh_spec_llm(self.db_path)
+
+    def tearDown(self):
+        if self._prev_flag is None:
+            os.environ.pop("LK_SPEC_LLM_FULLTEXT", None)
+        else:
+            os.environ["LK_SPEC_LLM_FULLTEXT"] = self._prev_flag
+        if os.path.exists(self.db_path):
+            os.unlink(self.db_path)
+
+    def test_короткое_название_llm_всё_равно_зовёт(self):
+        # ⚠️ В отличие от extract_cached — здесь НЕТ порога длины названия:
+        # короткое имя само по себе не говорит, что в тексте нет характеристик.
+        llm = ReqsLLM([{"key": "материал", "operator": "eq", "value": "фанера",
+                        "unit": "", "hardness": "soft", "type": "technical", "raw": "материал: фанера"}])
+        reqs = self.sm.extract_from_text_cached("eis_1", "Бахилы", "текст ТЗ про фанеру", client=llm)
+        self.assertEqual(len(reqs), 1)
+        self.assertEqual(llm.calls, 1)
+
+    def test_пустой_текст_llm_не_зовёт(self):
+        llm = ReqsLLM()
+        reqs = self.sm.extract_from_text_cached("eis_1", "Бахилы", "", client=llm)
+        self.assertEqual(reqs, [])
+        self.assertEqual(llm.calls, 0)
+
+    def test_флаг_выключен_llm_не_зовётся(self):
+        os.environ["LK_SPEC_LLM_FULLTEXT"] = "0"
+        sm2 = _fresh_spec_llm(self.db_path)
+        llm = ReqsLLM([{"key": "a", "operator": "present", "value": True,
+                        "unit": "", "hardness": "soft", "type": "technical", "raw": "a"}])
+        reqs = sm2.extract_from_text_cached("eis_1", "Бахилы", "текст ТЗ", client=llm)
+        self.assertEqual(reqs, [])
+        self.assertEqual(llm.calls, 0, "флаг выключен — деньги не тратим")
+
+    def test_одно_название_в_разных_закупках_не_путает_кэш(self):
+        # ⚠️ Ровно то, ради чего кэш здесь по (purchase_id, name), а не по name:
+        # одинаковое короткое имя, но РАЗНЫЙ текст документа — обязаны дать
+        # РАЗНЫЙ результат, а не второй раз вернуть кэш первой закупки.
+        llm1 = ReqsLLM([{"key": "материал", "operator": "eq", "value": "фанера",
+                         "unit": "", "hardness": "soft", "type": "technical", "raw": "фанера"}])
+        r1 = self.sm.extract_from_text_cached("eis_1", "Изделие", "текст про фанеру", client=llm1)
+        llm2 = ReqsLLM([{"key": "материал", "operator": "eq", "value": "металл",
+                         "unit": "", "hardness": "soft", "type": "technical", "raw": "металл"}])
+        r2 = self.sm.extract_from_text_cached("eis_2", "Изделие", "текст про металл", client=llm2)
+        self.assertEqual(r1[0]["value"], "фанера")
+        self.assertEqual(r2[0]["value"], "металл")
+        self.assertEqual(llm1.calls, 1)
+        self.assertEqual(llm2.calls, 1, "вторая закупка обязана позвать LLM заново, не взять чужой кэш")
+
+    def test_повтор_той_же_пары_идёт_из_кэша(self):
+        llm = ReqsLLM([{"key": "a", "operator": "present", "value": True,
+                        "unit": "", "hardness": "soft", "type": "technical", "raw": "a"}])
+        first = self.sm.extract_from_text_cached("eis_1", "Изделие", "текст ТЗ", client=llm)
+        second = self.sm.extract_from_text_cached("eis_1", "Изделие", "текст ТЗ", client=llm)
+        self.assertEqual(first, second)
+        self.assertEqual(llm.calls, 1, "второй вызов той же пары — из кэша, не из сети")
+
+    def test_пустой_результат_тоже_кэшируется(self):
+        llm = ReqsLLM([])
+        first = self.sm.extract_from_text_cached("eis_1", "Изделие", "текст ни о чём", client=llm)
+        second = self.sm.extract_from_text_cached("eis_1", "Изделие", "текст ни о чём", client=llm)
+        self.assertEqual(first, [])
+        self.assertEqual(second, [])
+        self.assertEqual(llm.calls, 1, "честный пустой ответ — тоже успех, кэшируется")
+
+    def test_сбой_llm_не_кэшируется(self):
+        class BoomLLM(ReqsLLM):
+            def respond(self, request):
+                raise RuntimeError("сеть легла")
+        first = self.sm.extract_from_text_cached("eis_1", "Изделие", "текст ТЗ", client=BoomLLM([]))
+        self.assertEqual(first, [], "сбой не должен ронять вызывающего")
+        llm2 = ReqsLLM([{"key": "ok", "operator": "present", "value": True,
+                         "unit": "", "hardness": "soft", "type": "technical", "raw": "ok"}])
+        second = self.sm.extract_from_text_cached("eis_1", "Изделие", "текст ТЗ", client=llm2)
+        self.assertEqual(len(second), 1, "сбой не кэшируется — повтор должен попробовать снова")
+
+    def test_others_передаётся_как_прицел_на_позицию(self):
+        # extractor.extract_requirements сам скоупит извлечение по position={name,others} —
+        # здесь только проверяем, что параметр реально доезжает до вызова модели.
+        llm = ReqsLLM([{"key": "a", "operator": "present", "value": True,
+                        "unit": "", "hardness": "soft", "type": "technical", "raw": "a"}])
+        self.sm.extract_from_text_cached("eis_1", "Клинок", "текст многолотового ТЗ",
+                                          others=["Рукоятка", "Сумка"], client=llm)
+        self.assertIn("Рукоятка", llm.last_user)
+        self.assertIn("Клинок", llm.last_user)
+
+
 if __name__ == "__main__":
     unittest.main()

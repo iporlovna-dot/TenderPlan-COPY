@@ -79,6 +79,13 @@ SPEC_FILE = os.getenv(
     os.path.join(os.path.dirname(__file__), "..", "..", "site", "data", "spec.json"),
 )
 
+# Сырой текст ТЗ (Фаза 4) — довесок, который браузер НЕ грузит вовсе (см.
+# tools/build_snapshot.js, комментарий у OUT_TZTEXT), читает только этот бэкенд.
+TZTEXT_FILE = os.getenv(
+    "LK_TZTEXT_FILE",
+    os.path.join(os.path.dirname(__file__), "..", "..", "site", "data", "tztext.json"),
+)
+
 _OPERATORS = {
     "gte": Operator.GTE,
     "lte": Operator.LTE,
@@ -121,6 +128,38 @@ def _load_spec() -> Dict[str, list]:
 def positions(purchase_id: str) -> List[dict]:
     """Позиции лота закупки (пусто, если спецификации нет)."""
     return _load_spec().get(purchase_id) or []
+
+
+_tztext_cache: dict = {"mtime": None, "tztext": {}}
+_tztext_lock = threading.Lock()
+
+
+def _load_tztext() -> Dict[str, str]:
+    """Сырой текст ТЗ (Фаза 4) из tztext.json — тем же приёмом кэша по mtime,
+    что `_load_spec`. Отдельный файл и отдельный кэш: разные ключи покрытия
+    (текст есть не у всех закупок со спецификацией — см. tzterms.js decideText),
+    смешивать с _cache спецификации незачем."""
+    try:
+        mtime = os.path.getmtime(TZTEXT_FILE)
+    except OSError:
+        return {}
+    with _tztext_lock:
+        if _tztext_cache["mtime"] == mtime:
+            return _tztext_cache["tztext"]
+        try:
+            with open(TZTEXT_FILE, encoding="utf-8") as fh:
+                data = json.load(fh)
+            _tztext_cache["tztext"] = data.get("tztext") or {}
+            _tztext_cache["mtime"] = mtime
+        except (OSError, ValueError):
+            pass
+        return _tztext_cache["tztext"]
+
+
+def tztext_for(purchase_id: str) -> str:
+    """Сырой текст ТЗ закупки (пусто, если не сохраняли — см. decideText в
+    tzterms.js: текст хранится только там, где нет готовых chars)."""
+    return _load_tztext().get(purchase_id) or ""
 
 
 # ─────────────────────────────────────────────────────────── перевод словаря
@@ -394,6 +433,19 @@ def match_lot(purchase_id: str, products: List[dict]) -> dict:
             llm_chars = spec_llm.extract_cached(item.get("name", ""))
             if llm_chars:
                 reqs = to_requirements({"chars": llm_chars})
+        # Название само тоже ничего не дало (короткое/непоказательное) — дальний
+        # фолбэк на ПОЛНОМ тексте ТЗ (Фаза 4), если сборщик его сохранил (не у
+        # всех закупок есть — см. tzterms.js decideText). Самый дорогой источник
+        # по объёму входа, поэтому последний в очереди и выключен по умолчанию
+        # (LK_SPEC_LLM_FULLTEXT, см. spec_llm.py).
+        if not reqs:
+            doc_text = tztext_for(purchase_id)
+            if doc_text:
+                others = [it.get("name", "") for j, it in enumerate(items) if j != idx and it.get("name")]
+                llm_chars = spec_llm.extract_from_text_cached(
+                    purchase_id, item.get("name", ""), doc_text, others=others)
+                if llm_chars:
+                    reqs = to_requirements({"chars": llm_chars})
         # ⚠️ Всё равно пусто — не «сверять нечего, значит проходит» (движок сам
         # теперь честен и на пустом checks даёт ELIGIBLE_WITH_GAPS, см.
         # matcher.py), а отдельный статус здесь, в мосте: позицию нельзя ни

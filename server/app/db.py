@@ -148,6 +148,19 @@ CREATE TABLE IF NOT EXISTS align_values_cache (
     satisfies INTEGER NOT NULL,       -- 0/1
     created_at TEXT NOT NULL
 );
+-- Кэш LLM-извлечения ПО ПОЛНОМУ ТЕКСТУ ТЗ (см. app/spec_llm.py extract_from_text_cached,
+-- matcher/src/extractor.py) — Фаза 4 плана `piped-forging-flame`. В отличие от
+-- spec_llm_cache (ключ — хэш НАЗВАНИЯ позиции, переиспользуется между закупками с
+-- одинаковым описанием товара) здесь ключ ОБЯЗАН включать закупку: текст документа
+-- разный даже у позиций с одинаковым названием в разных закупках, а одинаковое имя
+-- 'name_hash' смешало бы результаты чужих документов.
+-- ⚠️ Кэшируем только успешный вызов (в т.ч. честный пустой requirements). Сетевая/
+-- API-ошибка не кэшируется — та же логика, что у spec_llm_cache.
+CREATE TABLE IF NOT EXISTS spec_llm_fulltext_cache (
+    request_hash TEXT PRIMARY KEY,    -- hash(purchase_id + "|" + name)
+    requirements TEXT NOT NULL,       -- JSON-массив, формат schema.Requirement
+    created_at TEXT NOT NULL
+);
 """
 
 

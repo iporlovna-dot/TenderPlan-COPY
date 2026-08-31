@@ -61,6 +61,15 @@ def _write_spec(items, purchase_id="eis_1"):
     return path
 
 
+def _write_tztext(mapping):
+    """Сырой текст ТЗ живёт в ОТДЕЛЬНОМ довеске (tztext.json, Фаза 4) — браузер
+    его не грузит вовсе, только этот бэкенд, см. tztext_for()."""
+    fd, path = tempfile.mkstemp(suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump({"v": 2, "tztext": mapping}, fh)
+    return path
+
+
 GLOVES = {
     "id": "prod_gloves", "name": "Перчатки смотровые нитриловые",
     "ktru": ["32.50.13.190-00007686"],
@@ -506,6 +515,76 @@ class TestAlignValues(unittest.TestCase):
                              "флаг выключен — буквальное расхождение значения остаётся нарушением")
         finally:
             os.unlink(path)
+
+
+class TestFulltextFallback(unittest.TestCase):
+    """tztext_for() + дальний LLM-фолбэк в match_lot (Фаза 4 плана
+    piped-forging-flame). Сеть не бьём: спец_llm.extract_from_text_cached
+    подменяется стабом — проверяем ПРОВОДКУ (что match_lot зовёт его с верными
+    аргументами и подставляет результат), а не сам вызов модели (это уже
+    покрыто test_spec_llm.TestSpecLlmFulltext)."""
+
+    def setUp(self):
+        self.spec_path = _write_spec([item(name="Бахилы", ktru="", okpd="", chars=[])])
+        self.tztext_path = _write_tztext({"eis_1": "текст ТЗ про бахилы"})
+        self._prev_tztext_env = os.environ.get("LK_TZTEXT_FILE")
+        os.environ["LK_TZTEXT_FILE"] = self.tztext_path
+        self.sm = _fresh_module(self.spec_path)
+
+    def tearDown(self):
+        os.unlink(self.spec_path)
+        os.unlink(self.tztext_path)
+        if self._prev_tztext_env is None:
+            os.environ.pop("LK_TZTEXT_FILE", None)
+        else:
+            os.environ["LK_TZTEXT_FILE"] = self._prev_tztext_env
+
+    def test_tztext_for_читает_довесок(self):
+        self.assertEqual(self.sm.tztext_for("eis_1"), "текст ТЗ про бахилы")
+
+    def test_tztext_for_неизвестная_закупка_пусто(self):
+        self.assertEqual(self.sm.tztext_for("eis_нет-такой"), "")
+
+    def test_отсутствующий_файл_не_роняет(self):
+        os.environ["LK_TZTEXT_FILE"] = os.path.join(tempfile.gettempdir(), "нет-такого-файла.json")
+        sm2 = _fresh_module(self.spec_path)
+        self.assertEqual(sm2.tztext_for("eis_1"), "")
+
+    def test_match_lot_зовёт_полнотекстовый_фолбэк_когда_нечем_иначе(self):
+        calls = []
+
+        def fake_extract(purchase_id, name, doc_text, others=None, client=None):
+            calls.append((purchase_id, name, doc_text, others))
+            return [{"key": "материал", "operator": "eq", "value": "х/б", "unit": "",
+                    "hardness": "soft", "raw": "материал: х/б"}]
+
+        orig = self.sm.spec_llm.extract_from_text_cached
+        self.sm.spec_llm.extract_from_text_cached = fake_extract
+        try:
+            card = {"id": "p", "name": "Бахилы", "ktru": [],
+                    "attributes": [{"key": "материал", "value": "х/б"}]}
+            res = self.sm.match_lot("eis_1", [card])
+        finally:
+            self.sm.spec_llm.extract_from_text_cached = orig
+
+        self.assertEqual(len(calls), 1, "полнотекстовый фолбэк обязан позваться ровно раз")
+        self.assertEqual(calls[0][:3], ("eis_1", "Бахилы", "текст ТЗ про бахилы"))
+        pos = res["positions"][0]
+        self.assertEqual(pos["verdict"], "eligible",
+                         "требование из полного текста нашлось и выполнено — не unverified")
+
+    def test_match_lot_не_зовёт_фолбэк_без_текста(self):
+        os.environ["LK_TZTEXT_FILE"] = os.path.join(tempfile.gettempdir(), "нет-такого-файла.json")
+        sm2 = _fresh_module(self.spec_path)
+        calls = []
+        orig = sm2.spec_llm.extract_from_text_cached
+        sm2.spec_llm.extract_from_text_cached = lambda *a, **k: (calls.append(1), [])[1]
+        try:
+            card = {"id": "p", "name": "Бахилы", "ktru": [], "attributes": []}
+            sm2.match_lot("eis_1", [card])
+        finally:
+            sm2.spec_llm.extract_from_text_cached = orig
+        self.assertEqual(calls, [], "текста для закупки нет — звать LLM нечем и незачем")
 
 
 class TestSpecFile(unittest.TestCase):

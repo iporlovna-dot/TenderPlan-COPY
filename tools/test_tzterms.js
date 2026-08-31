@@ -12,6 +12,7 @@ const assert = require("node:assert");
 
 const {
   annotateTz, hasTerms, unparsedFirst, rankTzDocs, isHopeless, termsForPurchase, applyTz,
+  decideText,
 } = require("./sources/tzterms");
 const LKTZ = require("../site/js/tzmatch.js");
 const { extractLotItemsFromTables, xlsxSheetsToTables } = require("./sources/ktrutable");
@@ -145,6 +146,49 @@ test("разбор без спецификации не стирает добы�
   const p = purchase("eis_12", { lotItems: [{ name: "Бинт", chars: [] }] });
   applyTz(p, { status: "ok", docName: "ТЗ.docx", terms: ["бинт"] });
   assert.equal(p.lotItems.length, 1, "дорого добытое затирать нечем");
+});
+
+// ------------------------------------------------ сырой текст (Фаза 4)
+
+test("decideText: текст хранится только без готовых характеристик", () => {
+  const withChars = [{ name: "Перчатки", chars: [{ key: "Размер", operator: "gte", value: 8 }] }];
+  const withoutChars = [{ name: "Перчатки", chars: [] }];
+  assert.equal(decideText("текст ТЗ", withChars), "",
+    "у позиции уже есть chars — LLM-фолбэк на полном тексте её и не позовёт");
+  assert.equal(decideText("текст ТЗ", withoutChars), "текст ТЗ");
+  assert.equal(decideText("текст ТЗ", []), "текст ТЗ", "нет позиций вовсе — текст может пригодиться");
+  assert.equal(decideText("", withoutChars), "", "нечего хранить");
+});
+
+test("decideText: длинный текст обрезается по TEXT_MAX", () => {
+  const long = "а".repeat(10000);
+  const got = decideText(long, []);
+  assert.ok(got.length <= 4000, "кап по умолчанию 4000, довесок не должен раздуваться безгранично");
+  assert.equal(got, long.slice(0, got.length));
+});
+
+test("applyTz переносит текст в закупку, но не стирает старый пустым", () => {
+  const p = purchase("eis_13");
+  applyTz(p, { status: "ok", docName: "ТЗ.docx", terms: ["бинт"], text: "полный текст ТЗ" });
+  assert.equal(p.tzText, "полный текст ТЗ");
+  // повторный разбор без текста (например, версия таблиц шагнула, а текста — нет)
+  // не должен стирать уже добытое прошлым прогоном
+  applyTz(p, { status: "ok", docName: "ТЗ.docx", terms: ["бинт"] });
+  assert.equal(p.tzText, "полный текст ТЗ", "разбор без текста не стирает добытый раньше");
+});
+
+test("запись без отметки версии текста не считается разобранной под Фазу 4", () => {
+  // тот же класс бага, что уже ловили на __items (14.08): засев кэша из
+  // накопителя обязан сверять ВСЕ версии разом, иначе старая запись без tzTextV
+  // выглядит готовой и застревает без текста навсегда.
+  const TZ_ALGO = 4, TZ_ITEMS = 5, TZ_TEXT = 1;
+  const FINAL = new Set(["ok", "unsupported", "empty", "error"]);
+  const seedable = (p) => p.tzAlgo === TZ_ALGO && p.tzItems === TZ_ITEMS && p.tzTextV === TZ_TEXT
+    && FINAL.has(p.tzStatus);
+  assert.equal(seedable({ tzAlgo: 4, tzItems: 5, tzStatus: "ok" }), false, "старая запись без tzTextV");
+  assert.equal(seedable({ tzAlgo: 4, tzItems: 5, tzTextV: 1, tzStatus: "ok" }), true);
+  assert.equal(seedable({ tzAlgo: 4, tzItems: 5, tzTextV: 1, tzStatus: "ok", tzText: undefined }), true,
+    "разобрали текущей версией, текста нет (были chars) — это ответ, а не пробел");
 });
 
 // ------------------------------------------- перебор кандидатов вместо одного

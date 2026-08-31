@@ -42,6 +42,12 @@ const OUT = path.join(OUT_DIR, "purchases.json");
 const OUT_TZ = path.join(OUT_DIR, "tz.json");
 const OUT_DOCS = path.join(OUT_DIR, "docs.json");
 const OUT_SPEC = path.join(OUT_DIR, "spec.json");
+// Сырой текст ТЗ (Фаза 4, piped-forging-flame) — довесок ОСОБНЯКОМ от tz/docs/spec:
+// его грузит не браузер, а бэкенд (server/app/spec_match.py) напрямую с диска, для
+// LLM-извлечения по полному тексту там, где нет ни таблицы, ни характеристик в
+// названии позиции. sources/split.js его не трогает — тот файл про то, что́ и когда
+// грузит БРАУЗЕР, а этот довесок браузеру не нужен вовсе.
+const OUT_TZTEXT = path.join(OUT_DIR, "tztext.json");
 
 // Кэш карточек ЕИС (документы/регион/срок поставки), переживающий пересборку.
 // Лежит вне site/ намеренно: это рабочий файл сборщика, он не деплоится и не
@@ -112,7 +118,19 @@ const PICK_KEY = "__pick";
 // на живом ТЗ 44-ФЗ — переразбор поднял chars.length с 0 до 18.
 const TZ_ITEMS = 5;
 const ITEMS_KEY = "__items";
-const META_KEYS = [ALGO_KEY, PICK_KEY, ITEMS_KEY];
+
+// Версия решения «хранить ли СЫРОЙ ТЕКСТ документа» (Фаза 4 плана
+// `piped-forging-flame` — LLM-извлечение по полному тексту там, где нет ни
+// таблицы характеристик, ни характеристик в самом названии позиции). Четвёртая
+// метка, потому что обесценивает четвёртое подмножество: удачные разборы БЕЗ
+// текста, у которых при этом нет ни одной позиции с готовыми chars — именно им
+// текст мог бы пригодиться (см. `tzterms.js hasChars`). Записи, где chars уже
+// есть, текст никогда не получат по дизайну — реопенить их бессмысленно,
+// поэтому проверка учитывает chars, а не только наличие текста самого по себе.
+// ПОДНИМАТЬ при изменении TEXT_MAX / условия «хранить текст» в tzterms.js.
+const TZ_TEXT = 1;
+const TEXT_KEY = "__text";
+const META_KEYS = [ALGO_KEY, PICK_KEY, ITEMS_KEY, TEXT_KEY];
 
 // Статусы разбора ТЗ, означающие «вопрос закрыт»: документ скачан и что-то про
 // него теперь известно окончательно. Ровно их и кладёт в кэш annotateTz.
@@ -121,7 +139,7 @@ const META_KEYS = [ALGO_KEY, PICK_KEY, ITEMS_KEY];
 // намертво закрыли бы ей дорогу к разбору.
 const TZ_FINAL = new Set(["ok", "unsupported", "empty", "error"]);
 
-function loadCache(file, algo, pick, items) {
+function loadCache(file, algo, pick, items, text) {
   try {
     const cache = JSON.parse(fs.readFileSync(file, "utf8"));
     if (algo != null && cache[ALGO_KEY] !== algo) {
@@ -149,6 +167,19 @@ function loadCache(file, algo, pick, items) {
       console.log(`  кэш ${path.basename(file)}: разбор таблиц КТРУ изменился — `
         + `переоткрыл ${reopened} разборов без спецификации`);
     }
+    if (text != null && cache[TEXT_KEY] !== text) {
+      let reopened = 0;
+      for (const [k, v] of Object.entries(cache)) {
+        if (META_KEYS.includes(k)) continue;
+        // только удачные разборы без текста И без готовых chars — записям с
+        // характеристиками текст не нужен и не положен по дизайну (см. TZ_TEXT
+        // выше), реопенить их означало бы качать заново без всякой пользы.
+        const hasChars = v && v.items && v.items.some((it) => it.chars && it.chars.length);
+        if (v && v.status === "ok" && !v.text && !hasChars) { delete cache[k]; reopened++; }
+      }
+      console.log(`  кэш ${path.basename(file)}: решение о хранении текста изменилось — `
+        + `переоткрыл ${reopened} разборов без текста и без характеристик`);
+    }
     for (const k of META_KEYS) delete cache[k];
     return cache;
   } catch (e) { return {}; }   // нет файла/битый — начинаем с чистого, это не ошибка
@@ -158,11 +189,12 @@ function loadDocsCache() { return loadCache(DOCS_CACHE); }
 
 // Чистим кэш от закупок, которых больше нет в снапшоте (истёк срок подачи и т.п.),
 // иначе он растёт без предела и тащит мусор годами.
-function saveCache(file, cache, keep, algo, pick, items) {
+function saveCache(file, cache, keep, algo, pick, items, text) {
   for (const n of Object.keys(cache)) if (!META_KEYS.includes(n) && !keep.has(n)) delete cache[n];
   if (algo != null) cache[ALGO_KEY] = algo;
   if (pick != null) cache[PICK_KEY] = pick;
   if (items != null) cache[ITEMS_KEY] = items;
+  if (text != null) cache[TEXT_KEY] = text;
   fs.mkdirSync(CACHE_DIR, { recursive: true });
   fs.writeFileSync(file, JSON.stringify(cache), "utf8");
   return Object.keys(cache).length - META_KEYS.filter(k => cache[k] !== undefined).length;
@@ -252,24 +284,28 @@ async function main() {
   // Термины ТЗ — по всему накопителю: качать документы закупки, которая уже
   // закрылась, бессмысленно, а она отсюда уже выселена. Сбой здесь не должен
   // ронять снапшот: лента без «Умной сверки» полезна, а сверка без ленты — нет.
-  const tzCache = loadCache(TZ_CACHE, TZ_ALGO, TZ_PICK, TZ_ITEMS);
+  const tzCache = loadCache(TZ_CACHE, TZ_ALGO, TZ_PICK, TZ_ITEMS, TZ_TEXT);
   // Записи, разобранные ТЕКУЩИМ алгоритмом, возвращаем в кэш: он мог быть
   // подчищен старым поведением или отсутствовать на этой машине, а перекачивать
   // уже разобранное — впустую. Записи без отметки версии не трогаем: чем их
   // разобрали, неизвестно, честнее разобрать заново.
   let seeded = 0;
   for (const p of purchases) {
-    if (!tzCache[p.id] && p.tzAlgo === TZ_ALGO && p.tzItems === TZ_ITEMS && TZ_FINAL.has(p.tzStatus)) {
+    if (!tzCache[p.id] && p.tzAlgo === TZ_ALGO && p.tzItems === TZ_ITEMS && p.tzTextV === TZ_TEXT
+        && TZ_FINAL.has(p.tzStatus)) {
       tzCache[p.id] = { terms: p.tzTerms || [], docName: p.tzDoc || "", status: p.tzStatus };
       if (p.lotItems && p.lotItems.length) tzCache[p.id].items = p.lotItems;
+      if (p.tzText) tzCache[p.id].text = p.tzText;
       seeded++;
     }
   }
   if (seeded) console.log(`  кэш терминов ТЗ: вернул из накопителя ${seeded} записей`);
   try {
     await annotateTz(purchases, tzCache, TZ_BUDGET);
-    for (const p of purchases) if (TZ_FINAL.has(p.tzStatus)) { p.tzAlgo = TZ_ALGO; p.tzItems = TZ_ITEMS; }
-    const kept = saveCache(TZ_CACHE, tzCache, new Set(purchases.map(p => p.id)), TZ_ALGO, TZ_PICK, TZ_ITEMS);
+    for (const p of purchases) {
+      if (TZ_FINAL.has(p.tzStatus)) { p.tzAlgo = TZ_ALGO; p.tzItems = TZ_ITEMS; p.tzTextV = TZ_TEXT; }
+    }
+    const kept = saveCache(TZ_CACHE, tzCache, new Set(purchases.map(p => p.id)), TZ_ALGO, TZ_PICK, TZ_ITEMS, TZ_TEXT);
     console.log(`  кэш терминов ТЗ: ${kept} записей -> ${path.relative(process.cwd(), TZ_CACHE)}`);
   } catch (e) {
     console.error("ТЗ: ошибка разбора —", e.message, "(снапшот пишу без терминов)");
@@ -295,6 +331,11 @@ async function main() {
   // отступов: снапшот читает браузер, а не человек, а отступы стоили 23% байтов.
   const generatedAt = new Date().toISOString();
   const { feed, tz, docs, spec } = splitSnapshot(purchases);
+  // Не через splitSnapshot: тот файл — про ленту/довески БРАУЗЕРА, а этот довесок
+  // читает только бэкенд (см. комментарий у OUT_TZTEXT). Считаем по тем же
+  // purchases (уже срезанным до SNAPSHOT_MAX), чтобы версия совпадала с остальными.
+  const tztext = {};
+  for (const p of purchases) if (p.tzText) tztext[p.id] = p.tzText;
   const payload = {
     generatedAt, v: FEED_V,
     source: "Портал поставщиков + ЕИС (zakupki.gov.ru) — активные закупки",
@@ -311,6 +352,7 @@ async function main() {
     "tz.json": write(OUT_TZ, { generatedAt, v: FEED_V, tz }),
     "docs.json": write(OUT_DOCS, { generatedAt, v: FEED_V, docs }),
     "spec.json": write(OUT_SPEC, { generatedAt, v: FEED_V, spec }),
+    "tztext.json": write(OUT_TZTEXT, { generatedAt, v: FEED_V, tztext }),
   };
   const mb = (b) => (b / 1048576).toFixed(1) + " МБ";
   console.log("  доставка: " + Object.entries(sizes)
