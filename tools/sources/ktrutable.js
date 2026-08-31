@@ -18,6 +18,16 @@
 
 // Идём по тегам, а не регэкспом `<w:tbl>[\s\S]*?</w:tbl>`: таблицы в ТЗ бывают
 // вложенными, и нежадный шаблон схлопнул бы внешнюю на закрытии внутренней.
+// Объединённая по горизонтали шапка («Характеристики товара» на всю ширину
+// charName/charValue/ед.изм/инструкции, `w:gridSpan`) в Word — ОДНА ячейка,
+// а у строк данных под ней — РАЗНЫЕ физические колонки. Без раскрытия span'а
+// индексы колонок между шапкой и телом таблицы съезжают: «Единица измерения»
+// шапки указывает не на реальную колонку единицы, а на первую из перекрытых
+// span'ом (проверено на живом ТЗ 44-ФЗ — из-за этого charValue терялась
+// целиком, хотя таблица находилась). Раскрываем — повторяем текст ячейки на
+// каждую охваченную физическую колонку, дальше шапка и тело на одной сетке.
+const GRIDSPAN_RE = /<w:gridSpan\b[^>]*\sw:val="(\d+)"/;
+
 function docxTables(xml) {
   const tables = [];
   const stack = [];
@@ -38,7 +48,11 @@ function docxTables(xml) {
     } else if (tag === "tc") {
       if (!closing) cellStart = m.index + m[0].length;
       else if (cellStart >= 0 && row) {
-        row.push(cellText(xml.slice(cellStart, m.index)));
+        const inner = xml.slice(cellStart, m.index);
+        const span = GRIDSPAN_RE.exec(inner);
+        const n = span ? Math.max(1, parseInt(span[1], 10)) : 1;
+        const text = cellText(inner);
+        for (let i = 0; i < n; i++) row.push(text);
         cellStart = -1;
       }
     }
@@ -133,8 +147,23 @@ function pickSpecTable(tables) {
     if (t.rows.length < 2) continue;
     for (const hi of candidateHeaderRows(t.rows)) {
       const map = mapColumns(t.rows[hi]);
+      let bodyStart = hi + 1;
+      // Шапка бывает в два уровня: верхняя строка объединяет charName/charValue/
+      // единицу/инструкцию в одну ячейку «Характеристики товара» (gridSpan,
+      // раскрытый в docxTables), а разводит их по колонкам строка НИЖЕ —
+      // «Наименование характеристики»/«Значение характеристики»/…
+      // Не расширяем то, что верх уже нашёл сам (там — товар/код), только
+      // добираем недостающее — иначе верхняя (более общая) договорённость может
+      // перекрыться нижней (более узкой) для не относящихся к ней колонок.
+      if (map.charName !== undefined && map.charValue === undefined && t.rows[hi + 1]) {
+        const sub = mapColumns(t.rows[hi + 1]);
+        if (sub.charValue !== undefined) {
+          for (const k of Object.keys(sub)) if (map[k] === undefined) map[k] = sub[k];
+          bodyStart = hi + 2;
+        }
+      }
       if (!isSpecHeader(map)) continue;
-      const cand = { table: t, map, headerRow: hi, body: t.rows.slice(hi + 1) };
+      const cand = { table: t, map, headerRow: hi, body: t.rows.slice(bodyStart) };
       if (!best || cand.body.length > best.body.length) best = cand;
       break;
     }

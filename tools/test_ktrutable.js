@@ -18,6 +18,7 @@ const {
 
 const t = (s) => `<w:p><w:r><w:t>${s}</w:t></w:r></w:p>`;
 const tc = (s) => `<w:tc><w:tcPr/>${t(s)}</w:tc>`;
+const tcSpan = (s, n) => `<w:tc><w:tcPr><w:gridSpan w:val="${n}"/></w:tcPr>${t(s)}</w:tc>`;
 const tr = (cells) => `<w:tr>${cells.map(tc).join("")}</w:tr>`;
 const tbl = (rows) => `<w:tbl><w:tblPr/>${rows.map(tr).join("")}</w:tbl>`;
 
@@ -85,6 +86,39 @@ test("самая длинная таблица не выигрывает, есл
   const picked = pickSpecTable(docxTables(junk + spec));
   assert.equal(picked.body.length, 1);
   assert.equal(picked.body[0][0], "Перчатки");
+});
+
+test("gridSpan раскрывается — объединённая ячейка не съедает соседние колонки", () => {
+  const tables = docxTables(tbl([["А", "Б"]]));
+  assert.deepEqual(tables, [{ rows: [["А", "Б"]] }]);
+  // <w:tc> с gridSpan=3 обязана превратиться в три ячейки с тем же текстом —
+  // иначе колонки под объединённой шапкой съезжают относительно строк данных.
+  const xml = `<w:tbl><w:tr>${tc("№")}${tcSpan("Широкая", 3)}${tc("Хвост")}</w:tr></w:tbl>`;
+  assert.deepEqual(docxTables(xml)[0].rows, [["№", "Широкая", "Широкая", "Широкая", "Хвост"]]);
+});
+
+test("двухуровневая шапка (gridSpan сверху, разведение снизу) даёт charValue", () => {
+  // реальный формат живого 44-ФЗ ТЗ: верхняя строка объединяет charName/
+  // charValue/ед.изм/инструкцию в одну ячейку «Характеристики товара», а
+  // делит их по колонкам строка ниже. До фикса charValue терялась целиком —
+  // верхняя шапка находила только charName, а строка-разводка не
+  // подхватывалась вовсе (spec.json отдавал chars:[] для реальной позиции).
+  const xml = `<w:tbl>` +
+    `<w:tr>${tc("№ п/п")}${tc("Наименование товара")}${tc("Код КТРУ")}` +
+      `${tcSpan("Характеристики товара", 2)}${tc("Ед. изм.")}${tc("Кол-во")}</w:tr>` +
+    `<w:tr>${tc("")}${tc("")}${tc("")}${tc("Наименование характеристики")}` +
+      `${tc("Значение характеристики")}${tc("")}${tc("")}</w:tr>` +
+    `<w:tr>${tc("1")}${tc("Перчатки")}${tc("32.50.13.190-00007686")}` +
+      `${tc("Размер")}${tc("≥ 8")}${tc("шт")}${tc("10")}</w:tr>` +
+    `</w:tbl>`;
+  const [it] = parseSpecTable(pickSpecTable(docxTables(xml)));
+  assert.equal(it.name, "Перчатки");
+  assert.equal(it.ktru, "32.50.13.190-00007686");
+  assert.equal(it.qty, 10, "количество должно читаться из реальной колонки, а не съехавшей");
+  assert.equal(it.unit, "шт");
+  assert.equal(it.chars.length, 1, "без доразбора шапки characteristics оставались бы пустыми");
+  assert.equal(it.chars[0].key, "Размер");
+  assert.deepEqual(it.chars[0].value, 8);
 });
 
 test("шапка ниже объединённого титула тоже находится", () => {
