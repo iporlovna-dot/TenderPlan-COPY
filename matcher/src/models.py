@@ -7,23 +7,23 @@ Haiku, извлечение требований из грязных ТЗ — So
 
 Модуль ЧИСТО конфигурационный: он лишь выбирает id модели, самих вызовов API тут нет.
 
-⚠️ **Провайдер по умолчанию — DeepSeek, не Anthropic.** Anthropic не обслуживает
-запросы с VPS (физически в РФ) — 403 forbidden на КАЖДЫЙ реальный вызов, не разовый
-сбой ключа (см. CLAUDE.md «Anthropic API — гео-блок»). Anthropic остаётся в коде:
-`LK_LLM_PROVIDER=anthropic` включает его обратно одной переменной, без переписывания
-вызывающего кода — на случай, если гео-блок снимется, или для сравнения качества.
+⚠️ **Провайдер по умолчанию — Anthropic** (прод переехал в NL-регион Timeweb,
+2026-09-01, где Anthropic не блокируется — см. CLAUDE.md «Anthropic API —
+гео-блок»). DeepSeek остаётся в коде: `LK_LLM_PROVIDER=deepseek` включает его
+одной переменной, без переписывания вызывающего кода — на случай повторного
+переезда/блокировки, или для сравнения качества.
 """
 from __future__ import annotations
 
 import os
 
-# Anthropic (см. claude-api) — активен при LK_LLM_PROVIDER=anthropic.
+# Anthropic — активен по умолчанию (см. llmclient.py).
 # Sonnet 5 — рабочая лошадка, Opus 4.8 — топ, Haiku 4.5 — дёшево.
 HAIKU = "claude-haiku-4-5-20251001"
 SONNET = "claude-sonnet-5"
 OPUS = "claude-opus-4-8"
 
-# DeepSeek — активен по умолчанию (см. llmclient.py). Только два тира, в отличие от
+# DeepSeek — активен при LK_LLM_PROVIDER=deepseek. Только два тира, в отличие от
 # Haiku/Sonnet/Opus — усложнять маршрутизацию по задачам под тиры, которых у
 # провайдера физически нет, незачем: reasoner берём при явной эскалации (hard=True).
 DEEPSEEK_CHAT = "deepseek-chat"
@@ -41,14 +41,14 @@ _ANTHROPIC_ROUTES = {
 
 
 def pick_model(task: str, hard: bool = False) -> str:
-    """Выбрать модель под задачу и активного провайдера (`LK_LLM_PROVIDER`, деф. DeepSeek).
+    """Выбрать модель под задачу и активного провайдера (`LK_LLM_PROVIDER`, деф. Anthropic).
 
     task: parse_price | expand_query | field_equivalence | extract | verdict | explain.
     hard=True — эскалация сложного/спорного случая на топовую модель провайдера
     (Opus у Anthropic, deepseek-reasoner у DeepSeek). Неизвестная задача при
     Anthropic → Sonnet (безопасный дефолт-баланс).
     """
-    provider = os.getenv("LK_LLM_PROVIDER", "deepseek").strip().lower()
+    provider = os.getenv("LK_LLM_PROVIDER", "anthropic").strip().lower()
     if provider == "anthropic":
         return OPUS if hard else _ANTHROPIC_ROUTES.get(task, SONNET)
     if provider == "deepseek":
