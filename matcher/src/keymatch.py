@@ -19,8 +19,7 @@ import os
 import re
 from typing import Dict, List, Optional
 
-import anthropic
-
+import llmclient
 from embed import cosine_matrix, default_embedder
 from models import pick_model
 
@@ -189,11 +188,12 @@ def free_map(req_fields: Dict[str, object], product_fields: Dict[str, object],
 
 
 def llm_map(remaining: Dict[str, object], product_fields: Dict[str, object],
-            client: Optional[anthropic.Anthropic] = None) -> Dict[str, str]:
-    """LLM-добор ИМЁН на остатке после `free_map` (Haiku, батч на весь остаток разом —
-    модель видит все поля карточки сразу, это и позволяет ей разрешать конфликты
-    раскладки не хуже человека, см. `_SYSTEM`). Публична — вызывается напрямую там, где
-    нужен СВОЙ кэш вокруг платного вызова (сервер), а не только из `align_keys`.
+            client=None) -> Dict[str, str]:
+    """LLM-добор ИМЁН на остатке после `free_map` (задача `field_equivalence`, батч на
+    весь остаток разом — модель видит все поля карточки сразу, это и позволяет ей
+    разрешать конфликты раскладки не хуже человека, см. `_SYSTEM`). Публична —
+    вызывается напрямую там, где нужен СВОЙ кэш вокруг платного вызова (сервер), а не
+    только из `align_keys`.
 
     Возвращает ТОЛЬКО новые пары (remaining_key → card_key), без слияния с прежними
     слоями — тем же приёмом, что `_embed_map`. Пустой словарь — либо LLM честно ничего
@@ -205,21 +205,14 @@ def llm_map(remaining: Dict[str, object], product_fields: Dict[str, object],
     def _fmt(d):
         return [{"имя": k, "значение": v} for k, v in d.items() if k]
 
-    client = client or anthropic.Anthropic()
+    client = client or llmclient.get_default_client()
     user = json.dumps({"поля_тз": _fmt(remaining), "поля_карточки": _fmt(product_fields)},
                       ensure_ascii=False, default=str)
-    resp = client.messages.create(
-        model=pick_model("field_equivalence"),
-        max_tokens=8000,  # большой ТЗ (десятки полей) → маппинг не влезал в 2000 → обрыв JSON
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": user}],
-        output_config={"format": {"type": "json_schema", "schema": _SCHEMA}},
-    )
-    text = next((b.text for b in resp.content if b.type == "text"), "")
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        return {}  # обрыв ответа модели — вызывающий останется с тем, что было до LLM
+        data = llmclient.structured_create(client, pick_model("field_equivalence"), _SYSTEM,
+                                            user, _SCHEMA, max_tokens=8000)
+    except (json.JSONDecodeError, llmclient.ModelOutputError):
+        return {}  # обрыв/отказ модели — вызывающий останется с тем, что было до LLM
     card_set = set(product_fields)
     out: Dict[str, str] = {}
     for m in data.get("mapping", []):
@@ -232,7 +225,7 @@ def llm_map(remaining: Dict[str, object], product_fields: Dict[str, object],
 
 
 def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
-               client: Optional[anthropic.Anthropic] = None,
+               client=None,
                key_synonyms: Optional[List[list]] = None,
                embedder=None,
                llm_fallback: bool = True) -> Dict[str, str]:
@@ -249,10 +242,10 @@ def align_keys(req_fields: Dict[str, object], product_fields: Dict[str, object],
     вынесены публично для потребителей со своим кэшем вокруг платного шага (см. `llm_map`).
 
     embedder — инъекция эмбеддера (для тестов); None → singleton `embed.default_embedder()` (или
-    None, если недоступен → тогда LLM). client — anthropic-клиент для LLM-fallback.
+    None, если недоступен → тогда LLM). client — LLM-клиент для LLM-fallback (см. `llmclient.py`).
     llm_fallback — False запрещает и LLM-путь: остаток после детерминированного слоя (и
-    эмбеддингов, если эмбеддер доступен) просто остаётся несведённым, вызов `anthropic.Anthropic()`
-    не создаётся и деньги не тратятся. Нужно потребителям, которым важна гарантированно бесплатная
+    эмбеддингов, если эмбеддер доступен) просто остаётся несведённым, боевой клиент не
+    создаётся и деньги не тратятся. Нужно потребителям, которым важна гарантированно бесплатная
     сверка (см. Лекало `server/app/spec_match.py`).
     """
     mapping, remaining = free_map(req_fields, product_fields, key_synonyms, embedder)
@@ -292,7 +285,7 @@ _VAL_SCHEMA = {
 }
 
 
-def align_values(reqs: List[dict], product, client: Optional[anthropic.Anthropic] = None) -> List[dict]:
+def align_values(reqs: List[dict], product, client=None) -> List[dict]:
     """Семантическая сверка ЗНАЧЕНИЙ: где значение карточки удовлетворяет требованию по смыслу,
     подменяем значение требования на карточное — тогда строковый matcher засчитает pass.
 
@@ -314,19 +307,14 @@ def align_values(reqs: List[dict], product, client: Optional[anthropic.Anthropic
     if not pairs:
         return reqs
 
-    client = client or anthropic.Anthropic()
+    client = client or llmclient.get_default_client()
     payload = [{"key": k, "требование_тз": rv, "значение_карточки": cv} for _, k, rv, cv in pairs]
-    resp = client.messages.create(
-        model=pick_model("field_equivalence"),
-        max_tokens=8000,  # много пар на большом ТЗ → 2000 обрывало JSON
-        system=_VAL_SYSTEM,
-        messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
-        output_config={"format": {"type": "json_schema", "schema": _VAL_SCHEMA}},
-    )
     try:
-        data = json.loads(next((b.text for b in resp.content if b.type == "text"), "{}"))
-    except json.JSONDecodeError:
-        return reqs  # обрыв ответа модели — оставляем требования как есть, не роняем прогон
+        data = llmclient.structured_create(client, pick_model("field_equivalence"), _VAL_SYSTEM,
+                                            json.dumps(payload, ensure_ascii=False), _VAL_SCHEMA,
+                                            max_tokens=8000)
+    except (json.JSONDecodeError, llmclient.ModelOutputError):
+        return reqs  # обрыв/отказ модели — оставляем требования как есть, не роняем прогон
     ok_keys = {c["key"] for c in data.get("checks", []) if c.get("satisfies")}
 
     out = [dict(r) for r in reqs]

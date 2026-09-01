@@ -1,11 +1,12 @@
 """Извлечение требований из текста ТЗ (шаг 6 конвейера, plan.md §3) — сердце №1.
 
-LLM (Claude) со строгой JSON-схемой: грязный текст ТЗ → requirements[] в формате
+LLM со строгой JSON-схемой: грязный текст ТЗ → requirements[] в формате
 schema.Requirement (см. plan.md §5.2). В само ядро матчинга LLM не заходит — сюда
 приходит текст, отсюда уходит структура, дальше matcher.py работает уже без LLM.
 
-Модель по умолчанию — Sonnet 5 (рабочая лошадка на грязных таблицах, plan.md §4).
-Ключ берётся из окружения (ANTHROPIC_API_KEY или профиль `ant auth login`).
+Провайдер и модель — через `llmclient.py`/`models.py` (`LK_LLM_PROVIDER`, по
+умолчанию DeepSeek; Anthropic доступен флагом, см. `models.py`). Ключ — в окружении
+(`DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY`).
 
 Использование:
     from parser import parse
@@ -17,9 +18,8 @@ from __future__ import annotations
 import json
 from typing import List, Optional
 
-import anthropic
-
-from models import pick_model  # маршрутизация моделей по сложности (plan.md §4)
+import llmclient
+from models import pick_model  # маршрутизация моделей по сложности и провайдеру (plan.md §4)
 
 # Строгая схема вывода: массив требований ровно в форме schema.Requirement.
 # value полиморфен (число / строка / bool / список) — операторам матчинга это ок.
@@ -135,7 +135,7 @@ def extract_requirements(
     profile: Optional[dict] = None,
     model: Optional[str] = None,
     hard: bool = False,
-    client: Optional[anthropic.Anthropic] = None,
+    client=None,
     position: Optional[dict] = None,
 ) -> List[dict]:
     """Текст ТЗ → список требований (dict'ы формата schema.Requirement).
@@ -152,7 +152,7 @@ def extract_requirements(
     data/requirements/*.json и подаче в matcher.match.
     """
     model = model or pick_model("extract", hard=hard)
-    client = client or anthropic.Anthropic()
+    client = client or llmclient.get_default_client()
 
     user = "Текст ТЗ:\n\n" + tz_text
     if position and position.get("name"):
@@ -178,30 +178,7 @@ def extract_requirements(
             + json.dumps(hint, ensure_ascii=False)
         )
 
-    resp = client.messages.create(
-        model=model,
-        max_tokens=16000,
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": user}],
-        output_config={
-            "format": {"type": "json_schema", "schema": _SCHEMA},
-            "effort": "medium",
-        },
-    )
-
-    if resp.stop_reason == "refusal":
-        raise RuntimeError("Модель отклонила запрос (stop_reason=refusal)")
-    if resp.stop_reason == "max_tokens":
-        raise RuntimeError(
-            "Ответ обрезан по max_tokens — ТЗ слишком большое/многопозиционное. "
-            "Увеличь max_tokens или сократи вход до «описания объекта закупки»."
-        )
-
-    text = next((b.text for b in resp.content if b.type == "text"), "")
-    if not text:
-        raise RuntimeError("Пустой ответ модели при извлечении требований")
-
-    data = json.loads(text)  # output_config гарантирует валидный JSON по схеме
+    data = llmclient.structured_create(client, model, _SYSTEM, user, _SCHEMA, max_tokens=16000)
     return data["requirements"]
 
 
@@ -221,7 +198,7 @@ def extract_positions(
     profile: Optional[dict] = None,
     model: Optional[str] = None,
     hard: bool = False,
-    client: Optional[anthropic.Anthropic] = None,
+    client=None,
 ) -> List[dict]:
     """Многолот → список позиций [{name, requirements:[dict]}]. Один LLM-вызов на весь ТЗ.
 
@@ -229,7 +206,7 @@ def extract_positions(
     её на позиции с их характеристиками, включая одноимённые позиции разных размеров (что
     детерминированный табличный парсер и КТРУ-скоуп не могут). Для lot_coverage.py."""
     model = model or pick_model("extract", hard=hard)
-    client = client or anthropic.Anthropic()
+    client = client or llmclient.get_default_client()
 
     user = "Текст ТЗ:\n\n" + tz_text
     if profile:
@@ -239,21 +216,8 @@ def extract_positions(
         user += ("\n\nПрофиль (канонические имена ключей — используй ДОСЛОВНО, где подходит):\n"
                  + json.dumps(hint, ensure_ascii=False))
 
-    resp = client.messages.create(
-        model=model,
-        max_tokens=16000,
-        system=_POS_SYSTEM,
-        messages=[{"role": "user", "content": user}],
-        output_config={"format": {"type": "json_schema", "schema": _POS_SCHEMA}, "effort": "medium"},
-    )
-    if resp.stop_reason == "refusal":
-        raise RuntimeError("Модель отклонила запрос (stop_reason=refusal)")
-    if resp.stop_reason == "max_tokens":
-        raise RuntimeError("Ответ обрезан по max_tokens — ТЗ слишком большое; сократи вход.")
-    text = next((b.text for b in resp.content if b.type == "text"), "")
-    if not text:
-        raise RuntimeError("Пустой ответ модели при извлечении позиций")
-    return json.loads(text)["positions"]
+    data = llmclient.structured_create(client, model, _POS_SYSTEM, user, _POS_SCHEMA, max_tokens=16000)
+    return data["positions"]
 
 
 if __name__ == "__main__":

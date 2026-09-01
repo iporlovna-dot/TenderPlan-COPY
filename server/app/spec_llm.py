@@ -37,9 +37,11 @@ _MATCHER_SRC = os.path.join(os.path.dirname(__file__), "..", "..", "matcher", "s
 if _MATCHER_SRC not in sys.path:
     sys.path.insert(0, os.path.abspath(_MATCHER_SRC))
 
+import llmclient  # noqa: E402 — провайдер-агностичный клиент (LK_LLM_PROVIDER, деф. DeepSeek)
+
 log = logging.getLogger("lekalo.spec_llm")
 
-ENABLED = os.getenv("LK_SPEC_LLM", "1") != "0" and bool(os.getenv("ANTHROPIC_API_KEY"))
+ENABLED = os.getenv("LK_SPEC_LLM", "1") != "0" and llmclient.has_api_key()
 NAME_MIN = int(os.getenv("LK_SPEC_LLM_NAME_MIN", "60"))
 TIMEOUT_S = float(os.getenv("LK_SPEC_LLM_TIMEOUT", "25"))
 
@@ -48,7 +50,7 @@ TIMEOUT_S = float(os.getenv("LK_SPEC_LLM_TIMEOUT", "25"))
 # не дало. Выключен по умолчанию — расход на реальном трафике не оценён (тот же живой
 # замер 2026-08-31 упёрся в то, что реальных карточек товара почти нет, см. память
 # spec-match-real-usage-empty), включать осознанно после оценки на живых данных.
-ENABLED_FULLTEXT = os.getenv("LK_SPEC_LLM_FULLTEXT", "0") == "1" and bool(os.getenv("ANTHROPIC_API_KEY"))
+ENABLED_FULLTEXT = os.getenv("LK_SPEC_LLM_FULLTEXT", "0") == "1" and llmclient.has_api_key()
 
 _client = None
 
@@ -56,8 +58,7 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        import anthropic
-        _client = anthropic.Anthropic(timeout=TIMEOUT_S)
+        _client = llmclient.get_default_client(timeout=TIMEOUT_S)
     return _client
 
 

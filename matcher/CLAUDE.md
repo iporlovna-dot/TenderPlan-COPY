@@ -28,13 +28,23 @@
 | `matcher.py` | ядро: операторы, скоринг, дисквалификация, гомоглифы кир/лат | нет |
 | `filter.py` | воронка-фильтры: ОКПД2/КТРУ + слова + срок подачи + регион (шаг 2) | нет |
 | `ktru.py` | сверка КТРУ товар↔позиция закупки с градацией `exact`/`group`/`none` (шаг 2) | нет |
-| `keymatch.py` | семантика ТЗ↔карточка до матчера: `align_keys` (имена полей) + `align_values` (значения) | Haiku |
+| `keymatch.py` | семантика ТЗ↔карточка до матчера: `align_keys` (имена полей) + `align_values` (значения) | DeepSeek/Anthropic (`field_equivalence`) |
 | `parser.py` | `.docx/.pdf/.xlsx/.txt` → текст + таблицы (шаг 5); PDF-скан → OCR-fallback | нет |
 | `ocr.py` | OCR сканов-PDF: tesseract → easyocr (шаг 5) | нет |
-| `models.py` | маршрутизация Haiku/Sonnet/Opus по сложности (`pick_model`) | — |
-| `extractor.py` | извлечение требований из ТЗ (шаг 6) — ждёт `ANTHROPIC_API_KEY` | Sonnet/Opus |
+| `models.py` | маршрутизация моделей по задаче И по провайдеру (`pick_model`, см. `llmclient.py`) | — |
+| `llmclient.py` | провайдер-агностичный LLM-клиент: выбор по `LK_LLM_PROVIDER` (деф. DeepSeek) + единый `structured_create` (Anthropic constrained-JSON / OpenAI-совместимый json_object) | — |
+| `extractor.py` | извлечение требований из ТЗ (шаг 6) — ждёт ключ активного провайдера | DeepSeek/Anthropic (`extract`) |
 | `source.py` | интерфейс источника закупок (заменяемый адаптер) | нет |
 | `tenderplan.py` | адаптер Тендерплана: discovery по фиду + забор ТЗ с zakupki | нет |
+
+⚠️ **Провайдер по умолчанию — DeepSeek, не Anthropic** (с 2026-09-01). Anthropic не
+обслуживает запросы с VPS (физически в РФ, Timeweb Moscow) — 403 forbidden на КАЖДЫЙ
+реальный вызов, воспроизведено стабильно, не разовый сбой ключа. `LK_LLM_PROVIDER=anthropic`
+включает Claude обратно одной переменной (ключ — `ANTHROPIC_API_KEY`), без переписывания
+кода. Диспетчеризация вызова (`llmclient.structured_create`) идёт по ФОРМЕ клиента
+(`.messages` vs `.chat`), не по этому флагу напрямую — поэтому юнит-тесты (моки
+Anthropic-формы) продолжают работать независимо от прод-дефолта. Подробности и история —
+корневой `CLAUDE.md`, раздел «Anthropic API — гео-блок».
 
 `scripts/`: `run_match.py` (товар+требования→вердикт) · `run_pipeline.py` (документ→вердикт) ·
 `run_auto.py` (сквозной автопрогон, флаг `--collect-only` работает без API) ·
@@ -65,7 +75,9 @@ export TENDERPLAN_TOKEN=...            # PAT со scope resources+keys+relations
 .venv/bin/python tests/test_matcher.py && .venv/bin/python tests/test_filter.py
 ```
 
-Ключи в окружении, не в коде и не в чате: `TENDERPLAN_TOKEN`, `ANTHROPIC_API_KEY`.
+Ключи в окружении, не в коде и не в чате: `TENDERPLAN_TOKEN`, `DEEPSEEK_API_KEY`
+(активный провайдер по умолчанию) / `ANTHROPIC_API_KEY` (нужен только при
+`LK_LLM_PROVIDER=anthropic`, см. таблицу модулей выше).
 
 ---
 

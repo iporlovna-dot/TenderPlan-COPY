@@ -25,6 +25,11 @@ def _fresh_spec_llm(db_path):
     для каждого теста поднимаем модуль заново на своём окружении/БД, тем же
     приёмом, что test_spec_match._fresh_module."""
     os.environ["LK_DB_PATH"] = db_path
+    # Тесты гоняют против мока anthropic-формы (ReqsLLM) — провайдер пиннуем явно,
+    # независимо от LK_LLM_PROVIDER в среде запуска (прод по умолчанию — deepseek,
+    # см. matcher/src/llmclient.py); client= инъекция всё равно не даёт get_default_client()
+    # реально вызваться, но ENABLED/ENABLED_FULLTEXT читают has_api_key() при импорте.
+    os.environ["LK_LLM_PROVIDER"] = "anthropic"
     os.environ["ANTHROPIC_API_KEY"] = "sk-test-fake-key-for-mock-only"
     import app
     if hasattr(app, "db"):

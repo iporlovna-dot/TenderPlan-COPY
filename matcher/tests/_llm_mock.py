@@ -1,12 +1,17 @@
-"""Общий мок anthropic-клиента для юнит-тестов LLM-функций (keymatch, extractor).
+"""Общий мок LLM-клиента для юнит-тестов LLM-функций (keymatch, extractor, llmclient).
 
 Юнит-тесты LLM-обёрток не ходят в сеть: подменяют `client`, отдавая заготовленный
 JSON-ответ и записывая исходящий запрос (какой промпт/полезная нагрузка ушла в модель).
-`client.messages.create(**kwargs)` разрешается в `self.create` (messages = self).
+
+Два семейства моков, по форме клиента, которую диспетчерит `llmclient.structured_create`
+(см. её докстринг): `RecordingClient` — Anthropic (`client.messages.create(**kwargs)`
+разрешается в `self.create`, messages = self); `RecordingClientOpenAI` — OpenAI-
+совместимый (DeepSeek/Qwen: `client.chat.completions.create(**kwargs)`).
 
 Подкласс переопределяет `respond(request) -> str` — JSON-текст ответа модели.
-`request` — dict kwargs вызова (`model`, `max_tokens`, `system`, `messages`, `output_config`).
-Полезные срезы: `.calls`, `.requests`, `.last`, `.last_user` (контент первого user-сообщения).
+`request` — dict kwargs вызова. Полезные срезы (у обоих семейств): `.calls`,
+`.requests`, `.last`, `.last_user` — контент user-сообщения (у Anthropic-формы это
+единственный элемент `messages`, у OpenAI-формы — последний, после system).
 """
 from __future__ import annotations
 
@@ -86,6 +91,70 @@ class ReqsLLM(RecordingClient):
 
     def __init__(self, requirements=None):
         super().__init__()
+        self._reqs = requirements if requirements is not None else [
+            {"key": "материал", "operator": "eq", "value": "нитриловый латекс",
+             "unit": "", "hardness": "hard", "type": "technical", "raw": "материал: нитрил"},
+        ]
+
+    def respond(self, request):
+        return json.dumps({"requirements": self._reqs}, ensure_ascii=False)
+
+
+class RecordingClientOpenAI:
+    """OpenAI-совместимая форма (DeepSeek/Qwen): `client.chat.completions.create(**kwargs)`,
+    ответ через `resp.choices[0].message.content`/`.finish_reason` (см.
+    `llmclient.structured_create`). Используется только в `test_llmclient.py` — три
+    мока выше (ChecksLLM/MappingLLM/ReqsLLM) читают `messages[0]` как user-контент,
+    что верно ТОЛЬКО для Anthropic-формы (там system — отдельный kwarg, не элемент
+    messages); плодить для них вторую форму незачем, раз именно диспетчер и есть то,
+    что здесь проверяется."""
+
+    def __init__(self, finish_reason="stop"):
+        self.calls = 0
+        self.requests = []
+        self.chat = self
+        self.completions = self
+        self._finish_reason = finish_reason
+
+    def create(self, **kwargs):
+        self.calls += 1
+        self.requests.append(kwargs)
+        return _OpenAIResp(self.respond(kwargs), self._finish_reason)
+
+    @property
+    def last(self):
+        return self.requests[-1] if self.requests else None
+
+    @property
+    def last_user(self):
+        # messages = [system, user] у OpenAI-формы (structured_create кладёт схему в system)
+        return self.last["messages"][-1]["content"] if self.last else None
+
+    def respond(self, request) -> str:  # noqa: D401
+        raise NotImplementedError("подкласс задаёт JSON-ответ модели")
+
+
+class _OpenAIMessage:
+    def __init__(self, text):
+        self.content = text
+
+
+class _OpenAIChoice:
+    def __init__(self, text, finish_reason):
+        self.message = _OpenAIMessage(text)
+        self.finish_reason = finish_reason
+
+
+class _OpenAIResp:
+    def __init__(self, text, finish_reason):
+        self.choices = [_OpenAIChoice(text, finish_reason)]
+
+
+class ReqsLLMOpenAI(RecordingClientOpenAI):
+    """OpenAI-форма ReqsLLM — для тестов `llmclient.structured_create` на DeepSeek-ветке."""
+
+    def __init__(self, requirements=None, finish_reason="stop"):
+        super().__init__(finish_reason=finish_reason)
         self._reqs = requirements if requirements is not None else [
             {"key": "материал", "operator": "eq", "value": "нитриловый латекс",
              "unit": "", "hardness": "hard", "type": "technical", "raw": "материал: нитрил"},

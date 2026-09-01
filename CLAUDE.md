@@ -429,13 +429,71 @@ goods-фолбэк («Наименование|Кол-во» без колонк
 
 Env: `LK_SPEC_LLM` (0 — выключить фолбэк по названию), `LK_SPEC_LLM_NAME_MIN` (60),
 `LK_SPEC_LLM_TIMEOUT` (25 сек), `LK_SPEC_LLM_FULLTEXT` (1 — включить полнотекстовый
-фолбэк), `LK_TZTEXT_FILE` (путь к довеску, для тестов). Требует `ANTHROPIC_API_KEY` —
-**в `/opt/lekalo/server/.env` на VPS** (не в корневом `.env` проекта — это разные
-файлы, см. `server/deploy/tender-api.service` `EnvironmentFile=`), и пакет
-`anthropic` в `server/.venv` (см. `server/requirements.txt`).
+фолбэк), `LK_TZTEXT_FILE` (путь к довеску, для тестов). Провайдер и ключ — см.
+«Anthropic API — гео-блок» ниже (`LK_LLM_PROVIDER`, по умолчанию DeepSeek); ключ **в
+`/opt/lekalo/server/.env` на VPS** (не в корневом `.env` проекта — это разные файлы,
+см. `server/deploy/tender-api.service` `EnvironmentFile=`), и пакеты `anthropic`+
+`openai` в `server/.venv` (см. `server/requirements.txt`).
 
 Тесты: `python server/tests/test_spec_match.py` (41) и
 `test_spec_llm.py` (13, мок `matcher/tests/_llm_mock.py`, сети не бьёт).
+
+### Anthropic API — гео-блок, провайдер по умолчанию DeepSeek
+
+⚠️ **VPS физически в России (Timeweb, Москва) — Anthropic не обслуживает оттуда
+запросы.** Обнаружено 2026-09-01: прямой вызов `anthropic.Anthropic().messages.create()`
+с VPS, в обход всего нашего кода, отдаёт `403 forbidden: "Request not allowed"` —
+не `401 invalid_api_key` (типичная ошибка мёртвого ключа), а формулировка ближе к
+блокировке доступа/региона. Подтверждено гео-IP (`ipinfo.io` → `country: RU, org: AS9123
+JSC TIMEWEB`) и логами `tender-api`: реальный `PermissionDeniedError` срабатывал
+КАЖДЫЙ раз, когда живой трафик доходил до LLM-вызова (28.08, 31.08) — не разовый сбой,
+а стабильный отказ с первого зафиксированного вызова. Заменить ключ в этой ситуации
+бессмысленно — дело не в ключе.
+
+**Решение — провайдер-агностичный клиент, `matcher/src/llmclient.py`.** Один флаг
+`LK_LLM_PROVIDER` (env, по умолчанию `deepseek`) выбирает, кто реально отвечает на
+вызовы `extractor.py`/`keymatch.py`/`spec_llm.py`. DeepSeek — китайский провайдер,
+OpenAI-совместимый API, не подпадает под блокировку (проверено: `HTTP 401` с того же
+VPS-IP, а не таймаут/сброс — сеть открыта, просто нужен ключ). `LK_LLM_PROVIDER=anthropic`
+включает Claude обратно ОДНОЙ переменной, без переписывания вызывающего кода — код
+остался в проекте на случай, если гео-блок снимется, или для сравнения качества.
+
+- **Диспетчеризация вызова — по ФОРМЕ клиента, не по флагу напрямую.**
+  `llmclient.structured_create(client, model, system, user, schema)` смотрит:
+  `.messages` → Anthropic (constrained decoding через `output_config.json_schema` —
+  модель гарантированно отдаёт валидный JSON по схеме); иначе — OpenAI-совместимый
+  (`.chat.completions`, DeepSeek): у него только мягкий `response_format=json_object`
+  (валидный JSON, БЕЗ гарантии полей/типов) — схему поэтому вшиваем текстом в system.
+  Из-за этого юнит-тесты (моки Anthropic-формы, `matcher/tests/_llm_mock.py`)
+  продолжают работать независимо от того, что стоит в `LK_LLM_PROVIDER` на машине,
+  где их гоняют — провайдер там просто не участвует.
+- **`ModelOutputError`** (подкласс `RuntimeError`) — модель ОТВЕТИЛА, но ответ
+  непригоден (отказ/обрыв по max_tokens·length/пустой текст). Отдельный тип,
+  специально ОТДЕЛЬНЫЙ от сбоя транспорта: `keymatch.py` ловит именно его и мягко
+  деградирует (пара просто не сведена), а настоящий сбой сети/авторизации
+  пробрасывается дальше не пойманным — до кэширующего слоя (`_llm_align_cached`
+  и т.п. в `spec_match.py`), который обязан НЕ закэшировать провал (см. «Сверка по
+  товару» выше). Смешать эти два случая в один `except RuntimeError` — реальная
+  грабля, на которую наступили при первой версии рефактора: тест `BoomLLM`
+  (имитирует сбой сети через `raise RuntimeError`) поймался тем же `except`, что и
+  честный отказ модели, и провал начал молча кэшироваться как «нечего сводить».
+- **`models.py`** маршрутизирует по задаче И по активному провайдеру: Anthropic —
+  Haiku/Sonnet/Opus по `_ANTHROPIC_ROUTES`; DeepSeek — только два тира
+  (`deepseek-chat`/`deepseek-reasoner` при `hard=True`), усложнять маршрутизацию
+  под тиры, которых у DeepSeek физически нет, не стали.
+- Ключ активного провайдера — `DEEPSEEK_API_KEY` (по умолчанию) или
+  `ANTHROPIC_API_KEY` (при `LK_LLM_PROVIDER=anthropic`), оба в
+  `/opt/lekalo/server/.env` на VPS. `llmclient.has_api_key()` — единая проверка «есть
+  ли ключ активного провайдера», её же читают `ENABLED`/`ENABLED_FULLTEXT` в
+  `spec_llm.py` вместо прежней прямой проверки `ANTHROPIC_API_KEY`.
+- ⚠️ **Обход гео-блока через relay вне РФ рассматривался и отклонён** как
+  самостоятельное решение (независимо от смены провайдера) — это обход санкционного
+  ограничения Anthropic, а не нейтральная техническая настройка транспорта; решение
+  с юридическими последствиями, не принимается по умолчанию.
+
+Тесты: `python matcher/tests/test_llmclient.py` (22, оба клиента-мока — Anthropic-
+и OpenAI-формы, без сети) плюс обновлённые `test_extractor.py`/`test_keymatch.py`
+(диспетчер прозрачен для существующих моков).
 
 ### «Умная сверка по ТЗ» — как устроена
 
