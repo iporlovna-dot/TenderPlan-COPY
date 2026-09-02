@@ -1,6 +1,6 @@
 # Деплой на Timeweb-VPS
 
-VPS: `147.45.141.237` (Ubuntu 22.04). SSH-ключ `C:/Users/user/.ssh/nexara_deploy`.
+VPS: `185.11.134.80` (Ubuntu 22.04). SSH-ключ `C:/Users/user/.ssh/nexara_deploy`.
 Сервер поднят с нуля 2026-08-18 на новом аккаунте Timeweb: старый аккаунт
 (`186.246.30.213`) утрачен — пароль панели изменён, сервер приостановлен за
 неуплату. Реальных клиентов там не было, поэтому переехали чистым стартом:
@@ -21,7 +21,7 @@ VPS: `147.45.141.237` (Ubuntu 22.04). SSH-ключ `C:/Users/user/.ssh/nexara_de
 статика **Nexara** (отдельный проект) и её нужно было снять обратимо:
 
 ```bash
-ssh -i ~/.ssh/nexara_deploy root@147.45.141.237
+ssh -i ~/.ssh/nexara_deploy root@185.11.134.80
 mkdir -p /root/backups
 tar czf /root/backups/nexara-$(date +%F).tgz /var/www/nexara /etc/nginx/sites-available 2>/dev/null
 ls -lh /root/backups
@@ -95,7 +95,7 @@ ln -sf /etc/nginx/sites-available/lekalo /etc/nginx/sites-enabled/lekalo
 rm -f /etc/nginx/sites-enabled/nexara     # отключить Nexara (файл конфига остаётся в available)
 nginx -t && nginx -s reload
 ```
-Открыть `http://147.45.141.237/` → лендинг Лекало, `/(app.html)` → живая лента.
+Открыть `http://185.11.134.80/` → лендинг Лекало, `/(app.html)` → живая лента.
 
 ## 6. Авто-обновление снапшота (опционально, если фронт статичный)
 
@@ -134,16 +134,16 @@ crontab -e
 
 ## 7. HTTPS (Let's Encrypt через nip.io — без покупки домена)
 
-Голый IP сертификат от LE не получит. Обходим через `nip.io`: `147.45.141.237.nip.io`
+Голый IP сертификат от LE не получит. Обходим через `nip.io`: `185.11.134.80.nip.io`
 сам резолвится в этот IP, а LE выдаёт cert по HTTP-01. Один скрипт делает всё
 (ставит certbot, правит `server_name`, открывает 80/443, выпускает cert, включает
 редирект HTTP→HTTPS, проверяет автопродление):
 ```bash
 cd /opt/lekalo/server/deploy
 bash enable-https.sh
-# → https://147.45.141.237.nip.io/
+# → https://185.11.134.80.nip.io/
 ```
-Свой домен позже (сперва A-запись → 147.45.141.237):
+Свой домен позже (сперва A-запись → 185.11.134.80):
 ```bash
 LK_DOMAIN=lekalo.ru LK_LE_EMAIL=me@mail.ru bash enable-https.sh
 ```
@@ -167,7 +167,7 @@ LK_TELEGRAM_BOT_TOKEN=<токен бота>                 # поддержка
 LK_SUPPORT_ADMIN_CHAT_ID=<chat_id владельца>       # куда падают обращения из поддержки
 LK_TELEGRAM_WEBHOOK_SECRET=<случайная строка>      # сверяется с X-Telegram-Bot-Api-Secret-Token
 LK_TELEGRAM_BOT_USERNAME=Bot_Lekalo_bot            # для deep-link "https://t.me/<username>?start=..."
-LK_PUBLIC_BASE_URL=https://147.45.141.237.nip.io   # для ссылок на счета, которые бот шлёт клиенту
+LK_PUBLIC_BASE_URL=https://185.11.134.80.nip.io   # для ссылок на счета, которые бот шлёт клиенту
 ```
 Ключ для 2FA сгенерировать так (один раз) и вписать в `.env`:
 ```bash
@@ -198,7 +198,7 @@ cd /opt/lekalo/server/deploy && bash enable-security-headers.sh
 nosniff, Referrer-Policy, Permissions-Policy, CSP, `server_tokens off`) и подключает
 его `include`'ом в каждый server-блок. Идемпотентно. HSTS ставит отдельно
 `enable-https.sh` — здесь его нет, чтобы не задваивать. Проверка:
-`curl -sI https://147.45.141.237.nip.io/ | grep -iE 'x-frame|content-security|x-content-type'`.
+`curl -sI https://185.11.134.80.nip.io/ | grep -iE 'x-frame|content-security|x-content-type'`.
 ⚠️ CSP разрешает `'unsafe-inline'` (на сайте инлайновые script/style) и
 `connect-src https://api.telegram.org` (уведомление из register.html) — при новых
 внешних ресурсах CSP надо расширить, иначе браузер их срежет.
@@ -246,7 +246,7 @@ journalctl -u tender-api | grep 'AUDIT admin_'        # доступ к адми
 ### 8.5. Мониторинг аптайма (узнать о падении первым)
 
 Внешний пинг (бесплатно, вне VPS — иначе не заметишь падение самого VPS):
-UptimeRobot → новый HTTP(s)-монитор на `https://147.45.141.237.nip.io/api/health`,
+UptimeRobot → новый HTTP(s)-монитор на `https://185.11.134.80.nip.io/api/health`,
 тип «keyword», ключевое слово `ok`, интервал 5 мин, алерт на почту.
 
 ## Откат к Nexara (актуально только на старом сервере)

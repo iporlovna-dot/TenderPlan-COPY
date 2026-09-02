@@ -8,7 +8,7 @@
 set -euo pipefail
 
 KEY="${LEKALO_KEY:-$HOME/.ssh/nexara_deploy}"
-HOST="${LEKALO_HOST:-root@147.45.141.237}"
+HOST="${LEKALO_HOST:-root@185.11.134.80}"
 
 ssh -i "$KEY" -o ConnectTimeout=20 "$HOST" 'bash -s' <<'REMOTE'
 set -e

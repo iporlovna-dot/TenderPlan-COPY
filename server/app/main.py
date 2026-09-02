@@ -44,7 +44,7 @@ POOL_TTL = int(os.getenv("LK_POOL_TTL", "300"))  # сек
 MATCH_MAX_PRODUCTS = int(os.getenv("LK_MATCH_MAX_PRODUCTS", "500"))
 # Фронт живёт на том же домене (nginx проксирует /api) → CORS-звёздочка не нужна.
 # Вход/кабинет работают на https://…nip.io — его и разрешаем. Несколько origin'ов — через запятую.
-CORS_ORIGINS = [o.strip() for o in os.getenv("LK_CORS_ORIGINS", "https://147.45.141.237.nip.io").split(",") if o.strip()]
+CORS_ORIGINS = [o.strip() for o in os.getenv("LK_CORS_ORIGINS", "https://185.11.134.80.nip.io").split(",") if o.strip()]
 
 _state: dict = {"client": None, "source": None, "pool": [], "pool_ts": 0.0}
 

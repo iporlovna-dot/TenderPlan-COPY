@@ -40,4 +40,4 @@ echo "-- include добавлен в server-блоков: $(grep -c 'include sni
 
 nginx -t && systemctl reload nginx
 echo "✔ ГОТОВО: заголовки безопасности активны (X-Frame-Options, CSP, nosniff, Referrer-Policy, server_tokens off)."
-echo "   Проверка: curl -sI https://147.45.141.237.nip.io/ | grep -iE 'x-frame|content-security|x-content-type|referrer'"
+echo "   Проверка: curl -sI https://185.11.134.80.nip.io/ | grep -iE 'x-frame|content-security|x-content-type|referrer'"

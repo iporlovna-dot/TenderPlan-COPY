@@ -39,10 +39,10 @@ def create_session(conn: sqlite3.Connection, user_id: int) -> str:
 
 
 def set_session_cookie(response: Response, token: str) -> None:
-    # secure=True: сайт теперь на HTTPS (147.45.141.237.nip.io, Let's Encrypt).
+    # secure=True: сайт теперь на HTTPS (185.11.134.80.nip.io, Let's Encrypt).
     # ВАЖНО: голый IP по-прежнему живёт на голом HTTP (для старых ссылок) —
     # secure-cookie там браузер не сохранит, т.е. вход/регистрация работают
-    # только через https://147.45.141.237.nip.io/, не через голый IP.
+    # только через https://185.11.134.80.nip.io/, не через голый IP.
     response.set_cookie(
         SESSION_COOKIE,
         token,

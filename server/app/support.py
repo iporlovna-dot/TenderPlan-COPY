@@ -40,7 +40,7 @@ ADMIN_CHAT_ID = os.getenv("LK_SUPPORT_ADMIN_CHAT_ID", "")
 WEBHOOK_SECRET = os.getenv("LK_TELEGRAM_WEBHOOK_SECRET", "")
 # для ссылок на счета, которые бот шлёт клиенту (см. _handle_callback) —
 # тот же домен, что в LK_CORS_ORIGINS по умолчанию (main.py)
-PUBLIC_BASE_URL = os.getenv("LK_PUBLIC_BASE_URL", "https://147.45.141.237.nip.io")
+PUBLIC_BASE_URL = os.getenv("LK_PUBLIC_BASE_URL", "https://185.11.134.80.nip.io")
 # смещение getUpdates переживает рестарт процесса (иначе после каждого
 # деплоя Telegram присылал бы заново весь недавний бэклог апдейтов)
 _OFFSET_FILE = os.path.join(os.path.dirname(db.DB_PATH), "telegram_offset.txt")

@@ -37,7 +37,7 @@ from app import db, search_match  # noqa: E402
 from app.telegram import send_message  # noqa: E402
 
 SNAPSHOT_PATH = os.getenv("LK_SNAPSHOT_PATH", os.path.join(_REPO, "site", "data", "purchases.json"))
-PUBLIC_BASE_URL = os.getenv("LK_PUBLIC_BASE_URL", "https://147.45.141.237.nip.io")
+PUBLIC_BASE_URL = os.getenv("LK_PUBLIC_BASE_URL", "https://185.11.134.80.nip.io")
 TOP_PER_SEARCH = 5       # сколько закупок показывать под одним поиском (остальные — «…и ещё N»)
 MAX_ITEMS_IN_MSG = 25    # общий предел строк-закупок в одном сообщении (лимит Telegram 4096)
 PRUNE_DAYS = 90          # старше — вычищаем из notified_purchases, чтобы таблица не росла
