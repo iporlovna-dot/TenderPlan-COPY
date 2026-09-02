@@ -137,6 +137,27 @@ class TestRequirements(unittest.TestCase):
         reqs = self.sm.to_requirements(item(chars=[{"key": "a", "operator": "gte", "value": 4}]))
         self.assertEqual(reqs[0].hardness.value, "soft", "не дисквалифицируем без причины")
 
+    def test_тип_от_llm_экстрактора_берётся_как_есть(self):
+        # extractor.py отдаёт type в своей схеме — раньше терялся здесь и WEIGHTS
+        # (technical=2.0/documentary=1.0) молча не различал требования (баг, 2026-09-02).
+        reqs = self.sm.to_requirements(item(chars=[
+            {"key": "рег_удостоверение", "operator": "present", "value": True,
+             "type": "documentary"},
+            {"key": "толщина", "operator": "gte", "value": 4, "type": "technical"},
+        ]))
+        self.assertEqual(reqs[0].type.value, "documentary")
+        self.assertEqual(reqs[1].type.value, "technical")
+
+    def test_тип_без_llm_классифицируется_по_имени_поля(self):
+        # ktrutable.js (таблица) type не пишет вовсе — детерминированный
+        # field_kind() решает по имени, не LLM.
+        reqs = self.sm.to_requirements(item(chars=[
+            {"key": "срок_годности_остаточный_мес", "operator": "gte", "value": 6},
+            {"key": "толщина_мм", "operator": "gte", "value": 4},
+        ]))
+        self.assertEqual(reqs[0].type.value, "documentary")
+        self.assertEqual(reqs[1].type.value, "technical")
+
 
 class TestPickProduct(unittest.TestCase):
     def setUp(self):
@@ -172,7 +193,24 @@ class TestPickProduct(unittest.TestCase):
 
 
 class TestMatchLot(unittest.TestCase):
+    """Мост eis_1↔карточка сам по себе — LLM-слои (align_keys добор, align_values)
+    теперь включены по умолчанию в проде, но здесь тестируется базовая проводка без
+    db/мок-клиента, поэтому пины их выключенными: у обоих слоёв свои TestAlignKeysLlm/
+    TestAlignValues с настоящей временной БД и мок-клиентом."""
+
+    def setUp(self):
+        self._prev_llm = os.environ.get("LK_ALIGN_KEYS_LLM")
+        self._prev_values = os.environ.get("LK_ALIGN_VALUES")
+        os.environ["LK_ALIGN_KEYS_LLM"] = "0"
+        os.environ["LK_ALIGN_VALUES"] = "0"
+
     def tearDown(self):
+        for name, prev in (("LK_ALIGN_KEYS_LLM", self._prev_llm),
+                           ("LK_ALIGN_VALUES", self._prev_values)):
+            if prev is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = prev
         if getattr(self, "path", None):
             os.unlink(self.path)
 
@@ -282,16 +320,24 @@ class TestMatchLot(unittest.TestCase):
 
 class TestAlignKeys(unittest.TestCase):
     """align_keys — детерминированный слой (llm_fallback=False, без сети и денег), сводит
-    расхождение в написании ключа между ТЗ и карточкой (matcher/src/keymatch.py)."""
+    расхождение в написании ключа между ТЗ и карточкой (matcher/src/keymatch.py). LLM-добор
+    остатка (LK_ALIGN_KEYS_LLM) пинуется выключенным — он теперь включён по умолчанию в
+    проде, но здесь без db/мок-клиента, и это отдельная забота TestAlignKeysLlm."""
 
     def setUp(self):
         self._prev_env = os.environ.get("LK_ALIGN_KEYS")
+        self._prev_llm = os.environ.get("LK_ALIGN_KEYS_LLM")
+        os.environ["LK_ALIGN_KEYS_LLM"] = "0"
 
     def tearDown(self):
         if self._prev_env is None:
             os.environ.pop("LK_ALIGN_KEYS", None)
         else:
             os.environ["LK_ALIGN_KEYS"] = self._prev_env
+        if self._prev_llm is None:
+            os.environ.pop("LK_ALIGN_KEYS_LLM", None)
+        else:
+            os.environ["LK_ALIGN_KEYS_LLM"] = self._prev_llm
         if getattr(self, "path", None):
             os.unlink(self.path)
 

@@ -47,10 +47,9 @@ TIMEOUT_S = float(os.getenv("LK_SPEC_LLM_TIMEOUT", "25"))
 
 # Полнотекстовый фолбэк (Фаза 4 плана `piped-forging-flame`) — дальше по цепочке, чем
 # извлечение из названия: зовётся, только когда И таблицы нет, И название само ничего
-# не дало. Выключен по умолчанию — расход на реальном трафике не оценён (тот же живой
-# замер 2026-08-31 упёрся в то, что реальных карточек товара почти нет, см. память
-# spec-match-real-usage-empty), включать осознанно после оценки на живых данных.
-ENABLED_FULLTEXT = os.getenv("LK_SPEC_LLM_FULLTEXT", "0") == "1" and llmclient.has_api_key()
+# не дало. Включён по умолчанию — прод в NL-регионе, Anthropic не блокируется, движок
+# обязан использовать весь заявленный функционал. Явный `LK_SPEC_LLM_FULLTEXT=0` выключит.
+ENABLED_FULLTEXT = os.getenv("LK_SPEC_LLM_FULLTEXT", "1") == "1" and llmclient.has_api_key()
 
 _client = None
 

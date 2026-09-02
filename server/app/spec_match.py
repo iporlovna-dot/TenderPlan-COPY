@@ -43,9 +43,10 @@ if _MATCHER_SRC not in sys.path:
 
 import keymatch  # noqa: E402
 from ktru import ktru_relation, EXACT, GROUP, NONE  # noqa: E402
-from matcher import match as engine_match  # noqa: E402
+from matcher import field_kind, match as engine_match  # noqa: E402
 from schema import (  # noqa: E402
-    Attribute, Hardness, MatchResult, Operator, Product, Requirement, Verdict,
+    Attribute, Hardness, MatchResult, Operator, Product, ReqType, Requirement,
+    Verdict,
 )
 
 from . import db, spec_llm  # noqa: E402
@@ -56,20 +57,17 @@ log = logging.getLogger("lekalo.spec_match")
 # без сети, поэтому включён по умолчанию.
 ALIGN_KEYS = os.getenv("LK_ALIGN_KEYS", "1") != "0"
 
-# LLM-добор остатка (Фаза 3 плана `piped-forging-flame`, keymatch.llm_map) — платный,
-# по умолчанию ВЫКЛЮЧЕН: в отличие от детерминированного слоя, расход на реальном
-# трафике ещё не оценён (см. измерение 2026-08-31 — только 9.2% позиций вообще имеют
-# структурированные chars, доля реального остатка после Фазы 1 неизвестна без живых
-# карточек товара). Включать осознанно, тем же паттерном, что LK_ALIGN_VALUES.
-ALIGN_KEYS_LLM = os.getenv("LK_ALIGN_KEYS_LLM", "0") == "1"
+# LLM-добор остатка (Фаза 3 плана `piped-forging-flame`, keymatch.llm_map) — платный
+# LLM-вызов, но прод теперь в NL-регионе (Anthropic не блокирует), включён по
+# умолчанию: движок обязан использовать весь заявленный функционал, а не стоять
+# на паузе из-за неоценённого расхода. Явный `LK_ALIGN_KEYS_LLM=0` всё ещё выключит.
+ALIGN_KEYS_LLM = os.getenv("LK_ALIGN_KEYS_LLM", "1") == "1"
 
 # Семантическая сверка ЗНАЧЕНИЙ (Фаза 2 плана `piped-forging-flame`, keymatch.align_values)
 # — платный LLM-вызов на строковые eq-требования, где КЛЮЧ уже совпал (буквально или после
-# align_keys), но значение написано по-разному («металл» vs «нержавеющая сталь»). По
-# умолчанию ВЫКЛЮЧЕН тем же приёмом, что ALIGN_KEYS_LLM: доля таких пар на живом трафике
-# не оценена (2026-08-31 замер упёрся в то же — почти нет реальных карточек с атрибутами,
-# см. память spec-match-real-usage-empty).
-ALIGN_VALUES = os.getenv("LK_ALIGN_VALUES", "0") == "1"
+# align_keys), но значение написано по-разному («металл» vs «нержавеющая сталь»). Включён
+# по умолчанию тем же приёмом, что ALIGN_KEYS_LLM. Явный `LK_ALIGN_VALUES=0` выключит.
+ALIGN_VALUES = os.getenv("LK_ALIGN_VALUES", "1") == "1"
 
 # Файл довеска со спецификацией — тот же, что грузит фронт при раскрытии
 # карточки. Отдельной копии данных для бэкенда не заводим: разъехавшиеся копии
@@ -94,6 +92,7 @@ _OPERATORS = {
     "present": Operator.PRESENT,
 }
 _HARDNESS = {"hard": Hardness.HARD, "soft": Hardness.SOFT}
+_REQTYPE = {"technical": ReqType.TECHNICAL, "documentary": ReqType.DOCUMENTARY}
 
 
 # ─────────────────────────────────────────────────────── чтение позиций закупки
@@ -169,18 +168,28 @@ def to_requirements(item: dict) -> List[Requirement]:
 
     Словарь совпадает по построению (ktrutable.js писался под schema.py), но
     неизвестный оператор молча пропускаем, а не подставляем EQ: выдуманное
-    требование хуже отсутствующего — оно даст ложное нарушение."""
+    требование хуже отсутствующего — оно даст ложное нарушение.
+
+    ⚠️ `type` (technical/documentary) решает вес требования в скоринге
+    (`matcher.WEIGHTS`) — раньше здесь не читался вовсе, и КАЖДОЕ требование
+    молча получало TECHNICAL, обнуляя разницу в весах (баг, найден 2026-09-02).
+    LLM-экстрактор (`extractor.py`) отдаёт `type` явно в своей схеме — берём
+    его; там, где источник — таблица ktrutable.js (`type` не пишет), тип не
+    выдуман LLM'ом, поэтому классифицируем детерминированно по имени поля
+    (`matcher.field_kind`) — та же логика, что в `matcher/scripts/lot_coverage.py`."""
     out: List[Requirement] = []
     for ch in item.get("chars") or []:
         op = _OPERATORS.get(ch.get("operator"))
         if op is None:
             continue
+        key = ch.get("key") or ""
         out.append(Requirement(
-            key=ch.get("key") or "",
+            key=key,
             operator=op,
             value=ch.get("value"),
             unit=ch.get("unit") or None,
             hardness=_HARDNESS.get(ch.get("hardness"), Hardness.SOFT),
+            type=_REQTYPE.get(ch.get("type")) or field_kind(key),
             raw=ch.get("raw") or "",
         ))
     return out
