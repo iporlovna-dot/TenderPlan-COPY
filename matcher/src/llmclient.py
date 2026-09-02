@@ -99,12 +99,20 @@ def structured_create(client, model: str, system: str, user: str, schema: dict,
     НЕ оборачивается — его исключения (сеть, авторизация, лимиты) пробрасываются
     как есть, это НЕ ModelOutputError, см. её докстринг."""
     if hasattr(client, "messages"):
+        output_config = {"format": {"type": "json_schema", "schema": schema}}
+        if "haiku" not in model:
+            # Haiku 4.5 отвечает 400 "This model does not support the effort
+            # parameter" на любой output_config.effort — не только у нас,
+            # это задокументированное ограничение модели. HAIKU в models.py
+            # обслуживает parse_price/expand_query/field_equivalence, так что
+            # без этой развилки все три маршрута падали бы на реальном трафике.
+            output_config["effort"] = "medium"
         resp = client.messages.create(
             model=model,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
-            output_config={"format": {"type": "json_schema", "schema": schema}, "effort": "medium"},
+            output_config=output_config,
         )
         if resp.stop_reason == "refusal":
             raise ModelOutputError("Модель отклонила запрос (stop_reason=refusal)")
